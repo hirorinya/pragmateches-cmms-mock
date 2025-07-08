@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { TaskGenerationService } from '@/services/task-generation'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { strategyId } = body
     
-    return NextResponse.json({
-      success: true,
-      message: 'Equipment Strategy task generation working',
-      strategyId: strategyId || 'all',
-      timestamp: new Date().toISOString(),
-      generated: 1,
-      failed: 0,
-      details: [`Successfully generated task for strategy ${strategyId || 'all strategies'}`]
-    })
+    const taskService = new TaskGenerationService()
+    
+    if (strategyId) {
+      const result = await taskService.generateTaskForStrategy(strategyId)
+      return NextResponse.json(result)
+    } else {
+      const result = await taskService.generateDailyTasks()
+      return NextResponse.json(result)
+    }
   } catch (error: any) {
+    console.error('[API] Task generation error:', error)
     return NextResponse.json(
       { error: 'Failed to generate task', details: error.message },
       { status: 500 }
@@ -27,13 +29,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const strategyId = searchParams.get('strategy_id')
     
-    return NextResponse.json({
-      success: true,
-      message: 'Equipment Strategy task generation working (GET)',
-      strategyId: strategyId || 'all',
-      timestamp: new Date().toISOString()
-    })
+    const taskService = new TaskGenerationService()
+    
+    if (strategyId) {
+      const result = await taskService.generateTaskForStrategy(strategyId)
+      return NextResponse.json(result)
+    } else {
+      const result = await taskService.generateDailyTasks()
+      return NextResponse.json(result)
+    }
   } catch (error: any) {
+    console.error('[API] Task generation error:', error)
     return NextResponse.json(
       { error: 'Failed to generate task', details: error.message },
       { status: 500 }
