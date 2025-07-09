@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardCheck, ChevronRight, BarChart3, Brain } from "lucide-react"
+import { ClipboardCheck, ChevronRight, BarChart3, Brain, Settings, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -43,6 +43,16 @@ const menuItems = [
       },
     ],
   },
+  {
+    title: "タスク管理",
+    icon: Settings,
+    href: "/dashboard/tasks",
+  },
+  {
+    title: "プロセス監視",
+    icon: Activity,
+    href: "/dashboard/process-monitoring",
+  },
 ]
 
 export function Sidebar() {
@@ -70,20 +80,38 @@ export function Sidebar() {
                   onMouseLeave={() => setHoveredItem(null)}
                 >
                   {/* メインメニュー項目 */}
-                  <div
-                    className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
-                      isHovered || hasActiveSubItem
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    )}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Icon className="h-5 w-5" />
-                      <span>{item.title}</span>
+                  {item.href ? (
+                    <Link href={item.href}>
+                      <div
+                        className={cn(
+                          "flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
+                          pathname === item.href
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                        )}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Icon className="h-5 w-5" />
+                          <span>{item.title}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div
+                      className={cn(
+                        "flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
+                        isHovered || hasActiveSubItem
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      )}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4" />
                     </div>
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
+                  )}
 
                   {/* ホバー時のサブメニュー（右側に表示） */}
                   {isHovered && item.subItems && (
