@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'PENDING'
     
-    const supabase = createClient()
+    // supabase is already imported
 
     const { data, error } = await supabase
       .from('es_change_notifications')
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const supabase = createClient()
+    // supabase is already imported
     let updateData: any = {
       reviewed_by,
       reviewed_at: new Date().toISOString(),
