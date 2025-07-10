@@ -68,7 +68,11 @@ export default function InsightsAnalysisPage() {
       if (result.error) {
         setError(result.error)
       } else {
-        console.log('AI Response:', result.result) // Debug log
+        console.log('=== FRONTEND DEBUG ===')
+        console.log('AI Response length:', result.result?.length || 0)
+        console.log('AI Response preview:', result.result?.substring(0, 500) + '...')
+        console.log('Full AI Response:', result.result) // Debug log
+        console.log('=====================')
         setInsights(result.result)
       }
     } catch (err) {

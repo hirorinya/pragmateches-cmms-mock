@@ -282,10 +282,20 @@ Analyze this CMMS query and respond with the appropriate JSON format. Consider t
       ],
       model: 'gpt-4o',
       temperature: 0.3, // Lower temperature for more consistent JSON
-      max_tokens: type === 'cmms_query' ? 800 : type === 'insights' ? 4000 : 2000, // Higher limit for insights analysis
+      max_tokens: type === 'cmms_query' ? 800 : type === 'insights' ? 8000 : 2000, // Much higher limit for insights analysis
     })
 
     const result = completion.choices[0].message.content
+    
+    // Debug logging for insights analysis
+    if (type === 'insights') {
+      console.log('=== AI INSIGHTS DEBUG ===')
+      console.log('Finish reason:', completion.choices[0].finish_reason)
+      console.log('Result length:', result?.length || 0)
+      console.log('Token usage:', completion.usage)
+      console.log('Result preview:', result?.substring(0, 500) + '...')
+      console.log('=========================')
+    }
     
     // Check for truncation in insights analysis
     if (type === 'insights' && result) {
@@ -305,7 +315,7 @@ Analyze this CMMS query and respond with the appropriate JSON format. Consider t
             ],
             model: 'gpt-4o',
             temperature: 0.3,
-            max_tokens: 6000, // Even higher limit for retry
+            max_tokens: 10000, // Even higher limit for retry
           })
           
           return NextResponse.json({
