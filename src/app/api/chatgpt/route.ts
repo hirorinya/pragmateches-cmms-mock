@@ -160,38 +160,62 @@ Only request data that is necessary for the specific visualization.`
       systemPrompt = `You are an industrial equipment inspection expert. Analyze inspection results and provide insights about equipment condition, trends, and recommendations. Focus on identifying anomalies, trends, and maintenance recommendations.`
       userPrompt = `Analyze this inspection data: ${JSON.stringify(data)}, ${prompt}`
     } else if (type === 'cmms_query') {
-      systemPrompt = `You are an expert CMMS (Computerized Maintenance Management System) analyst for a refinery. You help maintenance teams with intelligent insights about equipment risks, maintenance status, and process impacts.
+      systemPrompt = `You are an expert CMMS analyst for a refinery. Respond in JSON format that matches our application structure.
 
-Your knowledge includes:
-- Equipment types: Heat Exchangers (E-101, E-102, E-103), Pumps (P-101), Tanks (T-201)
-- Systems: SYS-001 (System A), SYS-002 (System B)
-- Instruments: TI-201 (temperature), PI-101 (pressure), FI-301 (flow)
-- Departments: REFINERY, MAINTENANCE
-- Risk types: Fouling blockage, Corrosion leakage, Mechanical failure
+IMPORTANT: You MUST respond with valid JSON in this exact format:
+{
+  "intent": "COVERAGE_ANALYSIS" | "MITIGATION_STATUS" | "IMPACT_ANALYSIS" | "GENERAL_ANALYSIS",
+  "confidence": 0.85,
+  "summary": "Clear 1-2 sentence summary in the same language as the query",
+  "results": [...], 
+  "recommendations": ["actionable recommendation 1", "actionable recommendation 2"],
+  "equipment_context": {
+    "primary_equipment": "E-101",
+    "affected_systems": ["SYS-001"],
+    "departments": ["REFINERY", "MAINTENANCE"]
+  }
+}
 
-Key capabilities:
-1. RISK COVERAGE ANALYSIS: Identify equipment missing specific risk scenarios
-2. MITIGATION STATUS: Check implementation status by department/equipment
-3. IMPACT ANALYSIS: Analyze cascade effects of instrument/parameter changes
+Equipment Database:
+- E-101: Shell-and-tube heat exchanger (SYS-001), fouling risk covered
+- E-102: Plate heat exchanger (SYS-001), missing fouling scenarios
+- E-103: Air-cooled heat exchanger (SYS-001), missing fouling scenarios  
+- P-101: Centrifugal pump (SYS-001)
+- TI-201: Temperature instrument monitoring E-201, E-202, P-201
 
-Response format:
-- Start with clear summary
-- List specific equipment affected
-- Provide actionable recommendations
-- Use technical but accessible language
-- Reference specific equipment IDs when relevant
+Department Responsibilities:
+- REFINERY (製油部門): Daily monitoring, visual inspections, parameter recording
+- MAINTENANCE (メンテナンス部門): Repairs, upgrades, scheduled maintenance
 
-Example equipment context:
-- E-101: Shell-and-tube heat exchanger with fouling risk coverage
-- E-102, E-103: Heat exchangers potentially missing fouling scenarios  
-- TI-201: Temperature instrument affecting E-201, E-202, P-201
-- Refinery department: Responsible for daily monitoring
-- Maintenance department: Responsible for repairs and upgrades`
-      userPrompt = `Context: ${JSON.stringify(data)}
+For MITIGATION_STATUS queries, use this results format:
+{
+  "equipment_id": "E-101",
+  "department": "REFINERY", 
+  "total_measures": 3,
+  "implemented": [
+    {"measure": "Daily temperature monitoring", "responsible_person": "ST001", "frequency": "DAILY", "status": "ACTIVE", "last_execution": "2025-07-09"}
+  ],
+  "planned": [
+    {"measure": "Monthly tube cleaning", "responsible_person": "ST002", "planned_start": "2025-08-01", "status": "PLANNED"}
+  ]
+}
 
-User Query: "${prompt}"
+For COVERAGE_ANALYSIS queries, use this results format:
+[
+  {"equipment_id": "E-102", "equipment_type": "HEAT_EXCHANGER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
+  {"equipment_id": "E-103", "equipment_type": "HEAT_EXCHANGER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"}
+]
 
-Provide a comprehensive analysis addressing this maintenance management question. Focus on specific equipment, actionable insights, and practical recommendations.`
+For IMPACT_ANALYSIS queries, use this results format:
+[
+  {"equipment_id": "E-201", "equipment_type": "HEAT_EXCHANGER", "impact_level": "HIGH", "immediate_actions": ["Check temperature readings", "Inspect for leaks"]}
+]
+
+RESPOND ONLY IN VALID JSON. No markdown, no explanations, just the JSON object.`
+      
+      userPrompt = `Query: "${prompt}"
+
+Analyze this CMMS query and respond with the appropriate JSON format. Consider the equipment database and department responsibilities provided.`
     }
 
     const completion = await openai.chat.completions.create({

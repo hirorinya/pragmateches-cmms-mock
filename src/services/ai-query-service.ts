@@ -32,25 +32,38 @@ export class AIQueryService {
   async processQuery(query: string): Promise<AIQueryResponse> {
     const startTime = Date.now()
     
-    try {
-      // Try OpenAI API first
-      const openaiResponse = await this.tryOpenAI(query)
-      if (openaiResponse) {
-        openaiResponse.execution_time = Date.now() - startTime
-        openaiResponse.source = 'openai'
-        return openaiResponse
-      }
-    } catch (error) {
-      console.warn('OpenAI API failed, falling back to mock service:', error)
-    }
-
-    // Fallback to mock service
+    // Always ensure mock service is available for fallback
     if (!this.mockService) {
       await this.initializeMockService()
     }
     
+    try {
+      // Try OpenAI API first (with timeout)
+      const openaiPromise = this.tryOpenAI(query)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI timeout')), 8000)
+      )
+      
+      const openaiResponse = await Promise.race([openaiPromise, timeoutPromise]) as AIQueryResponse | null
+      
+      if (openaiResponse && openaiResponse.summary && openaiResponse.intent) {
+        openaiResponse.execution_time = Date.now() - startTime
+        openaiResponse.source = 'openai'
+        console.log('✅ OpenAI response successful')
+        return openaiResponse
+      } else {
+        console.warn('⚠️ OpenAI response incomplete, using mock fallback')
+        throw new Error('Incomplete OpenAI response')
+      }
+    } catch (error) {
+      console.warn('❌ OpenAI failed, using reliable mock service:', error.message)
+    }
+
+    // Reliable fallback to mock service
     const mockResponse = await this.mockService.processQuery(query)
+    mockResponse.execution_time = Date.now() - startTime
     mockResponse.source = 'mock'
+    console.log('✅ Mock service response successful')
     return mockResponse
   }
 
@@ -101,12 +114,29 @@ export class AIQueryService {
    * Parse OpenAI response into our expected format
    */
   private parseOpenAIResponse(query: string, aiResponse: string): AIQueryResponse {
-    // Try to extract structured data from OpenAI response
+    try {
+      // Try to parse as JSON first (new structured format)
+      const jsonResponse = JSON.parse(aiResponse)
+      
+      if (jsonResponse.intent && jsonResponse.summary) {
+        return {
+          query,
+          intent: jsonResponse.intent,
+          confidence: jsonResponse.confidence || 0.85,
+          results: jsonResponse.results || [],
+          summary: jsonResponse.summary,
+          recommendations: jsonResponse.recommendations,
+          execution_time: 0, // Will be set by caller
+          source: 'openai'
+        }
+      }
+    } catch (error) {
+      console.warn('OpenAI response is not JSON, parsing as text:', error)
+    }
+    
+    // Fallback to text parsing for older format responses
     const intent = this.detectIntentFromResponse(aiResponse)
     const confidence = this.calculateConfidence(aiResponse)
-    
-    // Extract equipment mentions
-    const equipmentMatches = aiResponse.match(/[EPT]-\d+/g) || []
     
     // Extract recommendations (lines starting with "-" or numbered items)
     const recommendationMatches = aiResponse.match(/(?:^|\n)[-•*]\s*(.+)|(?:^|\n)\d+\.\s*(.+)/gm) || []
