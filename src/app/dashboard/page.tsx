@@ -1,6 +1,26 @@
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { 
+  precisionEquipmentData, 
+  rotatingEquipmentData, 
+  electricalData, 
+  instrumentationData,
+  InspectionResult 
+} from "@/types/inspection"
 
 export default function DashboardPage() {
+  // Combine all inspection data
+  const allInspectionData: InspectionResult[] = [
+    ...precisionEquipmentData,
+    ...rotatingEquipmentData,
+    ...electricalData,
+    ...instrumentationData
+  ]
+
+  // Calculate inspection statistics
+  const passedCount = allInspectionData.filter(item => item.status === "合格").length
+  const failedCount = allInspectionData.filter(item => item.status === "不合格").length
+  const pendingCount = allInspectionData.filter(item => item.status === "要確認").length
+  const totalCount = allInspectionData.length
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -71,7 +91,7 @@ export default function DashboardPage() {
                   合格検査数
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  --
+                  {passedCount}
                 </p>
               </div>
             </div>
@@ -101,7 +121,7 @@ export default function DashboardPage() {
                   不合格検査数
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  --
+                  {failedCount}
                 </p>
               </div>
             </div>
@@ -131,7 +151,7 @@ export default function DashboardPage() {
                   保留中
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  --
+                  {pendingCount}
                 </p>
               </div>
             </div>
@@ -161,7 +181,7 @@ export default function DashboardPage() {
                   総検査数
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  --
+                  {totalCount}
                 </p>
               </div>
             </div>
