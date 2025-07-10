@@ -471,6 +471,9 @@ export class ProcessMonitoringService {
           if (mapping.auto_apply) {
             await this.autoApplyESChange(recommendation)
           }
+
+          // Check if this should trigger a risk review
+          await this.checkRiskReviewTrigger(event, mapping, strategy)
         }
       }
 
@@ -479,6 +482,49 @@ export class ProcessMonitoringService {
     }
 
     return notifications
+  }
+
+  /**
+   * Check if process event should trigger a risk review
+   */
+  private async checkRiskReviewTrigger(event: TriggerEvent, mapping: any, strategy: any): Promise<void> {
+    try {
+      // Only trigger risk review for high/critical severity events
+      if (!['HIGH', 'CRITICAL'].includes(event.severity)) return
+
+      // Get equipment's system mapping
+      const { data: systemMapping } = await this.supabase
+        .from('equipment_system_mapping')
+        .select('system_id')
+        .eq('equipment_id', strategy.equipment_id)
+        .limit(1)
+        .single()
+
+      if (!systemMapping) return
+
+      // Check if we should trigger a risk review
+      const triggerResponse = await fetch('/api/risk/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_from_process_trigger',
+          process_event_id: event.rule_id,
+          system_id: systemMapping.system_id,
+          severity: event.severity,
+          review_leader: 'SYSTEM'
+        })
+      })
+
+      if (triggerResponse.ok) {
+        const result = await triggerResponse.json()
+        if (result.triggered) {
+          console.log(`[ProcessMonitoring] Risk review triggered for system ${systemMapping.system_id}`)
+        }
+      }
+
+    } catch (error: any) {
+      console.error('[ProcessMonitoring] Error checking risk review trigger:', error)
+    }
   }
 
   /**

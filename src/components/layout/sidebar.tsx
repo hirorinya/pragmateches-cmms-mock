@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardCheck, ChevronRight, BarChart3, Brain, Settings, Activity } from "lucide-react"
+import { ClipboardCheck, ChevronRight, BarChart3, Brain, Settings, Activity, AlertTriangle, BookOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -52,6 +52,16 @@ const menuItems = [
     title: "プロセス監視",
     icon: Activity,
     href: "/dashboard/process-monitoring",
+  },
+  {
+    title: "リスク評価",
+    icon: AlertTriangle,
+    href: "/dashboard/risk-assessment",
+  },
+  {
+    title: "ドキュメント",
+    icon: BookOpen,
+    href: "/dashboard/documentation",
   },
 ]
 
