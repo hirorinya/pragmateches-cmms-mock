@@ -271,10 +271,10 @@ For MITIGATION_STATUS queries, use this results format:
 
 For COVERAGE_ANALYSIS queries about equipment NOT reflected in ES, use this results format:
 [
-  {"equipment_id": "EQ013", "equipment_type": "FLOW_METER", "system": "SYS-002", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
-  {"equipment_id": "EQ014", "equipment_type": "PRESSURE_GAUGE", "system": "SYS-002", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
-  {"equipment_id": "EQ016", "equipment_type": "CONTROL_PANEL", "system": "SYS-002", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"}
+  {"equipment_id": "EQ005", "equipment_type": "BLOWER", "system": "SYS-001", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
+  {"equipment_id": "EQ019", "equipment_type": "AIR_CONDITIONER", "system": "SYS-001", "missing_risk": "fouling blockage risk", "risk_gap": "MEDIUM"}
 ]
+Note: This is just an example format. Analyze the actual query to determine which system and equipment to check.
 
 For COVERAGE_ANALYSIS queries about equipment ARE reflected in ES, use this results format:
 [
@@ -329,7 +329,13 @@ For SYSTEM_LIST queries (when asking to list systems), use this results format:
   {"system_id": "SYS-005", "name": "安全監視系統 (Safety Monitoring System)", "criticality": "CRITICAL", "equipment_count": 0}
 ]
 
-IMPORTANT: When user asks to "list systems", "システムの一覧", "list the name of System we have", or similar, use SYSTEM_LIST intent and return the actual system list as results, NOT generic recommendations.
+IMPORTANT: 
+1. When user asks to "list systems", "システムの一覧", "list the name of System we have", or similar, use SYSTEM_LIST intent and return the actual system list as results, NOT generic recommendations.
+2. When analyzing equipment for a specific system (e.g., "equipment in SYS-001"), ONLY return equipment that actually belongs to that system based on the equipment database above.
+3. For SYS-001: Only EQ005, EQ006, EQ019, EQ020 belong to this system
+4. For SYS-002: Only EQ013, EQ014, EQ016 belong to this system
+5. For SYS-003: Only EQ017, EQ018 belong to this system
+6. For SYS-004: Only EQ009, EQ010, EQ012 belong to this system
 
 RESPOND ONLY IN VALID JSON. No markdown, no explanations, just the JSON object.`
       
