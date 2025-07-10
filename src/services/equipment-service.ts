@@ -231,6 +231,7 @@ export class EquipmentService {
           equipment(
             設備名,
             稼働状態,
+            設備種別ID,
             equipment_type_master(設備種別名)
           )
         `)
@@ -297,7 +298,7 @@ export class EquipmentService {
       const { data: measurements, error } = await supabase
         .from('thickness_measurement')
         .select('*')
-        .eq('設備ID', equipmentId)
+        .eq('機器ID', equipmentId)
         .order('検査日', { ascending: false })
 
       if (error || !measurements || measurements.length === 0) {
@@ -308,18 +309,18 @@ export class EquipmentService {
       // Group by measurement point and get latest for each
       const pointsMap = new Map()
       measurements.forEach(m => {
-        const point = m.測定ポイント
+        const point = m.測定点ID
         if (!pointsMap.has(point) || new Date(m.検査日) > new Date(pointsMap.get(point).検査日)) {
           pointsMap.set(point, m)
         }
       })
 
       const measurementPoints = Array.from(pointsMap.values()).map(m => ({
-        point: m.測定ポイント,
-        current: `${m['肉厚測定値(mm)']}mm`,
+        point: m.測定点ID,
+        current: `${m['測定値(mm)']}mm`,
         design: `${m['設計肉厚(mm)']}mm`,
         minimum: `${m['最小許容肉厚(mm)']}mm`,
-        status: m.判定,
+        status: m.判定結果,
         date: m.検査日
       }))
 

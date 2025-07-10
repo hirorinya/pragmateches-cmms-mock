@@ -177,7 +177,8 @@ export class AIDatabaseService {
         equipment!inner(
           設備名,
           設備タグ,
-          設備種別
+          設備種別ID,
+          equipment_type_master(設備種別名)
         )
       `)
       .eq('system_id', systemId)
@@ -190,7 +191,7 @@ export class AIDatabaseService {
     const { data: heatExchangers, error: hxError } = await this.supabase
       .from('equipment_risk_assessment')
       .select('*')
-      .like('equipment_id', 'HX-%')
+      .like('機器ID', 'HX-%')
 
     if (hxError) {
       console.warn('Could not fetch heat exchanger data:', hxError.message)
@@ -210,19 +211,21 @@ export class AIDatabaseService {
     const allEquipment = [
       ...(equipmentData || []),
       ...(heatExchangers || []).map(hx => ({
-        equipment_id: hx.equipment_id,
+        equipment_id: hx.機器ID,
         role_in_system: 'PRIMARY',
         equipment: {
-          設備名: `Heat Exchanger ${hx.equipment_id}`,
-          設備タグ: hx.equipment_id,
-          設備種別: 'Heat Exchanger'
+          設備名: `Heat Exchanger ${hx.機器ID}`,
+          設備タグ: hx.機器ID,
+          equipment_type_master: {
+            設備種別名: 'Heat Exchanger'
+          }
         }
       }))
     ]
 
     // Filter for heat exchangers if query mentions them
     const heatExchangerEquipment = allEquipment.filter(eq => 
-      eq.equipment?.設備種別?.toLowerCase().includes('heat') ||
+      eq.equipment?.equipment_type_master?.設備種別名?.toLowerCase().includes('heat') ||
       eq.equipment?.設備名?.toLowerCase().includes('heat') ||
       eq.equipment_id?.includes('HX-')
     )
@@ -257,7 +260,7 @@ export class AIDatabaseService {
       results: targetList.map(eq => ({
         equipment_id: eq.equipment_id,
         equipment_name: eq.equipment?.設備名 || eq.equipment_id,
-        equipment_type: eq.equipment?.設備種別 || 'Unknown',
+        equipment_type: eq.equipment?.equipment_type_master?.設備種別名 || 'Unknown',
         system: systemId,
         system_name: systemName,
         role_in_system: eq.role_in_system,
@@ -310,7 +313,7 @@ export class AIDatabaseService {
       const { data: hxInfo, error: hxError } = await this.supabase
         .from('equipment_risk_assessment')
         .select('*')
-        .eq('equipment_id', equipmentId)
+        .eq('機器ID', equipmentId)
         .single()
 
       if (hxError) {
@@ -453,7 +456,8 @@ export class AIDatabaseService {
         equipment!inner(
           設備名,
           設備タグ,
-          設備種別
+          設備種別ID,
+          equipment_type_master(設備種別名)
         )
       `)
       .eq('system_id', systemId || 'SYS-001')
@@ -473,7 +477,7 @@ export class AIDatabaseService {
       return {
         equipment_id: eq.equipment_id,
         equipment_name: eq.equipment?.設備名 || eq.equipment_id,
-        equipment_type: eq.equipment?.設備種別 || 'Unknown',
+        equipment_type: eq.equipment?.equipment_type_master?.設備種別名 || 'Unknown',
         role_in_system: eq.role_in_system,
         risk_scenarios: riskCount,
         average_rpn: Math.round(avgRPN),
@@ -685,7 +689,7 @@ export class AIDatabaseService {
         コスト,
         作業内容,
         設備ID,
-        equipment!inner(設備名, 設備種別)
+        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
       `)
       .gte('実施日', this.getDateFromTimeframe(timeframe))
       .order('実施日', { ascending: false })
@@ -749,7 +753,7 @@ export class AIDatabaseService {
         点検項目,
         次回点検日,
         状態,
-        equipment!inner(設備名, 設備種別)
+        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
       `)
       .lt('次回点検日', currentDate)
       .neq('状態', '完了')
@@ -767,7 +771,7 @@ export class AIDatabaseService {
         点検項目,
         次回点検日,
         状態,
-        equipment!inner(設備名, 設備種別)
+        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
       `)
       .gte('次回点検日', currentDate)
       .lte('次回点検日', futureDate.toISOString().split('T')[0])
@@ -822,31 +826,27 @@ export class AIDatabaseService {
         strategy_name,
         frequency_type,
         frequency_value,
-        next_execution_date,
-        last_execution_date,
-        status,
-        equipment!inner(設備名, 設備種別)
+        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
       `)
-      .lte('next_execution_date', futureDate.toISOString().split('T')[0])
-      .eq('status', 'ACTIVE')
-      .order('next_execution_date', { ascending: true })
+      .eq('is_active', true)
+      .order('strategy_id', { ascending: true })
 
     // Get current work orders
     const { data: workOrders, error: workOrderError } = await this.supabase
       .from('work_order')
       .select(`
-        作業指示書番号,
+        作業指示ID,
         設備ID,
         作業種別ID,
-        予定開始日,
-        予定終了日,
-        実施日,
-        ステータス,
+        計画開始日時,
+        計画終了日時,
+        実際開始日時,
+        状態,
         equipment!inner(設備名)
       `)
-      .gte('予定開始日', currentDate.toISOString().split('T')[0])
-      .lte('予定開始日', futureDate.toISOString().split('T')[0])
-      .order('予定開始日', { ascending: true })
+      .gte('計画開始日時', currentDate.toISOString().split('T')[0])
+      .lte('計画開始日時', futureDate.toISOString().split('T')[0])
+      .order('計画開始日時', { ascending: true })
 
     const strategiesCount = (strategiesData || []).length
     const workOrdersCount = (workOrders || []).length
