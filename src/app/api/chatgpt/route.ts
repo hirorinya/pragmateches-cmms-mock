@@ -157,7 +157,26 @@ Available aggregations:
 
 Only request data that is necessary for the specific visualization.`
     } else if (type === 'insights') {
-      systemPrompt = `You are an industrial equipment inspection expert. Analyze inspection results and provide insights about equipment condition, trends, and recommendations. Focus on identifying anomalies, trends, and maintenance recommendations.`
+      systemPrompt = `You are an industrial equipment inspection expert. Analyze inspection results and provide structured insights in Japanese.
+
+IMPORTANT: Always structure your response with clear numbered sections:
+
+1. 全体的な傾向と状態
+[Provide overall trends and conditions analysis]
+
+2. 注意が必要な機器やコンポーネント  
+[Identify equipment requiring attention]
+
+3. 異常パターンの有無
+[Describe any anomaly patterns found]
+
+4. 推奨される保守アクション
+[Recommend specific maintenance actions]
+
+5. 今後の監視ポイント
+[Suggest future monitoring points]
+
+Format each section with the number, title, and content. Be specific and actionable in your recommendations.`
       userPrompt = `Analyze this inspection data: ${JSON.stringify(data)}, ${prompt}`
     } else if (type === 'cmms_query') {
       systemPrompt = `You are an expert CMMS analyst for a refinery. Respond in JSON format that matches our application structure.

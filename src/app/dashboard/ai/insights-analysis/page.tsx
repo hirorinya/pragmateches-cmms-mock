@@ -58,12 +58,7 @@ export default function InsightsAnalysisPage() {
         },
         body: JSON.stringify({
           type: "insights",
-          prompt: `${categoryLabel}の検査データを分析し、以下の観点から日本語でインサイトを提供してください：
-          1. 全体的な傾向と状態
-          2. 注意が必要な機器やコンポーネント
-          3. 異常パターンの有無
-          4. 推奨される保守アクション
-          5. 今後の監視ポイント`,
+          prompt: `${categoryLabel}の検査データを分析し、必ず番号付きセクションで日本語でインサイトを提供してください。設備データが少ない場合でも、各セクションに何かしらの内容を記載してください。`,
           data: filteredData,
         }),
       })
@@ -73,6 +68,7 @@ export default function InsightsAnalysisPage() {
       if (result.error) {
         setError(result.error)
       } else {
+        console.log('AI Response:', result.result) // Debug log
         setInsights(result.result)
       }
     } catch (err) {
@@ -83,7 +79,23 @@ export default function InsightsAnalysisPage() {
   }
 
   const renderInsightSection = (content: string) => {
-    const sections = content.split(/\d+\.\s/).filter(Boolean)
+    // Try different parsing methods to handle various AI response formats
+    let sections: string[] = []
+    
+    // Method 1: Split by numbered list (1. 2. 3.)
+    const numberedSections = content.split(/\d+\.\s*/).filter(Boolean)
+    
+    // Method 2: Split by section headers if numbered sections don't work
+    const headerSections = content.split(/(?=全体的な傾向|注意が必要|異常パターン|推奨される保守|監視ポイント)/).filter(Boolean)
+    
+    // Use the method that produces more sections
+    sections = numberedSections.length > headerSections.length ? numberedSections : headerSections
+    
+    // If still no good sections, split by double newlines
+    if (sections.length <= 1) {
+      sections = content.split(/\n\n+/).filter(section => section.trim().length > 0)
+    }
+    
     const titles = [
       { icon: TrendingUp, title: "全体的な傾向と状態", color: "text-blue-600" },
       { icon: AlertCircle, title: "注意が必要な機器", color: "text-yellow-600" },
@@ -96,6 +108,11 @@ export default function InsightsAnalysisPage() {
       if (index >= titles.length) return null
       const { icon: Icon, title, color } = titles[index]
       
+      // Clean up the section content
+      let cleanSection = section.trim()
+      // Remove any leading section headers that might be included
+      cleanSection = cleanSection.replace(/^(全体的な傾向と状態|注意が必要な機器|異常パターン|推奨される保守アクション|監視ポイント)[：:\s]*/, '')
+      
       return (
         <Card key={index} className="mb-4">
           <CardHeader className="pb-3">
@@ -105,7 +122,7 @@ export default function InsightsAnalysisPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{section.trim()}</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{cleanSection}</p>
           </CardContent>
         </Card>
       )
@@ -171,11 +188,17 @@ export default function InsightsAnalysisPage() {
       {insights && (
         <div>
           <h2 className="text-xl font-semibold mb-4">分析結果</h2>
-          {insights.includes("1.") ? (
+          {insights.includes("1.") || insights.includes("全体的な傾向") ? (
             renderInsightSection(insights)
           ) : (
             <Card>
-              <CardContent className="pt-6">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-blue-600">
+                  <Brain className="h-5 w-5" />
+                  AI分析結果
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{insights}</p>
               </CardContent>
             </Card>
