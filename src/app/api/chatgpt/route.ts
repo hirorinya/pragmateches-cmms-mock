@@ -183,7 +183,7 @@ Format each section with the number, title, and content. Be specific and actiona
 
 IMPORTANT: You MUST respond with valid JSON in this exact format:
 {
-  "intent": "COVERAGE_ANALYSIS" | "MITIGATION_STATUS" | "IMPACT_ANALYSIS" | "GENERAL_ANALYSIS",
+  "intent": "COVERAGE_ANALYSIS" | "MITIGATION_STATUS" | "IMPACT_ANALYSIS" | "EQUIPMENT_INFO" | "THICKNESS_MEASUREMENT" | "GENERAL_ANALYSIS",
   "confidence": 0.85,
   "summary": "Clear 1-2 sentence summary in the same language as the query",
   "results": [...], 
@@ -197,37 +197,55 @@ IMPORTANT: You MUST respond with valid JSON in this exact format:
 
 Equipment Database:
 Systems:
-- SYS-001: プロセス冷却系統 (Process Cooling System)
-- SYS-002: 原料供給系統 (Raw Material Supply System)  
-- SYS-003: 排水処理系統 (Wastewater Treatment System)
-- SYS-004: 電力供給系統 (Power Supply System)
-- SYS-005: 安全監視系統 (Safety Monitoring System)
+- SYS-001: プロセス冷却系統 (Process Cooling System) - HIGH criticality
+- SYS-002: 原料供給系統 (Raw Material Supply System) - CRITICAL
+- SYS-003: 排水処理系統 (Wastewater Treatment System) - MEDIUM
+- SYS-004: 電力供給系統 (Power Supply System) - CRITICAL
+- SYS-005: 安全監視系統 (Safety Monitoring System) - CRITICAL
 
-Equipment in SYS-001:
-- EQ005: 送風機1号機 (Blower #1), PRIMARY role
-- EQ006: ポンプ1号機 (Pump #1), PRIMARY role
-- EQ019: エアコン1号機 (Air Conditioner #1), SUPPORT role
-- EQ020: 換気扇1号機 (Ventilation Fan #1), SUPPORT role
+Static Equipment (Type 1):
+- EQ001: CNC旋盤1号機 (CNC Lathe #1), Manufacturer: ヤマザキマザック, Model: INTEGREX i-300, Location: 第1工場A棟, Status: 稼働中, Installed: 2018-03-15
+- EQ002: マシニングセンタ1号機 (Machining Center #1), Manufacturer: DMG森精機, Model: DMU 50, Location: 第1工場A棟, Status: 稼働中, Installed: 2017-06-20
+- EQ003: 研削盤1号機 (Grinding Machine #1), Manufacturer: 岡本工作機械, Model: PSG-52DX, Location: 第1工場A棟, Status: 稼働中, Installed: 2019-01-10
+- EQ004: ボール盤1号機 (Drilling Machine #1), Manufacturer: 日立工機, Model: B13RH, Location: 第1工場A棟, Status: 稼働中, Installed: 2016-11-25
 
-Equipment in SYS-002:
-- EQ013: 流量計1号機 (Flow Meter #1), PRIMARY role
-- EQ014: 圧力計1号機 (Pressure Gauge #1), PRIMARY role
-- EQ016: 制御盤1号機 (Control Panel #1), SUPPORT role
+Rotating Equipment (Type 2):
+- EQ005: 送風機1号機 (Blower #1), Manufacturer: 三菱電機, Model: SF-150, Location: 第1工場B棟, Status: 稼働中, Installed: 2020-02-14, System: SYS-001
+- EQ006: ポンプ1号機 (Pump #1), Manufacturer: 荏原製作所, Model: 50DL51.5, Location: ポンプ室, Status: 稼働中, Installed: 2019-08-03, System: SYS-001
+- EQ007: 圧縮機1号機 (Compressor #1), Manufacturer: 日立産機システム, Model: DSP-22VN, Location: 第1工場B棟, Status: 稼働中, Installed: 2018-12-07
+- EQ008: モータ1号機 (Motor #1), Manufacturer: 東芝, Model: IKH3-FBKAW21E, Location: 第1工場B棟, Status: 稼働中, Installed: 2017-09-22
 
-Equipment in SYS-003:
-- EQ017: 配管1号機 (Piping #1), PRIMARY role
-- EQ018: 弁1号機 (Valve #1), PRIMARY role
+Electrical Equipment (Type 3):
+- EQ009: 変圧器1号機 (Transformer #1), Manufacturer: 三菱電機, Model: 1000kVA, Location: 受電室, Status: 稼働中, Installed: 2021-04-16, System: SYS-004
+- EQ010: 配電盤1号機 (Distribution Panel #1), Manufacturer: 河村電器産業, Model: ENESTA, Location: 配電室, Status: 稼働中, Installed: 2020-07-11, System: SYS-004
+- EQ011: LED照明1号機 (LED Lighting #1), Manufacturer: パナソニック, Location: 第1工場A棟, Status: 稼働中, Installed: 2019-05-18
+- EQ012: 非常用発電機 (Emergency Generator), Manufacturer: ヤンマー, Model: AG200S, Location: 発電機室, Status: 待機中, Installed: 2018-10-05, System: SYS-004
 
-Equipment in SYS-004:
-- EQ009: 変圧器1号機 (Transformer #1), CRITICAL role
-- EQ010: 配電盤1号機 (Distribution Panel #1), CRITICAL role
-- EQ012: 非常用発電機 (Emergency Generator), CRITICAL role
+Instrumentation Equipment (Type 4):
+- EQ013: 流量計1号機 (Flow Meter #1), Manufacturer: 横河電機, Model: ADMAG AXF, Location: 配管室, Status: 稼働中, Installed: 2020-01-25, System: SYS-002
+- EQ014: 圧力計1号機 (Pressure Gauge #1), Manufacturer: 長野計器, Model: GV55, Location: 制御室, Status: 稼働中, Installed: 2019-11-30, System: SYS-002
+- EQ015: 温度計1号機 (Temperature Gauge #1), Manufacturer: チノー, Model: DB1000, Location: 制御室, Status: 稼働中, Installed: 2018-04-14
+- EQ016: 制御盤1号機 (Control Panel #1), Manufacturer: オムロン, Model: CP1E, Location: 制御室, Status: 稼働中, Installed: 2017-12-02, System: SYS-002
 
-Equipment in SYS-005:
-- No equipment currently mapped to this system
+Piping Equipment (Type 5):
+- EQ017: 配管1号機 (Piping #1), Manufacturer: クボタ, Model: GENEX, Location: 配管室, Status: 稼働中, Installed: 2021-01-09, System: SYS-003
+- EQ018: 弁1号機 (Valve #1), Manufacturer: キッツ, Model: 10K, Location: 配管室, Status: 稼働中, Installed: 2020-06-27, System: SYS-003
 
-Heat Exchangers (from risk assessment):
-- HX-100 through HX-109: Heat exchangers with varying risk coverage
+Environmental Equipment (Type 8):
+- EQ019: エアコン1号機 (Air Conditioner #1), Manufacturer: ダイキン, Model: FHCP50DB, Location: 第1工場地下, Status: 稼働中, Installed: 2019-03-23, System: SYS-001
+- EQ020: 換気扇1号機 (Ventilation Fan #1), Manufacturer: 三菱電機, Model: EX-25SC3-M, Location: 事務所, Status: 稼働中, Installed: 2018-08-11, System: SYS-001
+
+Process Equipment (Risk Assessment Data):
+Tanks (TK-series):
+- TK-100 to TK-109: Storage tanks with comprehensive risk assessment and thickness measurement data
+- TK-101: Storage tank with 33 thickness measurement records (2015-2025), Shell-1: 10.68mm, Shell-2: 8.99mm, Bottom-1: 10.1mm (all passing)
+
+Heat Exchangers (HX-series):
+- HX-100 to HX-109: Heat exchangers with detailed risk scenarios and coverage analysis
+- HX-101: Heat exchanger with fouling blockage risk covered
+
+Pumps (PU-series):
+- PU-100 to PU-109: Process pumps with comprehensive risk assessment data
 
 IMPORTANT: 
 - "System A" does not exist - suggest SYS-001 instead
@@ -267,6 +285,39 @@ For IMPACT_ANALYSIS queries, use this results format:
 [
   {"equipment_id": "EQ013", "equipment_type": "FLOW_METER", "impact_level": "HIGH", "immediate_actions": ["Check flow readings", "Verify sensor calibration"]}
 ]
+
+For EQUIPMENT_INFO queries, use this results format:
+{
+  "equipment_id": "EQ006",
+  "name": "ポンプ1号機 (Pump #1)",
+  "manufacturer": "荏原製作所",
+  "model": "50DL51.5",
+  "location": "ポンプ室",
+  "status": "稼働中",
+  "installed_date": "2019-08-03",
+  "system": "SYS-001",
+  "type": "Rotating Equipment",
+  "specifications": {
+    "capacity": "Available in maintenance records",
+    "power": "Available in maintenance records",
+    "service": "Process cooling system"
+  },
+  "last_maintenance": "Available in maintenance history",
+  "next_inspection": "Available in inspection plan",
+  "risk_level": "Available in risk assessment"
+}
+
+For THICKNESS_MEASUREMENT queries, use this results format:
+{
+  "equipment_id": "TK-101",
+  "measurement_points": [
+    {"point": "Shell-1", "current": "10.68mm", "design": "11.7mm", "minimum": "8.2mm", "status": "Passing", "date": "2025"},
+    {"point": "Shell-2", "current": "8.99mm", "design": "10.0mm", "minimum": "7.0mm", "status": "Passing", "date": "2025"},
+    {"point": "Bottom-1", "current": "10.1mm", "design": "11.1mm", "minimum": "7.8mm", "status": "Passing", "date": "2025"}
+  ],
+  "trend": "Gradual thinning observed over 10-year period",
+  "recommendation": "Shell-2 point requires increased monitoring - approaching minimum threshold"
+}
 
 RESPOND ONLY IN VALID JSON. No markdown, no explanations, just the JSON object.`
       
