@@ -32,10 +32,127 @@ interface DocumentSection {
 }
 
 export default function DocumentationPage() {
-  const [activeDoc, setActiveDoc] = useState<string>('overview')
+  const [activeDoc, setActiveDoc] = useState<string>('getting-started')
   const [searchTerm, setSearchTerm] = useState('')
 
   const documentSections: DocumentSection[] = [
+    {
+      id: 'getting-started',
+      title: 'Getting Started',
+      description: 'Quick start guide for new users',
+      icon: <BookOpen className="h-5 w-5" />,
+      role: ['All Users'],
+      readTime: '5 min',
+      difficulty: 'Beginner',
+      content: `# Getting Started Guide
+
+## Welcome to Intelligent CMMS!
+
+This quick guide will get you up and running in 5 minutes.
+
+### 🚀 First Steps
+
+#### 1. **Login & Navigation**
+- Access the system through your web browser
+- Use your assigned credentials
+- Navigate using the sidebar menu (左側のメニュー)
+
+#### 2. **Dashboard Overview**
+Your main dashboard shows:
+- **検査統計** - Live inspection statistics
+- **メニューカード** - Quick access to all features
+- **最新情報** - Recent system updates
+
+#### 3. **Key Features Tour**
+
+**🔍 検査結果 (Inspection Results)**
+- View inspection data by equipment type
+- Filter by status: 合格/不合格/要確認
+- Export reports and track trends
+
+**🤖 AIアシスタント (AI Assistant)**
+- **AIチャット**: Ask questions about equipment and maintenance
+- **グラフ生成**: Create charts from your data automatically
+- **インサイト分析**: Get AI insights on equipment trends
+
+**📊 プロセス監視 (Process Monitoring)**
+- Monitor real-time equipment parameters
+- Receive automatic alerts
+- Track performance trends
+
+**⚠️ リスク評価 (Risk Assessment)**
+- View risk matrix and scenarios
+- Conduct FMEA analysis
+- Track mitigation measures
+
+**🔧 タスク管理 (Task Management)**
+- View work orders and schedules
+- Track completion status
+- Manage equipment strategies
+
+### 📱 Mobile Usage
+
+**Access on Mobile:**
+- Same URL works on phone/tablet
+- Touch-friendly interface
+- Offline capability for field work
+
+**Quick Tips:**
+- Download work orders before field visits
+- Take photos for documentation
+- Sync when back online
+
+### 🎯 Common Tasks
+
+#### **Daily Routine (5 minutes)**
+1. **Check Dashboard** - Review inspection stats
+2. **Review Alerts** - Process monitoring notifications  
+3. **Complete Tasks** - Work orders assigned to you
+4. **Update Status** - Mark completed work
+
+#### **Weekly Tasks (15 minutes)**
+1. **Review Reports** - Inspection trends and compliance
+2. **AI Analysis** - Ask AI about equipment patterns
+3. **Plan Ahead** - Check upcoming maintenance
+4. **Team Communication** - Coordinate with colleagues
+
+### 🆘 Need Help?
+
+#### **In-System Help**
+- 📖 **Documentation** - Complete guides for your role
+- 🤖 **AI Assistant** - Ask questions anytime
+- ❓ **FAQ** - Common questions answered
+
+#### **Contact Support**
+- **Technical Issues**: IT Helpdesk (ext. 2400)
+- **Process Questions**: Maintenance Engineering (ext. 2150)
+- **Training**: Training Department (ext. 2300)
+
+### ✅ Success Tips
+
+**For Best Results:**
+- 📱 **Mobile Ready** - Use phone/tablet for field work
+- 🔄 **Stay Updated** - Check dashboard daily
+- 💬 **Ask Questions** - Use AI assistant for insights
+- 📊 **Review Data** - Look at trends and patterns
+- 🤝 **Collaborate** - Share findings with team
+
+### 🎓 Next Steps
+
+#### **Learn More:**
+1. **Read Your Role Guide** - Detailed procedures for your position
+2. **Try AI Features** - Experiment with AI assistant
+3. **Explore Reports** - Understand your data
+4. **Join Training** - Attend user group meetings
+
+#### **Become an Expert:**
+- **Practice Daily** - Use system for routine work
+- **Ask Questions** - Don't hesitate to seek help
+- **Share Tips** - Help colleagues learn
+- **Provide Feedback** - Suggest improvements
+
+**Ready to start? Begin with your dashboard and explore!** 🚀`
+    },
     {
       id: 'overview',
       title: 'System Overview',
@@ -802,15 +919,30 @@ A:
               <CardTitle className="text-lg">Quick Links</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start"
+                onClick={() => setActiveDoc('getting-started')}
+              >
                 <BookOpen className="mr-2 h-4 w-4" />
                 Getting Started
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start"
+                onClick={() => setActiveDoc('tutorials')}
+              >
                 <FileText className="mr-2 h-4 w-4" />
                 Video Tutorials
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start"
+                onClick={() => setActiveDoc('faq')}
+              >
                 <HelpCircle className="mr-2 h-4 w-4" />
                 Support Center
               </Button>
