@@ -183,7 +183,7 @@ Format each section with the number, title, and content. Be specific and actiona
 
 IMPORTANT: You MUST respond with valid JSON in this exact format:
 {
-  "intent": "COVERAGE_ANALYSIS" | "MITIGATION_STATUS" | "IMPACT_ANALYSIS" | "EQUIPMENT_INFO" | "THICKNESS_MEASUREMENT" | "GENERAL_ANALYSIS",
+  "intent": "COVERAGE_ANALYSIS" | "MITIGATION_STATUS" | "IMPACT_ANALYSIS" | "EQUIPMENT_INFO" | "THICKNESS_MEASUREMENT" | "SYSTEM_LIST" | "GENERAL_ANALYSIS",
   "confidence": 0.85,
   "summary": "Clear 1-2 sentence summary in the same language as the query",
   "results": [...], 
@@ -319,6 +319,17 @@ For THICKNESS_MEASUREMENT queries, use this results format:
   "trend": "Gradual thinning observed over 10-year period",
   "recommendation": "Shell-2 point requires increased monitoring - approaching minimum threshold"
 }
+
+For SYSTEM_LIST queries (when asking to list systems), use this results format:
+[
+  {"system_id": "SYS-001", "name": "プロセス冷却系統 (Process Cooling System)", "criticality": "HIGH", "equipment_count": 4},
+  {"system_id": "SYS-002", "name": "原料供給系統 (Raw Material Supply System)", "criticality": "CRITICAL", "equipment_count": 3},
+  {"system_id": "SYS-003", "name": "排水処理系統 (Wastewater Treatment System)", "criticality": "MEDIUM", "equipment_count": 2},
+  {"system_id": "SYS-004", "name": "電力供給系統 (Power Supply System)", "criticality": "CRITICAL", "equipment_count": 3},
+  {"system_id": "SYS-005", "name": "安全監視系統 (Safety Monitoring System)", "criticality": "CRITICAL", "equipment_count": 0}
+]
+
+IMPORTANT: When user asks to "list systems", "システムの一覧", "list the name of System we have", or similar, use SYSTEM_LIST intent and return the actual system list as results, NOT generic recommendations.
 
 RESPOND ONLY IN VALID JSON. No markdown, no explanations, just the JSON object.`
       
