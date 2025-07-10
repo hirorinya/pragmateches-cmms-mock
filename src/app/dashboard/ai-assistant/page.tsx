@@ -52,7 +52,7 @@ export default function AIAssistantPage() {
       id: 'coverage-analysis',
       title: 'Risk Coverage Analysis',
       description: 'Find equipment missing specific risk scenarios',
-      query: 'Which heat exchangers in System A are not reflected in ES for fouling blockage risk?',
+      query: 'Which equipment in SYS-001 are not reflected in ES for fouling blockage risk?',
       icon: <AlertTriangle className="h-4 w-4" />,
       category: 'Risk Assessment'
     },
@@ -60,7 +60,7 @@ export default function AIAssistantPage() {
       id: 'mitigation-status',
       title: 'Mitigation Status Check',
       description: 'Check implementation status by department',
-      query: 'What is the implementation status of risk mitigation measures for HX-101 by the refinery department?',
+      query: 'What is the implementation status of risk mitigation measures for EQ005 by the refinery department?',
       icon: <TrendingUp className="h-4 w-4" />,
       category: 'Maintenance Tracking'
     },
@@ -76,15 +76,15 @@ export default function AIAssistantPage() {
       id: 'equipment-health',
       title: 'Equipment Health Summary',
       description: 'Get overall equipment status',
-      query: 'Show me the current health status of all heat exchangers in System A',
+      query: 'Show me the current health status of all equipment in SYS-001',
       icon: <Database className="h-4 w-4" />,
       category: 'System Overview'
     },
     {
-      id: 'system-b-coverage',
-      title: 'System B Coverage Analysis',
-      description: 'Check risk coverage for System B equipment',
-      query: 'Which heat exchangers in System B are not reflected in ES for fouling blockage risk?',
+      id: 'system-002-coverage',
+      title: 'SYS-002 Coverage Analysis',
+      description: 'Check risk coverage for Raw Material Supply System',
+      query: 'Which equipment in SYS-002 are not reflected in ES for fouling blockage risk?',
       icon: <AlertTriangle className="h-4 w-4" />,
       category: 'Risk Assessment'
     }
@@ -365,7 +365,7 @@ export default function AIAssistantPage() {
                                 )}
                                 {message.source && (
                                   <Badge variant={message.source === 'openai' ? 'default' : 'secondary'} className="text-xs">
-                                    {message.source === 'openai' ? '🤖 OpenAI' : '📝 Mock'}
+                                    {message.source === 'openai' ? '🤖 OpenAI' : '🗄️ Database'}
                                   </Badge>
                                 )}
                               </div>

@@ -1,5 +1,5 @@
 // Enhanced AI Query Service with OpenAI integration
-// Falls back to mock responses if OpenAI is not available
+// Falls back to database service if OpenAI is not available
 
 interface AIQueryResponse {
   query: string
@@ -9,32 +9,32 @@ interface AIQueryResponse {
   summary: string
   recommendations?: string[]
   execution_time: number
-  source: 'openai' | 'mock'
+  source: 'openai' | 'database'
 }
 
 export class AIQueryService {
-  private mockService: any
+  private databaseService: any
 
   constructor() {
-    // Import mock service for fallback
-    this.initializeMockService()
+    // Import database service for fallback
+    this.initializeDatabaseService()
   }
 
-  private async initializeMockService() {
-    const { AIQueryMockService } = await import('./ai-query-mock')
-    this.mockService = new AIQueryMockService()
+  private async initializeDatabaseService() {
+    const { AIDatabaseService } = await import('./ai-database-service')
+    this.databaseService = new AIDatabaseService()
   }
 
   /**
    * Main query processing function
-   * Tries OpenAI first, falls back to mock service
+   * Tries OpenAI first, falls back to database service
    */
   async processQuery(query: string): Promise<AIQueryResponse> {
     const startTime = Date.now()
     
-    // Always ensure mock service is available for fallback
-    if (!this.mockService) {
-      await this.initializeMockService()
+    // Always ensure database service is available for fallback
+    if (!this.databaseService) {
+      await this.initializeDatabaseService()
     }
     
     try {
@@ -52,19 +52,19 @@ export class AIQueryService {
         console.log('✅ OpenAI response successful')
         return openaiResponse
       } else {
-        console.warn('⚠️ OpenAI response incomplete or malformed, using mock fallback')
+        console.warn('⚠️ OpenAI response incomplete or malformed, using database fallback')
         throw new Error('Incomplete or malformed OpenAI response')
       }
     } catch (error) {
-      console.warn('❌ OpenAI failed, using reliable mock service:', error.message)
+      console.warn('❌ OpenAI failed, using reliable database service:', error.message)
     }
 
-    // Reliable fallback to mock service
-    const mockResponse = await this.mockService.processQuery(query)
-    mockResponse.execution_time = Date.now() - startTime
-    mockResponse.source = 'mock'
-    console.log('✅ Mock service response successful')
-    return mockResponse
+    // Reliable fallback to database service
+    const databaseResponse = await this.databaseService.processQuery(query)
+    databaseResponse.execution_time = Date.now() - startTime
+    databaseResponse.source = 'database'
+    console.log('✅ Database service response successful')
+    return databaseResponse
   }
 
   /**
