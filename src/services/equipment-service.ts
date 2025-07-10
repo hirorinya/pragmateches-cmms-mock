@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase'
+import { cacheService, CacheKeys, CacheTTL } from '@/lib/cache-service'
+import { withPerformanceTracking, recordError } from '@/lib/monitoring-service'
 
 interface EquipmentInfo {
   equipment_id: string
@@ -22,10 +24,24 @@ interface EquipmentInfo {
 
 export class EquipmentService {
   /**
-   * Get equipment information by ID
+   * Get equipment information by ID (with caching)
    */
   async getEquipmentInfo(equipmentId: string): Promise<EquipmentInfo | null> {
-    try {
+    return cacheService.get(
+      CacheKeys.equipmentInfo(equipmentId),
+      () => this._fetchEquipmentInfo(equipmentId),
+      CacheTTL.equipmentInfo
+    )
+  }
+
+  /**
+   * Internal method to fetch equipment info from database
+   */
+  private async _fetchEquipmentInfo(equipmentId: string): Promise<EquipmentInfo | null> {
+    return withPerformanceTracking(
+      'equipment_service.getEquipmentInfo',
+      async () => {
+        try {
       // Query main equipment table
       const { data: equipment, error: equipmentError } = await supabase
         .from('equipment')
@@ -106,16 +122,40 @@ export class EquipmentService {
 
       return result
 
-    } catch (error) {
-      console.error('Error fetching equipment info:', error)
-      return null
-    }
+        } catch (error) {
+          recordError(
+            error instanceof Error ? error : new Error(String(error)),
+            'equipment_service.getEquipmentInfo',
+            'high',
+            { equipmentId }
+          )
+          return null
+        }
+      },
+      { equipmentId }
+    )
   }
 
   /**
-   * Get all systems in the facility
+   * Get all systems in the facility (with caching)
    */
   async getAllSystems(): Promise<Array<{
+    system_id: string
+    name: string
+    criticality: string
+    equipment_count: number
+  }>> {
+    return cacheService.get(
+      CacheKeys.allSystems(),
+      () => this._fetchAllSystems(),
+      CacheTTL.systemsList
+    )
+  }
+
+  /**
+   * Internal method to fetch all systems from database
+   */
+  private async _fetchAllSystems(): Promise<Array<{
     system_id: string
     name: string
     criticality: string
@@ -159,9 +199,25 @@ export class EquipmentService {
   }
 
   /**
-   * Get equipment by system
+   * Get equipment by system (with caching)
    */
   async getEquipmentBySystem(systemId: string): Promise<Array<{
+    equipment_id: string
+    name: string
+    type: string
+    status: string
+  }>> {
+    return cacheService.get(
+      CacheKeys.equipmentsBySystem(systemId),
+      () => this._fetchEquipmentBySystem(systemId),
+      CacheTTL.systemsList
+    )
+  }
+
+  /**
+   * Internal method to fetch equipment by system from database
+   */
+  private async _fetchEquipmentBySystem(systemId: string): Promise<Array<{
     equipment_id: string
     name: string
     type: string
@@ -199,9 +255,32 @@ export class EquipmentService {
   }
 
   /**
-   * Get thickness measurement data for equipment
+   * Get thickness measurement data for equipment (with caching)
    */
   async getThicknessMeasurements(equipmentId: string): Promise<{
+    equipment_id: string
+    measurement_points: Array<{
+      point: string
+      current: string
+      design: string
+      minimum: string
+      status: string
+      date: string
+    }>
+    trend: string
+    recommendation: string
+  } | null> {
+    return cacheService.get(
+      CacheKeys.thicknessMeasurements(equipmentId),
+      () => this._fetchThicknessMeasurements(equipmentId),
+      CacheTTL.thicknessMeasurements
+    )
+  }
+
+  /**
+   * Internal method to fetch thickness measurements from database
+   */
+  private async _fetchThicknessMeasurements(equipmentId: string): Promise<{
     equipment_id: string
     measurement_points: Array<{
       point: string
@@ -267,5 +346,21 @@ export class EquipmentService {
       console.error('Error fetching thickness measurements:', error)
       return null
     }
+  }
+
+  /**
+   * Invalidate cache for specific equipment (useful when data is updated)
+   */
+  invalidateEquipmentCache(equipmentId: string): void {
+    cacheService.invalidate(CacheKeys.equipmentInfo(equipmentId))
+    cacheService.invalidate(CacheKeys.thicknessMeasurements(equipmentId))
+    cacheService.invalidatePattern(`equipment:system:.*`) // Invalidate all system caches
+  }
+
+  /**
+   * Get cache statistics for monitoring
+   */
+  getCacheStats() {
+    return cacheService.getStats()
   }
 }

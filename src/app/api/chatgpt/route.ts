@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { EquipmentService } from '@/services/equipment-service'
+import { AIService } from '@/services/ai-service'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -43,20 +44,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Handle CMMS queries with Supabase integration
+    // Handle CMMS queries with AI service (database-first approach)
     if (type === 'cmms_query') {
-      const equipmentService = new EquipmentService()
+      const aiService = new AIService()
       
-      // Try to handle specific query types with real database data
-      const realDataResponse = await handleCMMSQueryWithDatabase(prompt, equipmentService)
-      if (realDataResponse) {
+      // Process query with database-first AI service
+      const aiResponse = await aiService.processQuery(prompt)
+      
+      // If we have high confidence and database results, return immediately
+      if (aiResponse.confidence > 0.8 && aiResponse.source === 'database') {
         return NextResponse.json({
-          result: JSON.stringify(realDataResponse),
-          source: 'supabase'
+          result: JSON.stringify(aiResponse),
+          source: 'database'
         })
       }
       
-      // If not handled by database, continue to OpenAI with enhanced context
+      // For low confidence or unknown queries, fall back to OpenAI
+      // but with minimal system context to reduce hardcoded data
     }
 
     let systemPrompt = ''
