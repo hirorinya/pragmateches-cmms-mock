@@ -436,24 +436,17 @@ export class AIQueryMockService {
   }
 
   /**
-   * Map equipment IDs between different formats
+   * Validate equipment ID format - expects new format only
    */
-  private mapEquipmentId(equipmentId: string): string {
-    // Map simplified format to full format
-    const mapping: { [key: string]: string } = {
-      'E-101': 'HX-101',
-      'E-102': 'HX-102', 
-      'E-103': 'HX-103',
-      'E-201': 'HX-201',
-      'E-202': 'HX-202',
-      'E-203': 'HX-203',
-      'P-100': 'PU-100',
-      'P-200': 'PU-200',
-      'T-101': 'TK-101',
-      'T-201': 'TK-201'
+  private validateEquipmentId(equipmentId: string): string {
+    // Validate equipment ID format (HX-, PU-, TK-, EQ-)
+    if (equipmentId && (equipmentId.startsWith('HX-') || equipmentId.startsWith('PU-') || 
+                       equipmentId.startsWith('TK-') || equipmentId.startsWith('EQ'))) {
+      return equipmentId
     }
     
-    return mapping[equipmentId] || equipmentId
+    // Return as-is if format is unknown
+    return equipmentId
   }
 
   /**
@@ -480,11 +473,11 @@ export class AIQueryMockService {
       entities.instrument = instrumentMatch[0].toUpperCase()
     }
     
-    // Extract equipment IDs (Enhanced with mapping)
-    const equipmentMatch = query.match(/[EPT]-\d+/i)
+    // Extract equipment IDs (New format only)
+    const equipmentMatch = query.match(/(HX|PU|TK|EQ)-?\d+/i)
     if (equipmentMatch) {
       const rawEquipmentId = equipmentMatch[0].toUpperCase()
-      entities.equipment = this.mapEquipmentId(rawEquipmentId)
+      entities.equipment = this.validateEquipmentId(rawEquipmentId)
     }
     
     // Extract specific equipment mentioned in Japanese query

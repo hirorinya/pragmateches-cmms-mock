@@ -13,7 +13,7 @@ class AIQueryMockService {
 
     this.mockInstrumentMappings = {
       'TI-201': {
-        equipment: ['E-201', 'E-202', 'P-201'],
+        equipment: ['HX-201', 'HX-202', 'PU-201'],
         parameter: 'TEMPERATURE',
         criticality: 'HIGH'
       }
@@ -100,7 +100,7 @@ class AIQueryMockService {
       entities.instrument = instrumentMatch[0].toUpperCase();
     }
     
-    const equipmentMatch = query.match(/[EPT]-\d+/i);
+    const equipmentMatch = query.match(/(HX|PU|TK|EQ)-?\d+/i);
     if (equipmentMatch) {
       const rawEquipmentId = equipmentMatch[0].toUpperCase();
       entities.equipment = this.mapEquipmentId(rawEquipmentId);
@@ -240,7 +240,7 @@ async function runTests() {
     },
     {
       name: 'Mitigation Status',
-      query: 'What is the implementation status of risk mitigation measures for E-101 by the refinery department?'
+      query: 'What is the implementation status of risk mitigation measures for HX-101 by the refinery department?'
     },
     {
       name: 'Impact Analysis',

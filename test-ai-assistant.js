@@ -22,9 +22,9 @@ async function testAIAssistant() {
   
   // Test Case 2: Mitigation Status
   console.log('Test 2: Mitigation Status Analysis');
-  console.log('Query: "What is the implementation status of risk mitigation measures for E-101 by the refinery department?"');
+  console.log('Query: "What is the implementation status of risk mitigation measures for HX-101 by the refinery department?"');
   try {
-    const response2 = await aiService.processQuery('What is the implementation status of risk mitigation measures for E-101 by the refinery department?');
+    const response2 = await aiService.processQuery('What is the implementation status of risk mitigation measures for HX-101 by the refinery department?');
     console.log('✅ Intent:', response2.intent);
     console.log('✅ Confidence:', response2.confidence);
     console.log('✅ Equipment:', response2.results.equipment_id);

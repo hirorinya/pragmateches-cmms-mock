@@ -250,7 +250,7 @@ Pumps (PU-series):
 IMPORTANT: 
 - "System A" does not exist - suggest SYS-001 instead
 - "System B" does not exist - suggest SYS-002 instead
-- Use actual equipment IDs (EQ005, EQ006, etc.) not mock IDs (E-101, E-102, etc.)
+- Use actual equipment IDs from the database above (EQ001-EQ020, HX-100-109, TK-100-109, PU-100-109)
 
 Department Responsibilities:
 - REFINERY (製油部門): Daily monitoring, visual inspections, parameter recording
