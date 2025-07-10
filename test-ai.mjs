@@ -5,10 +5,10 @@ console.log('🤖 Testing AI Assistant Mock Service\n');
 class AIQueryMockService {
   constructor() {
     this.mockEquipmentData = {
-      'E-101': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-001' },
-      'E-102': { type: 'HEAT_EXCHANGER', subtype: 'Plate', system: 'SYS-001' },
-      'E-103': { type: 'HEAT_EXCHANGER', subtype: 'Air-cooled', system: 'SYS-001' },
-      'E-201': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-002' },
+      'HX-101': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-001' },
+      'HX-102': { type: 'HEAT_EXCHANGER', subtype: 'Plate', system: 'SYS-001' },
+      'HX-103': { type: 'HEAT_EXCHANGER', subtype: 'Air-cooled', system: 'SYS-001' },
+      'HX-201': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-002' },
     };
 
     this.mockInstrumentMappings = {
@@ -20,16 +20,16 @@ class AIQueryMockService {
     };
 
     this.mockRiskScenarios = {
-      'E-101': [
+      'HX-101': [
         {
-          scenario_id: 'RS-E101-001',
+          scenario_id: 'RS-HX101-001',
           failure_mode: 'Tube fouling blockage',
           risk_level: 'HIGH'
         }
       ],
-      'E-102': [
+      'HX-102': [
         {
-          scenario_id: 'RS-E102-001',
+          scenario_id: 'RS-HX102-001',
           failure_mode: 'Corrosion leakage', 
           risk_level: 'MEDIUM'
         }
@@ -65,16 +65,31 @@ class AIQueryMockService {
   detectIntent(query) {
     const q = query.toLowerCase();
     
-    if (q.includes('coverage') || q.includes('reflected') || q.includes('es') || q.includes('fouling')) {
-      return 'COVERAGE_ANALYSIS';
-    }
-    if (q.includes('implementation') || q.includes('status') || q.includes('mitigation') || q.includes('responsible')) {
+    // Mitigation Status - Check first to avoid conflicts
+    if (q.includes('implementation') || q.includes('mitigation') || q.includes('responsible') ||
+        (q.includes('status') && (q.includes('mitigation') || q.includes('implementation') || q.includes('measure')))) {
       return 'MITIGATION_STATUS';  
+    }
+    // Coverage Analysis - More specific ES matching
+    if (q.includes('coverage') || q.includes('reflected') || q.includes(' es ') || q.includes('es for') || q.includes('fouling')) {
+      return 'COVERAGE_ANALYSIS';
     }
     if (q.includes('ti-') || q.includes('pi-') || q.includes('fi-') || q.includes('increased') || q.includes('affected')) {
       return 'IMPACT_ANALYSIS';
     }
     return 'GENERIC';
+  }
+
+  // Map equipment IDs between different formats
+  mapEquipmentId(equipmentId) {
+    const mapping = {
+      'E-101': 'HX-101',
+      'E-102': 'HX-102', 
+      'E-103': 'HX-103',
+      'P-100': 'PU-100',
+      'T-101': 'TK-101'
+    };
+    return mapping[equipmentId] || equipmentId;
   }
 
   extractEntities(query) {
@@ -87,7 +102,8 @@ class AIQueryMockService {
     
     const equipmentMatch = query.match(/[EPT]-\d+/i);
     if (equipmentMatch) {
-      entities.equipment = equipmentMatch[0].toUpperCase();
+      const rawEquipmentId = equipmentMatch[0].toUpperCase();
+      entities.equipment = this.mapEquipmentId(rawEquipmentId);
     }
     
     if (query.toLowerCase().includes('system a')) {
@@ -140,22 +156,35 @@ class AIQueryMockService {
   }
 
   handleMitigationStatus(query, entities) {
+    const equipment = entities.equipment || 'HX-101';
+    const department = entities.department || 'REFINERY';
+    
+    // Mock mitigation measures for HX-101
+    const mockMeasures = {
+      'HX-101': [
+        { measure: 'Daily temperature monitoring', responsible_person: 'ST001', department: 'REFINERY', status: 'IMPLEMENTED' },
+        { measure: 'Weekly pressure drop check', responsible_person: 'ST001', department: 'REFINERY', status: 'IMPLEMENTED' },
+        { measure: 'Monthly tube cleaning', responsible_person: 'ST002', department: 'MAINTENANCE', status: 'PLANNED', planned_start: '2025-08-01' }
+      ]
+    };
+    
+    const measures = mockMeasures[equipment] || [];
+    const departmentMeasures = measures.filter(m => m.department === department);
+    const implemented = departmentMeasures.filter(m => m.status === 'IMPLEMENTED');
+    const planned = departmentMeasures.filter(m => m.status === 'PLANNED');
+    
     return {
       query,
       intent: 'MITIGATION_STATUS',
       confidence: 0.89,
       results: {
-        equipment_id: 'E-101',
-        department: 'REFINERY',
-        total_measures: 3,
-        implemented: [
-          { measure: 'Daily temperature monitoring', responsible_person: 'ST001' }
-        ],
-        planned: [
-          { measure: 'Monthly tube cleaning', planned_start: '2025-08-01' }
-        ]
+        equipment_id: equipment,
+        department: department,
+        total_measures: departmentMeasures.length,
+        implemented: implemented,
+        planned: planned
       },
-      summary: 'REFINERY department has 2/3 risk mitigation measures implemented for E-101.'
+      summary: `${department} department has ${implemented.length}/${departmentMeasures.length} risk mitigation measures implemented for ${equipment}.`
     };
   }
 

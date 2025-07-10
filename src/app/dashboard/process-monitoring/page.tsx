@@ -6,7 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RefreshCw, AlertTriangle, CheckCircle2, Clock, Thermometer, Gauge, Droplets, Activity } from 'lucide-react'
+import { RealTimeAlerts } from '@/components/process/real-time-alerts'
+import { HistoricalTrends } from '@/components/process/historical-trends'
+import { ParameterCorrelation } from '@/components/process/parameter-correlation'
 
 interface ProcessParameter {
   parameter_id: string
@@ -63,6 +67,7 @@ export default function ProcessMonitoringPage() {
   const [loading, setLoading] = useState(true)
   const [simulating, setSimulating] = useState(false)
   const [simulationResult, setSimulationResult] = useState<MonitoringResults | null>(null)
+  const [selectedTab, setSelectedTab] = useState('overview')
 
   useEffect(() => {
     fetchData()
@@ -249,176 +254,202 @@ export default function ProcessMonitoringPage() {
         </Card>
       )}
 
-      {/* Process Parameters Dashboard */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Real-time Process Parameters</CardTitle>
-          <CardDescription>
-            Current status of monitored process parameters
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Parameter</TableHead>
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Current Value</TableHead>
-                  <TableHead>Normal Range</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Active Triggers</TableHead>
-                  <TableHead>Last Update</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parameters.map((param) => (
-                  <TableRow key={param.parameter_id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getParameterIcon(param.parameter_type)}
-                        <div>
-                          <div className="font-medium">{param.parameter_name}</div>
-                          <div className="text-sm text-muted-foreground">{param.tag_name}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{param.equipment_name}</div>
-                        <div className="text-sm text-muted-foreground">{param.equipment_tag}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-mono">
-                        {param.current_value ? formatValue(param.current_value, param.unit) : 'No data'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {formatValue(param.normal_min, param.unit)} ~ {formatValue(param.normal_max, param.unit)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(param.status)}
-                    </TableCell>
-                    <TableCell>
-                      {param.active_triggers > 0 ? (
-                        <Badge variant="destructive">{param.active_triggers}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {param.last_update ? formatDateTime(param.last_update) : 'Never'}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="alerts">Real-time Alerts</TabsTrigger>
+          <TabsTrigger value="trends">Historical Trends</TabsTrigger>
+          <TabsTrigger value="correlation">Parameter Correlation</TabsTrigger>
+          <TabsTrigger value="notifications">ES Notifications</TabsTrigger>
+        </TabsList>
 
-      {/* ES Change Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Equipment Strategy Change Notifications
-          </CardTitle>
-          <CardDescription>
-            Pending reviews for Equipment Strategy modifications based on process changes
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {notifications.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No pending notifications
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Equipment Strategy</TableHead>
-                  <TableHead>Change Type</TableHead>
-                  <TableHead>Current → Recommended</TableHead>
-                  <TableHead>Impact</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {notifications.map((notification) => (
-                  <TableRow key={notification.notification_id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{notification.equipment_strategy.strategy_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {notification.equipment_strategy.equipment.設備名} ({notification.equipment_strategy.equipment.設備タグ})
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{notification.notification_type}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{notification.current_frequency_type} ({notification.current_frequency_value})</div>
-                        <div className="text-green-600">
-                          → {notification.recommended_frequency_type} ({notification.recommended_frequency_value})
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-md text-sm">
-                        {notification.impact_description}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getPriorityBadge(notification.priority)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {formatDateTime(notification.created_at)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-x-1">
-                        <Button
-                          size="sm"
-                          onClick={() => handleNotificationAction(notification.notification_id, 'approve')}
-                        >
-                          Apply
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleNotificationAction(notification.notification_id, 'acknowledge')}
-                        >
-                          Review
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleNotificationAction(notification.notification_id, 'reject')}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="overview" className="space-y-4">
+          {/* Process Parameters Dashboard */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Real-time Process Parameters</CardTitle>
+              <CardDescription>
+                Current status of monitored process parameters
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parameter</TableHead>
+                      <TableHead>Equipment</TableHead>
+                      <TableHead>Current Value</TableHead>
+                      <TableHead>Normal Range</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Active Triggers</TableHead>
+                      <TableHead>Last Update</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parameters.map((param) => (
+                      <TableRow key={param.parameter_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getParameterIcon(param.parameter_type)}
+                            <div>
+                              <div className="font-medium">{param.parameter_name}</div>
+                              <div className="text-sm text-muted-foreground">{param.tag_name}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{param.equipment_name}</div>
+                            <div className="text-sm text-muted-foreground">{param.equipment_tag}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-mono">
+                            {param.current_value ? formatValue(param.current_value, param.unit) : 'No data'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {formatValue(param.normal_min, param.unit)} ~ {formatValue(param.normal_max, param.unit)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(param.status)}
+                        </TableCell>
+                        <TableCell>
+                          {param.active_triggers > 0 ? (
+                            <Badge variant="destructive">{param.active_triggers}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {param.last_update ? formatDateTime(param.last_update) : 'Never'}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="alerts" className="space-y-4">
+          <RealTimeAlerts autoRefresh={true} refreshInterval={30000} />
+        </TabsContent>
+
+        <TabsContent value="trends" className="space-y-4">
+          <HistoricalTrends />
+        </TabsContent>
+
+        <TabsContent value="correlation" className="space-y-4">
+          <ParameterCorrelation />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          {/* ES Change Notifications */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Equipment Strategy Change Notifications
+              </CardTitle>
+              <CardDescription>
+                Pending reviews for Equipment Strategy modifications based on process changes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {notifications.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No pending notifications
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Equipment Strategy</TableHead>
+                      <TableHead>Change Type</TableHead>
+                      <TableHead>Current → Recommended</TableHead>
+                      <TableHead>Impact</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {notifications.map((notification) => (
+                      <TableRow key={notification.notification_id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{notification.equipment_strategy.strategy_name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {notification.equipment_strategy.equipment.設備名} ({notification.equipment_strategy.equipment.設備タグ})
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{notification.notification_type}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{notification.current_frequency_type} ({notification.current_frequency_value})</div>
+                            <div className="text-green-600">
+                              → {notification.recommended_frequency_type} ({notification.recommended_frequency_value})
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-md text-sm">
+                            {notification.impact_description}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getPriorityBadge(notification.priority)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {formatDateTime(notification.created_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-x-1">
+                            <Button
+                              size="sm"
+                              onClick={() => handleNotificationAction(notification.notification_id, 'approve')}
+                            >
+                              Apply
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleNotificationAction(notification.notification_id, 'acknowledge')}
+                            >
+                              Review
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleNotificationAction(notification.notification_id, 'reject')}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
     </DashboardLayout>
   )

@@ -14,7 +14,13 @@ interface AIQueryResponse {
 export class AIQueryMockService {
   
   // Mock equipment data with classifications - updated to match actual database
-  private mockEquipmentData = {
+  private mockEquipmentData: {
+    [key: string]: {
+      type: string;
+      subtype: string;
+      system: string;
+    }
+  } = {
     // System A (SYS-001) - Process Cooling System
     'HX-101': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-001' },
     'HX-102': { type: 'HEAT_EXCHANGER', subtype: 'Plate', system: 'SYS-001' },
@@ -49,7 +55,16 @@ export class AIQueryMockService {
   }
 
   // Mock risk scenarios - updated to match actual equipment IDs
-  private mockRiskScenarios = {
+  private mockRiskScenarios: {
+    [key: string]: Array<{
+      scenario_id: string;
+      failure_mode: string;
+      risk_level: string;
+      responsible_person: string;
+      department: string;
+      mitigation_status: string;
+    }>
+  } = {
     // System A equipment with fouling risk coverage
     'HX-101': [
       {
@@ -129,7 +144,18 @@ export class AIQueryMockService {
   }
 
   // Mock mitigation measures - updated to match actual equipment IDs
-  private mockMitigationMeasures = {
+  private mockMitigationMeasures: {
+    [key: string]: Array<{
+      measure: string;
+      responsible_department: string;
+      responsible_person: string;
+      frequency: string;
+      status: string;
+      start_date?: string;
+      last_execution?: string | null;
+      planned_start?: string;
+    }>
+  } = {
     'HX-101': [
       {
         measure: 'Daily temperature monitoring',
@@ -251,7 +277,8 @@ export class AIQueryMockService {
           `Equipment with ${riskType} risk coverage: ${hasCoverage.join(', ')}`,
           'Review effectiveness of existing mitigation measures',
           'Consider if additional monitoring is needed'
-        ]
+        ],
+        execution_time: 0
       }
     } else {
       // Return equipment that LACKS coverage (default behavior)
@@ -274,7 +301,8 @@ export class AIQueryMockService {
           'Conduct FMEA review for identified equipment',
           'Update risk assessment to include fouling scenarios',
           'Consider increased monitoring for affected equipment'
-        ]
+        ],
+        execution_time: 0
       }
     }
   }
@@ -282,7 +310,11 @@ export class AIQueryMockService {
   /**
    * Use Case 2: Mitigation Status Analysis  
    */
-  private handleMitigationStatus(query: string, entities: any): AIQueryResponse {
+  private handleMitigationStatus(query: string, entities: {
+    equipment?: string;
+    department?: string;
+    [key: string]: any;
+  }): AIQueryResponse {
     const equipment = entities.equipment || 'HX-101'
     const department = entities.department || 'REFINERY'
     
@@ -369,7 +401,8 @@ export class AIQueryMockService {
         'Check related process parameters for correlation',
         'Review recent maintenance activities on affected equipment', 
         'Consider temporary monitoring increase until root cause identified'
-      ]
+      ],
+      execution_time: 0
     }
   }
 
@@ -379,17 +412,18 @@ export class AIQueryMockService {
   private detectIntent(query: string): string {
     const q = query.toLowerCase()
     
-    // Coverage Analysis - English and Japanese
-    if (q.includes('coverage') || q.includes('reflected') || q.includes('es') || q.includes('fouling') ||
-        q.includes('カバレッジ') || q.includes('反映') || q.includes('ファウリング')) {
-      return 'COVERAGE_ANALYSIS'
+    // Mitigation Status - English and Japanese (Check first to avoid conflicts)
+    if (q.includes('implementation') || q.includes('mitigation') || q.includes('responsible') ||
+        q.includes('実施状況') || q.includes('実施') || q.includes('緩和策') || q.includes('担当') || 
+        q.includes('タスク') || q.includes('点検') || q.includes('部門') ||
+        (q.includes('status') && (q.includes('mitigation') || q.includes('implementation') || q.includes('measure')))) {
+      return 'MITIGATION_STATUS'  
     }
     
-    // Mitigation Status - English and Japanese  
-    if (q.includes('implementation') || q.includes('status') || q.includes('mitigation') || q.includes('responsible') ||
-        q.includes('実施状況') || q.includes('実施') || q.includes('緩和策') || q.includes('担当') || 
-        q.includes('タスク') || q.includes('点検') || q.includes('状況') || q.includes('部門')) {
-      return 'MITIGATION_STATUS'  
+    // Coverage Analysis - English and Japanese (More specific ES matching)
+    if (q.includes('coverage') || q.includes('reflected') || q.includes(' es ') || q.includes('es for') || q.includes('fouling') ||
+        q.includes('カバレッジ') || q.includes('反映') || q.includes('ファウリング')) {
+      return 'COVERAGE_ANALYSIS'
     }
     
     // Impact Analysis - English and Japanese
@@ -402,10 +436,43 @@ export class AIQueryMockService {
   }
 
   /**
+   * Map equipment IDs between different formats
+   */
+  private mapEquipmentId(equipmentId: string): string {
+    // Map simplified format to full format
+    const mapping: { [key: string]: string } = {
+      'E-101': 'HX-101',
+      'E-102': 'HX-102', 
+      'E-103': 'HX-103',
+      'E-201': 'HX-201',
+      'E-202': 'HX-202',
+      'E-203': 'HX-203',
+      'P-100': 'PU-100',
+      'P-200': 'PU-200',
+      'T-101': 'TK-101',
+      'T-201': 'TK-201'
+    }
+    
+    return mapping[equipmentId] || equipmentId
+  }
+
+  /**
    * Extract entities from query (Enhanced for Japanese)
    */
-  private extractEntities(query: string): any {
-    const entities: any = {}
+  private extractEntities(query: string): {
+    instrument?: string;
+    equipment?: string;
+    system?: string;
+    department?: string;
+    risk_type?: string;
+  } {
+    const entities: {
+      instrument?: string;
+      equipment?: string;
+      system?: string;
+      department?: string;
+      risk_type?: string;
+    } = {}
     
     // Extract instrument IDs
     const instrumentMatch = query.match(/(TI|PI|FI|LI)-\d+/i)
@@ -413,10 +480,11 @@ export class AIQueryMockService {
       entities.instrument = instrumentMatch[0].toUpperCase()
     }
     
-    // Extract equipment IDs (Enhanced)
+    // Extract equipment IDs (Enhanced with mapping)
     const equipmentMatch = query.match(/[EPT]-\d+/i)
     if (equipmentMatch) {
-      entities.equipment = equipmentMatch[0].toUpperCase()
+      const rawEquipmentId = equipmentMatch[0].toUpperCase()
+      entities.equipment = this.mapEquipmentId(rawEquipmentId)
     }
     
     // Extract specific equipment mentioned in Japanese query

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw, AlertTriangle, TrendingUp, Shield, Users, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { RiskMatrix } from '@/components/risk/risk-matrix'
+import { RiskTrends } from '@/components/risk/risk-trends'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 interface SystemSummary {
@@ -281,9 +282,10 @@ export default function RiskAssessmentPage() {
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">System Overview</TabsTrigger>
           <TabsTrigger value="matrix">Risk Matrix</TabsTrigger>
+          <TabsTrigger value="trends">Risk Trends</TabsTrigger>
           <TabsTrigger value="reviews">Risk Reviews</TabsTrigger>
           <TabsTrigger value="integration">Integration Status</TabsTrigger>
         </TabsList>
@@ -396,6 +398,13 @@ export default function RiskAssessmentPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="trends" className="space-y-4">
+          <RiskTrends 
+            systemId={selectedSystem === 'ALL' ? undefined : selectedSystem}
+            timeframe="3M"
+          />
         </TabsContent>
 
         <TabsContent value="reviews" className="space-y-4">

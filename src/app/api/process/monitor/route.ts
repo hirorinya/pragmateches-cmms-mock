@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
 
       case 'simulate':
         // Get actual process parameters from database to simulate with real IDs
-        const monitoringService = new ProcessMonitoringService()
         const { data: processParams } = await monitoringService['supabase']
           .from('process_parameters')
           .select('parameter_id, parameter_type')

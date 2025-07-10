@@ -74,6 +74,15 @@ export class AIDatabaseService {
         case 'EQUIPMENT_HEALTH':
           response = await this.handleEquipmentHealth(query, entities)
           break
+        case 'COST_ANALYSIS':
+          response = await this.handleCostAnalysis(query, entities)
+          break
+        case 'COMPLIANCE_TRACKING':
+          response = await this.handleComplianceTracking(query, entities)
+          break
+        case 'MAINTENANCE_SCHEDULE':
+          response = await this.handleMaintenanceSchedule(query, entities)
+          break
         default:
           response = await this.handleGenericQuery(query, entities)
       }
@@ -514,6 +523,27 @@ export class AIDatabaseService {
   private detectIntent(query: string): string {
     const lowerQuery = query.toLowerCase()
     
+    // Cost analysis keywords
+    if (lowerQuery.includes('cost') || lowerQuery.includes('budget') ||
+        lowerQuery.includes('expense') || lowerQuery.includes('コスト') ||
+        lowerQuery.includes('予算') || lowerQuery.includes('費用')) {
+      return 'COST_ANALYSIS'
+    }
+    
+    // Compliance tracking keywords
+    if (lowerQuery.includes('compliance') || lowerQuery.includes('overdue') ||
+        lowerQuery.includes('inspection') || lowerQuery.includes('コンプライアンス') ||
+        lowerQuery.includes('期限切れ') || lowerQuery.includes('点検')) {
+      return 'COMPLIANCE_TRACKING'
+    }
+    
+    // Maintenance schedule keywords
+    if (lowerQuery.includes('schedule') || lowerQuery.includes('upcoming') ||
+        lowerQuery.includes('maintenance') || lowerQuery.includes('スケジュール') ||
+        lowerQuery.includes('予定') || lowerQuery.includes('メンテナンス')) {
+      return 'MAINTENANCE_SCHEDULE'
+    }
+    
     // Coverage analysis keywords
     if (lowerQuery.includes('not reflected') || lowerQuery.includes('missing') || 
         lowerQuery.includes('coverage') || lowerQuery.includes('risk') ||
@@ -537,8 +567,8 @@ export class AIDatabaseService {
     
     // Equipment health keywords
     if (lowerQuery.includes('health') || lowerQuery.includes('summary') ||
-        lowerQuery.includes('status') || lowerQuery.includes('condition') ||
-        lowerQuery.includes('健全性') || lowerQuery.includes('状態')) {
+        lowerQuery.includes('condition') || lowerQuery.includes('健全性') ||
+        lowerQuery.includes('状態')) {
       return 'EQUIPMENT_HEALTH'
     }
     
@@ -581,6 +611,23 @@ export class AIDatabaseService {
       entities.instrument_id = instrumentMatch[0].toUpperCase()
     }
     
+    // Extract timeframes for cost analysis
+    if (query.toLowerCase().includes('last week') || query.includes('先週')) {
+      entities.timeframe = 'last_week'
+    } else if (query.toLowerCase().includes('last month') || query.includes('先月')) {
+      entities.timeframe = 'last_month'
+    } else if (query.toLowerCase().includes('last quarter') || query.includes('四半期')) {
+      entities.timeframe = 'last_quarter'
+    } else if (query.toLowerCase().includes('last year') || query.includes('昨年')) {
+      entities.timeframe = 'last_year'
+    }
+    
+    // Extract number of days for maintenance schedule
+    const daysMatch = query.match(/(\d+)\s*(?:days?|日)/i)
+    if (daysMatch) {
+      entities.days = parseInt(daysMatch[1])
+    }
+    
     // Extract departments
     if (query.toLowerCase().includes('refinery') || query.includes('製油')) {
       entities.department = 'REFINERY'
@@ -621,5 +668,313 @@ export class AIDatabaseService {
     ]
     
     return mockAffectedEquipment
+  }
+
+  /**
+   * Use Case 5: Cost Analysis
+   */
+  private async handleCostAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
+    const systemId = entities.system_id
+    const timeframe = entities.timeframe || 'last_quarter'
+    
+    // Get maintenance cost data
+    const { data: costData, error: costError } = await this.supabase
+      .from('maintenance_history')
+      .select(`
+        実施日,
+        コスト,
+        作業内容,
+        設備ID,
+        equipment!inner(設備名, 設備種別)
+      `)
+      .gte('実施日', this.getDateFromTimeframe(timeframe))
+      .order('実施日', { ascending: false })
+
+    if (costError) {
+      return {
+        query,
+        intent: 'COST_ANALYSIS',
+        confidence: 0.3,
+        results: [],
+        summary: `コストデータの取得に失敗しました: ${costError.message}`,
+        recommendations: ['データベース接続を確認してください'],
+        execution_time: 0,
+        source: 'database'
+      }
+    }
+
+    // Analyze cost data
+    const totalCost = (costData || []).reduce((sum, item) => sum + (item.コスト || 0), 0)
+    const equipmentCosts = this.groupCostsByEquipment(costData || [])
+    const monthlyTrends = this.analyzeCostTrends(costData || [])
+
+    return {
+      query,
+      intent: 'COST_ANALYSIS',
+      confidence: 0.90,
+      results: [{
+        timeframe,
+        total_cost: totalCost,
+        equipment_breakdown: equipmentCosts,
+        monthly_trends: monthlyTrends,
+        cost_analysis: {
+          highest_cost_equipment: equipmentCosts[0]?.equipment_id || 'N/A',
+          cost_increase_trend: monthlyTrends.length > 1 ? this.calculateTrend(monthlyTrends) : 'insufficient_data'
+        }
+      }],
+      summary: `${timeframe}の総メンテナンスコスト: ¥${totalCost.toLocaleString()}。分析した期間内の設備別コスト内訳とトレンドを表示します。`,
+      recommendations: [
+        totalCost > 1000000 ? 'コストが高額です。設備別の詳細分析をお勧めします' : 'コストは適正範囲内です',
+        '予防保全によるコスト削減の機会を検討してください',
+        '高コスト設備の点検頻度を見直すことをお勧めします'
+      ],
+      execution_time: 0,
+      source: 'database'
+    }
+  }
+
+  /**
+   * Use Case 6: Compliance Tracking
+   */
+  private async handleComplianceTracking(query: string, entities: any): Promise<AIQueryResponse> {
+    const systemId = entities.system_id
+    const currentDate = new Date().toISOString().split('T')[0]
+    
+    // Get overdue inspections
+    const { data: overdueInspections, error: inspectionError } = await this.supabase
+      .from('inspection_plan')
+      .select(`
+        計画ID,
+        設備ID,
+        点検項目,
+        次回点検日,
+        状態,
+        equipment!inner(設備名, 設備種別)
+      `)
+      .lt('次回点検日', currentDate)
+      .neq('状態', '完了')
+      .order('次回点検日', { ascending: true })
+
+    // Get upcoming inspections (next 30 days)
+    const futureDate = new Date()
+    futureDate.setDate(futureDate.getDate() + 30)
+    
+    const { data: upcomingInspections, error: upcomingError } = await this.supabase
+      .from('inspection_plan')
+      .select(`
+        計画ID,
+        設備ID,
+        点検項目,
+        次回点検日,
+        状態,
+        equipment!inner(設備名, 設備種別)
+      `)
+      .gte('次回点検日', currentDate)
+      .lte('次回点検日', futureDate.toISOString().split('T')[0])
+      .neq('状態', '完了')
+      .order('次回点検日', { ascending: true })
+
+    const overdueCount = (overdueInspections || []).length
+    const upcomingCount = (upcomingInspections || []).length
+    const complianceRate = this.calculateComplianceRate(overdueInspections || [], upcomingInspections || [])
+
+    return {
+      query,
+      intent: 'COMPLIANCE_TRACKING',
+      confidence: 0.88,
+      results: [{
+        overdue_inspections: overdueInspections || [],
+        upcoming_inspections: upcomingInspections || [],
+        compliance_metrics: {
+          overdue_count: overdueCount,
+          upcoming_count: upcomingCount,
+          compliance_rate: complianceRate,
+          status: overdueCount === 0 ? 'COMPLIANT' : overdueCount < 5 ? 'WARNING' : 'NON_COMPLIANT'
+        }
+      }],
+      summary: `コンプライアンス状況: 期限切れ点検 ${overdueCount}件、今後30日以内の点検 ${upcomingCount}件。コンプライアンス率: ${complianceRate}%`,
+      recommendations: [
+        overdueCount > 0 ? `期限切れ点検 ${overdueCount}件の早急な実施が必要です` : '期限切れ点検はありません',
+        upcomingCount > 0 ? `今後30日以内に ${upcomingCount}件の点検が予定されています` : '直近の予定点検はありません',
+        complianceRate < 90 ? 'コンプライアンス率向上のため点検スケジュールの見直しをお勧めします' : 'コンプライアンス状況は良好です'
+      ],
+      execution_time: 0,
+      source: 'database'
+    }
+  }
+
+  /**
+   * Use Case 7: Maintenance Schedule
+   */
+  private async handleMaintenanceSchedule(query: string, entities: any): Promise<AIQueryResponse> {
+    const systemId = entities.system_id
+    const days = entities.days || 30
+    const currentDate = new Date()
+    const futureDate = new Date()
+    futureDate.setDate(currentDate.getDate() + days)
+    
+    // Get equipment strategies that are due
+    const { data: strategiesData, error: strategiesError } = await this.supabase
+      .from('equipment_strategy')
+      .select(`
+        strategy_id,
+        equipment_id,
+        strategy_name,
+        frequency_type,
+        frequency_value,
+        next_execution_date,
+        last_execution_date,
+        status,
+        equipment!inner(設備名, 設備種別)
+      `)
+      .lte('next_execution_date', futureDate.toISOString().split('T')[0])
+      .eq('status', 'ACTIVE')
+      .order('next_execution_date', { ascending: true })
+
+    // Get current work orders
+    const { data: workOrders, error: workOrderError } = await this.supabase
+      .from('work_order')
+      .select(`
+        作業指示書番号,
+        設備ID,
+        作業種別ID,
+        予定開始日,
+        予定終了日,
+        実施日,
+        ステータス,
+        equipment!inner(設備名)
+      `)
+      .gte('予定開始日', currentDate.toISOString().split('T')[0])
+      .lte('予定開始日', futureDate.toISOString().split('T')[0])
+      .order('予定開始日', { ascending: true })
+
+    const strategiesCount = (strategiesData || []).length
+    const workOrdersCount = (workOrders || []).length
+    const urgentTasks = this.identifyUrgentTasks(strategiesData || [], workOrders || [])
+
+    return {
+      query,
+      intent: 'MAINTENANCE_SCHEDULE',
+      confidence: 0.92,
+      results: [{
+        timeframe: `次の${days}日間`,
+        scheduled_strategies: strategiesData || [],
+        work_orders: workOrders || [],
+        schedule_summary: {
+          total_strategies: strategiesCount,
+          total_work_orders: workOrdersCount,
+          urgent_tasks: urgentTasks.length,
+          workload_level: this.assessWorkloadLevel(strategiesCount + workOrdersCount)
+        }
+      }],
+      summary: `今後${days}日間のメンテナンススケジュール: 予定戦略 ${strategiesCount}件、作業指示 ${workOrdersCount}件、緊急対応 ${urgentTasks.length}件`,
+      recommendations: [
+        urgentTasks.length > 0 ? `緊急対応が必要なタスクが ${urgentTasks.length}件あります` : '緊急対応は不要です',
+        strategiesCount > 10 ? 'スケジュールが過密です。優先度を見直してください' : 'スケジュールは適正です',
+        'リソース配分の最適化を検討してください'
+      ],
+      execution_time: 0,
+      source: 'database'
+    }
+  }
+
+  // Helper methods for new query types
+  private getDateFromTimeframe(timeframe: string): string {
+    const now = new Date()
+    switch (timeframe) {
+      case 'last_week':
+        now.setDate(now.getDate() - 7)
+        break
+      case 'last_month':
+        now.setMonth(now.getMonth() - 1)
+        break
+      case 'last_quarter':
+        now.setMonth(now.getMonth() - 3)
+        break
+      case 'last_year':
+        now.setFullYear(now.getFullYear() - 1)
+        break
+      default:
+        now.setMonth(now.getMonth() - 3) // Default to last quarter
+    }
+    return now.toISOString().split('T')[0]
+  }
+
+  private groupCostsByEquipment(costData: any[]): any[] {
+    const grouped = costData.reduce((acc, item) => {
+      const equipmentId = item.設備ID
+      if (!acc[equipmentId]) {
+        acc[equipmentId] = {
+          equipment_id: equipmentId,
+          equipment_name: item.equipment?.設備名 || equipmentId,
+          total_cost: 0,
+          maintenance_count: 0
+        }
+      }
+      acc[equipmentId].total_cost += item.コスト || 0
+      acc[equipmentId].maintenance_count += 1
+      return acc
+    }, {})
+    
+    return Object.values(grouped).sort((a: any, b: any) => b.total_cost - a.total_cost)
+  }
+
+  private analyzeCostTrends(costData: any[]): any[] {
+    // Group by month and calculate totals
+    const monthlyData = costData.reduce((acc, item) => {
+      const month = item.実施日?.substring(0, 7) || 'unknown'
+      if (!acc[month]) {
+        acc[month] = { month, total_cost: 0, count: 0 }
+      }
+      acc[month].total_cost += item.コスト || 0
+      acc[month].count += 1
+      return acc
+    }, {})
+    
+    return Object.values(monthlyData).sort((a: any, b: any) => a.month.localeCompare(b.month))
+  }
+
+  private calculateTrend(monthlyTrends: any[]): string {
+    if (monthlyTrends.length < 2) return 'insufficient_data'
+    const first = monthlyTrends[0].total_cost
+    const last = monthlyTrends[monthlyTrends.length - 1].total_cost
+    const change = ((last - first) / first) * 100
+    
+    if (change > 10) return 'increasing'
+    if (change < -10) return 'decreasing'
+    return 'stable'
+  }
+
+  private calculateComplianceRate(overdue: any[], upcoming: any[]): number {
+    const total = overdue.length + upcoming.length
+    if (total === 0) return 100
+    return Math.round(((upcoming.length) / total) * 100)
+  }
+
+  private identifyUrgentTasks(strategies: any[], workOrders: any[]): any[] {
+    const now = new Date()
+    const urgent = []
+    
+    // Check for overdue strategies
+    strategies.forEach(strategy => {
+      const nextDate = new Date(strategy.next_execution_date)
+      if (nextDate < now) {
+        urgent.push({
+          type: 'strategy',
+          id: strategy.strategy_id,
+          equipment_id: strategy.equipment_id,
+          description: strategy.strategy_name,
+          overdue_days: Math.floor((now.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24))
+        })
+      }
+    })
+    
+    return urgent
+  }
+
+  private assessWorkloadLevel(taskCount: number): string {
+    if (taskCount > 20) return 'HIGH'
+    if (taskCount > 10) return 'MEDIUM'
+    return 'LOW'
   }
 }
