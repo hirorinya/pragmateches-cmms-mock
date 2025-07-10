@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { EquipmentService } from '@/services/equipment-service'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -40,6 +41,22 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    // Handle CMMS queries with Supabase integration
+    if (type === 'cmms_query') {
+      const equipmentService = new EquipmentService()
+      
+      // Try to handle specific query types with real database data
+      const realDataResponse = await handleCMMSQueryWithDatabase(prompt, equipmentService)
+      if (realDataResponse) {
+        return NextResponse.json({
+          result: JSON.stringify(realDataResponse),
+          source: 'supabase'
+        })
+      }
+      
+      // If not handled by database, continue to OpenAI with enhanced context
     }
 
     let systemPrompt = ''
@@ -462,4 +479,105 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+/**
+ * Handle CMMS queries with direct database access
+ */
+async function handleCMMSQueryWithDatabase(prompt: string, equipmentService: EquipmentService) {
+  const query = prompt.toLowerCase()
+  
+  // EQUIPMENT_INFO queries
+  const equipmentMatch = prompt.match(/(HX|PU|TK|EQ)-?\d+/i)
+  if (equipmentMatch && (query.includes('manufacturer') || query.includes('メーカー') || 
+                         query.includes('info') || query.includes('status') || query.includes('状況') ||
+                         query.includes('details') || query.includes('詳細'))) {
+    
+    const equipmentId = equipmentMatch[0].toUpperCase()
+    const equipmentInfo = await equipmentService.getEquipmentInfo(equipmentId)
+    
+    if (equipmentInfo) {
+      return {
+        intent: 'EQUIPMENT_INFO',
+        confidence: 0.95,
+        summary: `Equipment ${equipmentId} information retrieved from database`,
+        results: equipmentInfo,
+        recommendations: [
+          `Equipment ${equipmentId} is currently ${equipmentInfo.status}`,
+          equipmentInfo.next_inspection ? `Next inspection scheduled: ${equipmentInfo.next_inspection}` : 'Schedule next inspection'
+        ]
+      }
+    }
+  }
+  
+  // SYSTEM_LIST queries
+  if (query.includes('list') && (query.includes('system') || query.includes('システム')) ||
+      query.includes('systems') || query.includes('システム一覧') ||
+      query.includes('name of system') || query.includes('システムの名前')) {
+    
+    const systems = await equipmentService.getAllSystems()
+    
+    return {
+      intent: 'SYSTEM_LIST',
+      confidence: 0.98,
+      summary: `Found ${systems.length} systems in the facility`,
+      results: systems,
+      recommendations: [
+        'All facility systems listed with current equipment counts',
+        'Critical systems should be monitored closely'
+      ]
+    }
+  }
+  
+  // THICKNESS_MEASUREMENT queries  
+  if (equipmentMatch && (query.includes('thickness') || query.includes('肉厚') ||
+                         query.includes('measurement') || query.includes('測定'))) {
+    
+    const equipmentId = equipmentMatch[0].toUpperCase()
+    const thicknessData = await equipmentService.getThicknessMeasurements(equipmentId)
+    
+    if (thicknessData) {
+      return {
+        intent: 'THICKNESS_MEASUREMENT',
+        confidence: 0.92,
+        summary: `Thickness measurement data for ${equipmentId}`,
+        results: thicknessData,
+        recommendations: [
+          thicknessData.recommendation,
+          'Continue monitoring thickness trends'
+        ]
+      }
+    }
+  }
+  
+  // COVERAGE_ANALYSIS queries for specific systems
+  const systemMatch = prompt.match(/SYS-\d+/i)
+  if (systemMatch && (query.includes('coverage') || query.includes('reflected') || 
+                      query.includes('es for') || query.includes('fouling'))) {
+    
+    const systemId = systemMatch[0].toUpperCase()
+    const systemEquipment = await equipmentService.getEquipmentBySystem(systemId)
+    
+    // For now, return the equipment list - we'll enhance this with actual risk analysis later
+    const coverageResults = systemEquipment.map(eq => ({
+      equipment_id: eq.equipment_id,
+      equipment_type: eq.type,
+      system: systemId,
+      missing_risk: 'fouling blockage risk', // TODO: Get from actual risk assessment
+      risk_gap: 'HIGH' // TODO: Calculate from actual data
+    }))
+    
+    return {
+      intent: 'COVERAGE_ANALYSIS',
+      confidence: 0.88,
+      summary: `Coverage analysis for ${systemId} - ${systemEquipment.length} equipment items`,
+      results: coverageResults,
+      recommendations: [
+        `Review risk coverage for ${systemEquipment.length} equipment items in ${systemId}`,
+        'Update risk assessment database with missing scenarios'
+      ]
+    }
+  }
+  
+  return null // Not handled by database, let OpenAI handle it
 }
