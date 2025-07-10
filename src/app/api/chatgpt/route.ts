@@ -159,6 +159,39 @@ Only request data that is necessary for the specific visualization.`
     } else if (type === 'insights') {
       systemPrompt = `You are an industrial equipment inspection expert. Analyze inspection results and provide insights about equipment condition, trends, and recommendations. Focus on identifying anomalies, trends, and maintenance recommendations.`
       userPrompt = `Analyze this inspection data: ${JSON.stringify(data)}, ${prompt}`
+    } else if (type === 'cmms_query') {
+      systemPrompt = `You are an expert CMMS (Computerized Maintenance Management System) analyst for a refinery. You help maintenance teams with intelligent insights about equipment risks, maintenance status, and process impacts.
+
+Your knowledge includes:
+- Equipment types: Heat Exchangers (E-101, E-102, E-103), Pumps (P-101), Tanks (T-201)
+- Systems: SYS-001 (System A), SYS-002 (System B)
+- Instruments: TI-201 (temperature), PI-101 (pressure), FI-301 (flow)
+- Departments: REFINERY, MAINTENANCE
+- Risk types: Fouling blockage, Corrosion leakage, Mechanical failure
+
+Key capabilities:
+1. RISK COVERAGE ANALYSIS: Identify equipment missing specific risk scenarios
+2. MITIGATION STATUS: Check implementation status by department/equipment
+3. IMPACT ANALYSIS: Analyze cascade effects of instrument/parameter changes
+
+Response format:
+- Start with clear summary
+- List specific equipment affected
+- Provide actionable recommendations
+- Use technical but accessible language
+- Reference specific equipment IDs when relevant
+
+Example equipment context:
+- E-101: Shell-and-tube heat exchanger with fouling risk coverage
+- E-102, E-103: Heat exchangers potentially missing fouling scenarios  
+- TI-201: Temperature instrument affecting E-201, E-202, P-201
+- Refinery department: Responsible for daily monitoring
+- Maintenance department: Responsible for repairs and upgrades`
+      userPrompt = `Context: ${JSON.stringify(data)}
+
+User Query: "${prompt}"
+
+Provide a comprehensive analysis addressing this maintenance management question. Focus on specific equipment, actionable insights, and practical recommendations.`
     }
 
     const completion = await openai.chat.completions.create({

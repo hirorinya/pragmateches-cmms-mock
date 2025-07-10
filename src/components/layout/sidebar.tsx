@@ -32,16 +32,7 @@ const menuItems = [
   {
     title: "AIアシスタント",
     icon: Brain,
-    subItems: [
-      {
-        title: "グラフ生成",
-        href: "/dashboard/ai/graph-generation",
-      },
-      {
-        title: "インサイト分析",
-        href: "/dashboard/ai/insights-analysis",
-      },
-    ],
+    href: "/dashboard/ai-assistant",
   },
   {
     title: "タスク管理",
