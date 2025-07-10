@@ -271,8 +271,9 @@ For MITIGATION_STATUS queries, use this results format:
 
 For COVERAGE_ANALYSIS queries about equipment NOT reflected in ES, use this results format:
 [
-  {"equipment_id": "EQ005", "equipment_type": "BLOWER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
-  {"equipment_id": "HX-102", "equipment_type": "HEAT_EXCHANGER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"}
+  {"equipment_id": "EQ013", "equipment_type": "FLOW_METER", "system": "SYS-002", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
+  {"equipment_id": "EQ014", "equipment_type": "PRESSURE_GAUGE", "system": "SYS-002", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
+  {"equipment_id": "EQ016", "equipment_type": "CONTROL_PANEL", "system": "SYS-002", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"}
 ]
 
 For COVERAGE_ANALYSIS queries about equipment ARE reflected in ES, use this results format:
