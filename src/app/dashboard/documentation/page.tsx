@@ -19,6 +19,7 @@ import {
   Clock,
   CheckCircle2
 } from 'lucide-react'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 interface DocumentSection {
   id: string
@@ -840,14 +841,15 @@ A:
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Documentation & User Guides</h1>
-          <p className="text-muted-foreground">
-            Comprehensive guides for using the intelligent CMMS system
-          </p>
-        </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Documentation & User Guides</h1>
+            <p className="text-muted-foreground">
+              Comprehensive guides for using the intelligent CMMS system
+            </p>
+          </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline" onClick={() => window.open('/docs', '_blank')}>
             <ExternalLink className="mr-2 h-4 w-4" />
@@ -1050,6 +1052,7 @@ A:
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

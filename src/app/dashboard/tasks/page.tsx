@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { createClient } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 interface WorkOrder {
   作業指示ID: string
@@ -128,14 +129,15 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Task Management</h1>
-          <p className="text-muted-foreground">
-            Equipment Strategy Generated Tasks
-          </p>
-        </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Task Management</h1>
+            <p className="text-muted-foreground">
+              Equipment Strategy Generated Tasks
+            </p>
+          </div>
         <div className="space-x-2">
           <Button 
             onClick={fetchWorkOrders}
@@ -251,6 +253,7 @@ export default function TasksPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

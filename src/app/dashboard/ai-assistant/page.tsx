@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,7 +60,7 @@ export default function AIAssistantPage() {
       id: 'mitigation-status',
       title: 'Mitigation Status Check',
       description: 'Check implementation status by department',
-      query: 'What is the implementation status of risk mitigation measures for E-101 by the refinery department?',
+      query: 'What is the implementation status of risk mitigation measures for HX-101 by the refinery department?',
       icon: <TrendingUp className="h-4 w-4" />,
       category: 'Maintenance Tracking'
     },
@@ -75,9 +76,17 @@ export default function AIAssistantPage() {
       id: 'equipment-health',
       title: 'Equipment Health Summary',
       description: 'Get overall equipment status',
-      query: 'Show me the current health status of all heat exchangers',
+      query: 'Show me the current health status of all heat exchangers in System A',
       icon: <Database className="h-4 w-4" />,
       category: 'System Overview'
+    },
+    {
+      id: 'system-b-coverage',
+      title: 'System B Coverage Analysis',
+      description: 'Check risk coverage for System B equipment',
+      query: 'Which heat exchangers in System B are not reflected in ES for fouling blockage risk?',
+      icon: <AlertTriangle className="h-4 w-4" />,
+      category: 'Risk Assessment'
     }
   ]
 
@@ -147,14 +156,20 @@ export default function AIAssistantPage() {
           )
         : [response.results]
       
-      if (Array.isArray(uniqueResults) && uniqueResults[0]?.equipment_id && uniqueResults[0]?.missing_risk) {
-        // Coverage analysis format
+      if (Array.isArray(uniqueResults) && uniqueResults[0]?.equipment_id && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
+        // Coverage analysis format - handles both missing and covered scenarios
         uniqueResults.forEach((result: any, index: number) => {
           formatted += `**${index + 1}. ${result.equipment_id || 'Unknown Equipment'}**\n`
           formatted += `- Type: ${result.equipment_type || 'Heat Exchanger'}\n`
           formatted += `- System: ${result.system || 'SYS-001'}\n`
-          formatted += `- Missing Risk: ${result.missing_risk || 'fouling blockage risk'}\n`
-          formatted += `- Risk Gap: ${result.risk_gap || 'HIGH'}\n\n`
+          
+          if (result.missing_risk) {
+            formatted += `- Missing Risk: ${result.missing_risk}\n`
+            formatted += `- Risk Gap: ${result.risk_gap || 'HIGH'}\n\n`
+          } else if (result.risk_coverage) {
+            formatted += `- Risk Coverage: ${result.risk_coverage}\n`
+            formatted += `- Coverage Status: ${result.coverage_status || 'COVERED'}\n\n`
+          }
         })
       } else if (uniqueResults[0]?.equipment_id && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
         // Mitigation status format
@@ -228,7 +243,8 @@ export default function AIAssistantPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <DashboardLayout>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center">
@@ -479,5 +495,6 @@ export default function AIAssistantPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </DashboardLayout>
   )
 }

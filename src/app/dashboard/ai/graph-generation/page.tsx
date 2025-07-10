@@ -9,6 +9,7 @@ import { BarChart3, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { getDataSchema, askForDataRequirements, aggregateRequestedData } from "@/lib/data-aggregation"
 import { UniversalChart } from '@/components/charts/universal-chart'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -258,11 +259,12 @@ export default function GraphGenerationPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">AIグラフ生成</h1>
-        <p className="text-gray-600 mt-2">検査データからAIを使用してグラフを生成します</p>
-      </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">AIグラフ生成</h1>
+          <p className="text-gray-600 mt-2">検査データからAIを使用してグラフを生成します</p>
+        </div>
 
       <Card>
         <CardHeader>
@@ -422,6 +424,7 @@ export default function GraphGenerationPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

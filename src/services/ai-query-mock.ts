@@ -13,40 +13,47 @@ interface AIQueryResponse {
 
 export class AIQueryMockService {
   
-  // Mock equipment data with classifications
+  // Mock equipment data with classifications - updated to match actual database
   private mockEquipmentData = {
-    'E-101': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-001' },
-    'E-102': { type: 'HEAT_EXCHANGER', subtype: 'Plate', system: 'SYS-001' },
-    'E-103': { type: 'HEAT_EXCHANGER', subtype: 'Air-cooled', system: 'SYS-001' },
-    'E-201': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-002' },
-    'P-101': { type: 'PUMP', subtype: 'Centrifugal', system: 'SYS-001' },
-    'T-201': { type: 'TANK', subtype: 'Storage', system: 'SYS-002' }
+    // System A (SYS-001) - Process Cooling System
+    'HX-101': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-001' },
+    'HX-102': { type: 'HEAT_EXCHANGER', subtype: 'Plate', system: 'SYS-001' },
+    'HX-103': { type: 'HEAT_EXCHANGER', subtype: 'Air-cooled', system: 'SYS-001' },
+    'PU-100': { type: 'PUMP', subtype: 'Centrifugal', system: 'SYS-001' },
+    'TK-101': { type: 'TANK', subtype: 'Storage', system: 'SYS-001' },
+    // System B (SYS-002) - Distillation System
+    'HX-201': { type: 'HEAT_EXCHANGER', subtype: 'Shell-and-tube', system: 'SYS-002' },
+    'HX-202': { type: 'HEAT_EXCHANGER', subtype: 'Plate', system: 'SYS-002' },
+    'HX-203': { type: 'HEAT_EXCHANGER', subtype: 'Air-cooled', system: 'SYS-002' },
+    'PU-200': { type: 'PUMP', subtype: 'Centrifugal', system: 'SYS-002' },
+    'TK-201': { type: 'TANK', subtype: 'Storage', system: 'SYS-002' }
   }
 
-  // Mock instrument mappings
+  // Mock instrument mappings - updated to match actual equipment IDs
   private mockInstrumentMappings = {
     'TI-201': {
-      equipment: ['E-201', 'E-202', 'P-201'],
+      equipment: ['HX-201', 'HX-202', 'PU-200'],
       parameter: 'TEMPERATURE',
       criticality: 'HIGH'
     },
     'PI-101': {
-      equipment: ['P-101', 'E-101'],
+      equipment: ['PU-100', 'HX-101'],
       parameter: 'PRESSURE', 
       criticality: 'MEDIUM'
     },
     'FI-301': {
-      equipment: ['P-301', 'E-301'],
+      equipment: ['PU-100', 'HX-103'],
       parameter: 'FLOW',
       criticality: 'HIGH'
     }
   }
 
-  // Mock risk scenarios
+  // Mock risk scenarios - updated to match actual equipment IDs
   private mockRiskScenarios = {
-    'E-101': [
+    // System A equipment with fouling risk coverage
+    'HX-101': [
       {
-        scenario_id: 'RS-E101-001',
+        scenario_id: 'RS-HX101-001',
         failure_mode: 'Tube fouling blockage',
         risk_level: 'HIGH',
         responsible_person: 'ST001',
@@ -54,7 +61,7 @@ export class AIQueryMockService {
         mitigation_status: 'IMPLEMENTED'
       },
       {
-        scenario_id: 'RS-E101-002', 
+        scenario_id: 'RS-HX101-002', 
         failure_mode: 'Corrosion leakage',
         risk_level: 'MEDIUM',
         responsible_person: 'ST002',
@@ -62,9 +69,10 @@ export class AIQueryMockService {
         mitigation_status: 'PLANNED'
       }
     ],
-    'E-102': [
+    // System A equipment WITHOUT fouling risk coverage
+    'HX-102': [
       {
-        scenario_id: 'RS-E102-001',
+        scenario_id: 'RS-HX102-001',
         failure_mode: 'Corrosion leakage', 
         risk_level: 'MEDIUM',
         responsible_person: 'ST001',
@@ -73,9 +81,9 @@ export class AIQueryMockService {
       }
       // Note: Missing fouling scenario - will be detected by AI
     ],
-    'E-103': [
+    'HX-103': [
       {
-        scenario_id: 'RS-E103-001',
+        scenario_id: 'RS-HX103-001',
         failure_mode: 'Fan blade damage',
         risk_level: 'LOW',
         responsible_person: 'ST003', 
@@ -83,12 +91,46 @@ export class AIQueryMockService {
         mitigation_status: 'IMPLEMENTED'
       }
       // Note: Missing fouling scenario - will be detected by AI
+    ],
+    // System B equipment with fouling risk coverage
+    'HX-201': [
+      {
+        scenario_id: 'RS-HX201-001',
+        failure_mode: 'Tube fouling blockage',
+        risk_level: 'HIGH',
+        responsible_person: 'ST001',
+        department: 'REFINERY',
+        mitigation_status: 'IMPLEMENTED'
+      }
+    ],
+    // System B equipment WITHOUT fouling risk coverage
+    'HX-202': [
+      {
+        scenario_id: 'RS-HX202-001',
+        failure_mode: 'Corrosion leakage',
+        risk_level: 'MEDIUM',
+        responsible_person: 'ST002',
+        department: 'MAINTENANCE',
+        mitigation_status: 'PLANNED'
+      }
+      // Note: Missing fouling scenario - will be detected by AI
+    ],
+    'HX-203': [
+      {
+        scenario_id: 'RS-HX203-001',
+        failure_mode: 'Seal failure',
+        risk_level: 'LOW',
+        responsible_person: 'ST003',
+        department: 'MAINTENANCE',
+        mitigation_status: 'IMPLEMENTED'
+      }
+      // Note: Missing fouling scenario - will be detected by AI
     ]
   }
 
-  // Mock mitigation measures
+  // Mock mitigation measures - updated to match actual equipment IDs
   private mockMitigationMeasures = {
-    'E-101': [
+    'HX-101': [
       {
         measure: 'Daily temperature monitoring',
         responsible_department: 'REFINERY',
@@ -153,10 +195,26 @@ export class AIQueryMockService {
    * Use Case 1: Risk Coverage Analysis
    */
   private handleCoverageAnalysis(query: string, entities: any): AIQueryResponse {
-    const system = entities.system || 'SYS-001' // Default to System A
+    // Don't default to any system - require explicit system detection
+    const system = entities.system
     const riskType = entities.risk_type || 'fouling'
     
-    // Find heat exchangers in system that lack fouling risk scenarios
+    // Check if this is asking for equipment WITH or WITHOUT risk coverage
+    const isAskingForMissing = query.toLowerCase().includes('not') || query.toLowerCase().includes('missing') || query.toLowerCase().includes('ない')
+    const isAskingForCovered = query.toLowerCase().includes(' are ') && !isAskingForMissing
+    
+    if (!system) {
+      return {
+        query,
+        intent: 'COVERAGE_ANALYSIS',
+        confidence: 0.5,
+        results: [],
+        summary: 'Please specify which system (A or B) you want to analyze.',
+        recommendations: ['Specify System A or System B in your query']
+      }
+    }
+    
+    // Find heat exchangers in the specified system
     const heatExchangers = Object.entries(this.mockEquipmentData)
       .filter(([id, data]) => data.type === 'HEAT_EXCHANGER' && data.system === system)
       .map(([id]) => id)
@@ -165,27 +223,59 @@ export class AIQueryMockService {
       const scenarios = this.mockRiskScenarios[eq] || []
       return !scenarios.some(s => s.failure_mode.toLowerCase().includes(riskType.toLowerCase()))
     })
-
-    return {
-      query,
-      intent: 'COVERAGE_ANALYSIS',
-      confidence: 0.92,
-      results: missingCoverage.map(eq => ({
-        equipment_id: eq,
-        equipment_type: this.mockEquipmentData[eq].type,
-        equipment_subtype: this.mockEquipmentData[eq].subtype,
-        system: this.mockEquipmentData[eq].system,
-        missing_risk: `${riskType} blockage risk`,
-        current_scenarios: (this.mockRiskScenarios[eq] || []).length,
-        risk_gap: 'HIGH'
-      })),
-      summary: `Found ${missingCoverage.length} heat exchangers in ${system} without ${riskType} blockage risk scenarios. This represents a significant coverage gap that should be addressed.`,
-      recommendations: [
-        `Add ${riskType} blockage failure mode to equipment: ${missingCoverage.join(', ')}`,
-        'Conduct FMEA review for identified equipment',
-        'Update risk assessment to include fouling scenarios',
-        'Consider increased monitoring for affected equipment'
-      ]
+    
+    const hasCoverage = heatExchangers.filter(eq => {
+      const scenarios = this.mockRiskScenarios[eq] || []
+      return scenarios.some(s => s.failure_mode.toLowerCase().includes(riskType.toLowerCase()))
+    })
+    
+    const systemName = system === 'SYS-001' ? 'System A' : 'System B'
+    
+    if (isAskingForCovered) {
+      // Return equipment that HAS coverage
+      return {
+        query,
+        intent: 'COVERAGE_ANALYSIS',
+        confidence: 0.92,
+        results: hasCoverage.map(eq => ({
+          equipment_id: eq,
+          equipment_type: this.mockEquipmentData[eq].type,
+          equipment_subtype: this.mockEquipmentData[eq].subtype,
+          system: this.mockEquipmentData[eq].system,
+          risk_coverage: `${riskType} blockage risk covered`,
+          current_scenarios: (this.mockRiskScenarios[eq] || []).length,
+          coverage_status: 'COVERED'
+        })),
+        summary: `Found ${hasCoverage.length} heat exchangers in ${systemName} that ARE covered for ${riskType} blockage risk in Equipment Strategy.`,
+        recommendations: [
+          `Equipment with ${riskType} risk coverage: ${hasCoverage.join(', ')}`,
+          'Review effectiveness of existing mitigation measures',
+          'Consider if additional monitoring is needed'
+        ]
+      }
+    } else {
+      // Return equipment that LACKS coverage (default behavior)
+      return {
+        query,
+        intent: 'COVERAGE_ANALYSIS',
+        confidence: 0.92,
+        results: missingCoverage.map(eq => ({
+          equipment_id: eq,
+          equipment_type: this.mockEquipmentData[eq].type,
+          equipment_subtype: this.mockEquipmentData[eq].subtype,
+          system: this.mockEquipmentData[eq].system,
+          missing_risk: `${riskType} blockage risk`,
+          current_scenarios: (this.mockRiskScenarios[eq] || []).length,
+          risk_gap: 'HIGH'
+        })),
+        summary: `Found ${missingCoverage.length} heat exchangers in ${systemName} that are NOT reflected in ES for ${riskType} blockage risk.`,
+        recommendations: [
+          `Add ${riskType} blockage failure mode to equipment: ${missingCoverage.join(', ')}`,
+          'Conduct FMEA review for identified equipment',
+          'Update risk assessment to include fouling scenarios',
+          'Consider increased monitoring for affected equipment'
+        ]
+      }
     }
   }
 
@@ -193,7 +283,7 @@ export class AIQueryMockService {
    * Use Case 2: Mitigation Status Analysis  
    */
   private handleMitigationStatus(query: string, entities: any): AIQueryResponse {
-    const equipment = entities.equipment || 'E-101'
+    const equipment = entities.equipment || 'HX-101'
     const department = entities.department || 'REFINERY'
     
     // Check if query is in Japanese to provide appropriate response
@@ -330,13 +420,22 @@ export class AIQueryMockService {
     }
     
     // Extract specific equipment mentioned in Japanese query
-    if (query.includes('E-101') || query.includes('熱交換器E-101')) {
-      entities.equipment = 'E-101'
+    if (query.includes('HX-101') || query.includes('熱交換器HX-101')) {
+      entities.equipment = 'HX-101'
+    }
+    if (query.includes('HX-102') || query.includes('熱交換器HX-102')) {
+      entities.equipment = 'HX-102'
+    }
+    if (query.includes('HX-103') || query.includes('熱交換器HX-103')) {
+      entities.equipment = 'HX-103'
     }
     
     // Extract system references (Japanese and English)
     if (query.toLowerCase().includes('system a') || query.includes('システムA')) {
       entities.system = 'SYS-001'
+    }
+    if (query.toLowerCase().includes('system b') || query.includes('システムB')) {
+      entities.system = 'SYS-002'
     }
     
     // Extract departments (Japanese and English)

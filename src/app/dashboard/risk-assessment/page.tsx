@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw, AlertTriangle, TrendingUp, Shield, Users, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { RiskMatrix } from '@/components/risk/risk-matrix'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 interface SystemSummary {
   system_id: string
@@ -190,14 +191,15 @@ export default function RiskAssessmentPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Risk Assessment & FMEA</h1>
-          <p className="text-muted-foreground">
-            System-level risk management with failure mode analysis
-          </p>
-        </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Risk Assessment & FMEA</h1>
+            <p className="text-muted-foreground">
+              System-level risk management with failure mode analysis
+            </p>
+          </div>
         <div className="flex items-center space-x-2">
           <Select value={selectedSystem} onValueChange={setSelectedSystem}>
             <SelectTrigger className="w-48">
@@ -515,6 +517,7 @@ export default function RiskAssessmentPage() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

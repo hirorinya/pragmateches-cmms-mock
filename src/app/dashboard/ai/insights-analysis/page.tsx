@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Brain, Loader2, AlertCircle, TrendingUp, CheckCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 const dataCategories = [
   { value: "precision", label: "静機器", typeId: 1 },
@@ -112,11 +113,12 @@ export default function InsightsAnalysisPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">AIインサイト分析</h1>
-        <p className="text-gray-600 mt-2">検査データをAIが分析し、重要なインサイトを提供します</p>
-      </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">AIインサイト分析</h1>
+          <p className="text-gray-600 mt-2">検査データをAIが分析し、重要なインサイトを提供します</p>
+        </div>
 
       <Card>
         <CardHeader>
@@ -180,6 +182,7 @@ export default function InsightsAnalysisPage() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }
