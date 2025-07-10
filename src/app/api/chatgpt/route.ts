@@ -224,8 +224,8 @@ Analyze this CMMS query and respond with the appropriate JSON format. Consider t
         { role: 'user', content: userPrompt }
       ],
       model: 'gpt-4o',
-      temperature: 0.7,
-      max_tokens: 2000,
+      temperature: 0.3, // Lower temperature for more consistent JSON
+      max_tokens: type === 'cmms_query' ? 800 : 2000, // Shorter for CMMS to prevent truncation
     })
 
     return NextResponse.json({

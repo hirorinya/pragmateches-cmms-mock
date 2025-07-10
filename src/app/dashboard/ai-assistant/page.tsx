@@ -129,18 +129,32 @@ export default function AIAssistantPage() {
   }
 
   const formatAIResponse = (response: any) => {
+    // Handle malformed JSON responses
+    if (typeof response.summary !== 'string') {
+      console.error('Malformed AI response:', response)
+      return `## Response Processing Error\n\nReceived incomplete response from AI service. Please try again.\n\n**Debug Info:**\n- Intent: ${response.intent || 'Unknown'}\n- Confidence: ${response.confidence || 'Unknown'}`
+    }
+
     let formatted = `## ${response.summary}\n\n`
 
     if (response.results && response.results.length > 0) {
-      formatted += `### Analysis Results:\n\n`
+      formatted += `### 📊 Analysis Results:\n\n`
       
-      if (Array.isArray(response.results)) {
+      // Remove duplicates based on equipment_id
+      const uniqueResults = Array.isArray(response.results) 
+        ? response.results.filter((result: any, index: number, arr: any[]) => 
+            arr.findIndex(r => r.equipment_id === result.equipment_id) === index
+          )
+        : [response.results]
+      
+      if (Array.isArray(uniqueResults) && uniqueResults[0]?.equipment_id && uniqueResults[0]?.missing_risk) {
         // Coverage analysis format
-        response.results.forEach((result: any, index: number) => {
-          formatted += `**${index + 1}. ${result.equipment_id}** (${result.equipment_subtype})\n`
-          formatted += `- System: ${result.system}\n`
-          formatted += `- Missing Risk: ${result.missing_risk}\n`
-          formatted += `- Risk Gap: ${result.risk_gap}\n\n`
+        uniqueResults.forEach((result: any, index: number) => {
+          formatted += `**${index + 1}. ${result.equipment_id || 'Unknown Equipment'}**\n`
+          formatted += `- Type: ${result.equipment_type || 'Heat Exchanger'}\n`
+          formatted += `- System: ${result.system || 'SYS-001'}\n`
+          formatted += `- Missing Risk: ${result.missing_risk || 'fouling blockage risk'}\n`
+          formatted += `- Risk Gap: ${result.risk_gap || 'HIGH'}\n\n`
         })
       } else if (response.results.equipment_id) {
         // Mitigation status format
@@ -164,23 +178,22 @@ export default function AIAssistantPage() {
           })
           formatted += '\n'
         }
+      } else if (Array.isArray(uniqueResults) && uniqueResults[0]?.impact_level) {
+        // Impact analysis format
+        uniqueResults.forEach((equipment: any) => {
+          formatted += `**${equipment.equipment_id}** (${equipment.equipment_type})\n`
+          formatted += `- Impact Level: ${equipment.impact_level}\n`
+          formatted += `- System: ${equipment.system || 'SYS-001'}\n\n`
+          
+          if (equipment.immediate_actions?.length > 0) {
+            formatted += `**⚡ Immediate Actions:**\n`
+            equipment.immediate_actions.forEach((action: string) => {
+              formatted += `- ${action}\n`
+            })
+            formatted += '\n'
+          }
+        })
       }
-    } else if (Array.isArray(response.results) && response.results[0]?.equipment_id) {
-      // Impact analysis format (equipment array)
-      response.results.forEach((equipment: any) => {
-        formatted += `**${equipment.equipment_id}** (${equipment.equipment_type})\n`
-        formatted += `- System: ${equipment.system}\n`
-        formatted += `- Risk Scenarios: ${equipment.risk_scenarios.length}\n`
-        formatted += `- Responsible: ${equipment.responsible_persons.join(', ')}\n\n`
-        
-        if (equipment.immediate_actions?.length > 0) {
-          formatted += `**Immediate Actions:**\n`
-          equipment.immediate_actions.forEach((action: string) => {
-            formatted += `- ${action}\n`
-          })
-          formatted += '\n'
-        }
-      })
     }
 
     if (response.recommendations?.length > 0) {

@@ -196,6 +196,9 @@ export class AIQueryMockService {
     const equipment = entities.equipment || 'E-101'
     const department = entities.department || 'REFINERY'
     
+    // Check if query is in Japanese to provide appropriate response
+    const isJapanese = /[ひらがなカタカナ漢字]/.test(query)
+    
     const measures = this.mockMitigationMeasures[equipment] || []
     const departmentMeasures = measures.filter(m => 
       m.responsible_department.toLowerCase() === department.toLowerCase()
@@ -204,6 +207,11 @@ export class AIQueryMockService {
     const implemented = departmentMeasures.filter(m => m.status === 'IMPLEMENTED')
     const planned = departmentMeasures.filter(m => m.status === 'PLANNED')
     const overdue = departmentMeasures.filter(m => m.status === 'OVERDUE')
+
+    // Provide Japanese responses for Japanese queries
+    const summary = isJapanese 
+      ? `${equipment}について${department === 'REFINERY' ? '製油部門' : 'メンテナンス部門'}が担当するリスク緩和策は${departmentMeasures.length}件中${implemented.length}件が実施済みです。`
+      : `${department} department has ${implemented.length}/${departmentMeasures.length} risk mitigation measures implemented for ${equipment}. ${planned.length} measures are planned to start soon.`
 
     return {
       query,
@@ -214,26 +222,26 @@ export class AIQueryMockService {
         department: department,
         total_measures: departmentMeasures.length,
         implemented: implemented.map(m => ({
-          measure: m.measure,
+          measure: isJapanese ? this.translateToJapanese(m.measure) : m.measure,
           responsible_person: m.responsible_person,
           frequency: m.frequency,
           last_execution: m.last_execution,
           status: 'ACTIVE'
         })),
         planned: planned.map(m => ({
-          measure: m.measure,
+          measure: isJapanese ? this.translateToJapanese(m.measure) : m.measure,
           responsible_person: m.responsible_person,
           planned_start: m.planned_start,
           status: 'PENDING_START'
         })),
         overdue: overdue.map(m => ({
-          measure: m.measure,
+          measure: isJapanese ? this.translateToJapanese(m.measure) : m.measure,
           responsible_person: m.responsible_person,
           days_overdue: 15, // Mock calculation
           status: 'REQUIRES_ATTENTION'
         }))
       },
-      summary: `${department} department has ${implemented.length}/${departmentMeasures.length} risk mitigation measures implemented for ${equipment}. ${planned.length} measures are planned to start soon.`
+      summary
     }
   }
 
@@ -276,25 +284,35 @@ export class AIQueryMockService {
   }
 
   /**
-   * Simple intent detection based on keywords
+   * Enhanced intent detection supporting Japanese and English
    */
   private detectIntent(query: string): string {
     const q = query.toLowerCase()
     
-    if (q.includes('coverage') || q.includes('reflected') || q.includes('es') || q.includes('fouling')) {
+    // Coverage Analysis - English and Japanese
+    if (q.includes('coverage') || q.includes('reflected') || q.includes('es') || q.includes('fouling') ||
+        q.includes('カバレッジ') || q.includes('反映') || q.includes('ファウリング')) {
       return 'COVERAGE_ANALYSIS'
     }
-    if (q.includes('implementation') || q.includes('status') || q.includes('mitigation') || q.includes('responsible')) {
+    
+    // Mitigation Status - English and Japanese  
+    if (q.includes('implementation') || q.includes('status') || q.includes('mitigation') || q.includes('responsible') ||
+        q.includes('実施状況') || q.includes('実施') || q.includes('緩和策') || q.includes('担当') || 
+        q.includes('タスク') || q.includes('点検') || q.includes('状況') || q.includes('部門')) {
       return 'MITIGATION_STATUS'  
     }
-    if (q.includes('ti-') || q.includes('pi-') || q.includes('fi-') || q.includes('increased') || q.includes('affected')) {
+    
+    // Impact Analysis - English and Japanese
+    if (q.includes('ti-') || q.includes('pi-') || q.includes('fi-') || q.includes('increased') || q.includes('affected') ||
+        q.includes('影響') || q.includes('温度') || q.includes('圧力') || q.includes('上昇') || q.includes('変化')) {
       return 'IMPACT_ANALYSIS'
     }
+    
     return 'GENERIC'
   }
 
   /**
-   * Extract entities from query
+   * Extract entities from query (Enhanced for Japanese)
    */
   private extractEntities(query: string): any {
     const entities: any = {}
@@ -305,27 +323,32 @@ export class AIQueryMockService {
       entities.instrument = instrumentMatch[0].toUpperCase()
     }
     
-    // Extract equipment IDs  
+    // Extract equipment IDs (Enhanced)
     const equipmentMatch = query.match(/[EPT]-\d+/i)
     if (equipmentMatch) {
       entities.equipment = equipmentMatch[0].toUpperCase()
     }
     
-    // Extract system references
-    if (query.toLowerCase().includes('system a')) {
+    // Extract specific equipment mentioned in Japanese query
+    if (query.includes('E-101') || query.includes('熱交換器E-101')) {
+      entities.equipment = 'E-101'
+    }
+    
+    // Extract system references (Japanese and English)
+    if (query.toLowerCase().includes('system a') || query.includes('システムA')) {
       entities.system = 'SYS-001'
     }
     
-    // Extract departments
-    if (query.toLowerCase().includes('refinery')) {
+    // Extract departments (Japanese and English)
+    if (query.toLowerCase().includes('refinery') || query.includes('製油部門') || query.includes('製油')) {
       entities.department = 'REFINERY'
     }
-    if (query.toLowerCase().includes('maintenance')) {
+    if (query.toLowerCase().includes('maintenance') || query.includes('メンテナンス部門') || query.includes('保全')) {
       entities.department = 'MAINTENANCE'
     }
     
-    // Extract risk types
-    if (query.toLowerCase().includes('fouling')) {
+    // Extract risk types (Japanese and English)
+    if (query.toLowerCase().includes('fouling') || query.includes('ファウリング') || query.includes('汚れ')) {
       entities.risk_type = 'fouling'
     }
     
@@ -339,6 +362,19 @@ export class AIQueryMockService {
       `Review ${equipment} maintenance history`,
       `Verify ${equipment} operating parameters within limits`
     ]
+  }
+
+  private translateToJapanese(measure: string): string {
+    const translations: { [key: string]: string } = {
+      'Daily temperature monitoring': '日常温度監視',
+      'Weekly pressure drop check': '週次圧力低下確認',
+      'Monthly tube cleaning': '月次チューブ清掃',
+      'Visual inspection': '目視点検',
+      'Parameter recording': 'パラメータ記録',
+      'Equipment inspection': '設備点検'
+    }
+    
+    return translations[measure] || measure
   }
 
   private handleGenericQuery(query: string): AIQueryResponse {

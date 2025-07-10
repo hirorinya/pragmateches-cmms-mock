@@ -46,14 +46,14 @@ export class AIQueryService {
       
       const openaiResponse = await Promise.race([openaiPromise, timeoutPromise]) as AIQueryResponse | null
       
-      if (openaiResponse && openaiResponse.summary && openaiResponse.intent) {
+      if (openaiResponse && openaiResponse.summary && openaiResponse.intent && openaiResponse !== null) {
         openaiResponse.execution_time = Date.now() - startTime
         openaiResponse.source = 'openai'
         console.log('✅ OpenAI response successful')
         return openaiResponse
       } else {
-        console.warn('⚠️ OpenAI response incomplete, using mock fallback')
-        throw new Error('Incomplete OpenAI response')
+        console.warn('⚠️ OpenAI response incomplete or malformed, using mock fallback')
+        throw new Error('Incomplete or malformed OpenAI response')
       }
     } catch (error) {
       console.warn('❌ OpenAI failed, using reliable mock service:', error.message)
@@ -115,23 +115,43 @@ export class AIQueryService {
    */
   private parseOpenAIResponse(query: string, aiResponse: string): AIQueryResponse {
     try {
+      // Clean up the response - remove any markdown formatting
+      let cleanResponse = aiResponse.trim()
+      if (cleanResponse.startsWith('```json')) {
+        cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/\s*```$/, '')
+      }
+      
+      // Try to fix truncated JSON
+      if (cleanResponse.startsWith('{') && !cleanResponse.endsWith('}')) {
+        console.warn('Truncated JSON detected, attempting fallback')
+        throw new Error('Truncated JSON response')
+      }
+      
       // Try to parse as JSON first (new structured format)
-      const jsonResponse = JSON.parse(aiResponse)
+      const jsonResponse = JSON.parse(cleanResponse)
       
       if (jsonResponse.intent && jsonResponse.summary) {
+        // Ensure results is always an array
+        let results = jsonResponse.results || []
+        if (!Array.isArray(results) && typeof results === 'object') {
+          results = [results]
+        }
+        
         return {
           query,
           intent: jsonResponse.intent,
           confidence: jsonResponse.confidence || 0.85,
-          results: jsonResponse.results || [],
+          results,
           summary: jsonResponse.summary,
-          recommendations: jsonResponse.recommendations,
+          recommendations: jsonResponse.recommendations || [],
           execution_time: 0, // Will be set by caller
           source: 'openai'
         }
       }
     } catch (error) {
-      console.warn('OpenAI response is not JSON, parsing as text:', error)
+      console.warn('OpenAI JSON parsing failed, falling back to mock service:', error.message)
+      // Return null to trigger fallback to mock service
+      return null as any
     }
     
     // Fallback to text parsing for older format responses
