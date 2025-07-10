@@ -170,18 +170,37 @@ IMPORTANT: You MUST respond with valid JSON in this exact format:
   "results": [...], 
   "recommendations": ["actionable recommendation 1", "actionable recommendation 2"],
   "equipment_context": {
-    "primary_equipment": "E-101",
+    "primary_equipment": "EQ005",
     "affected_systems": ["SYS-001"],
     "departments": ["REFINERY", "MAINTENANCE"]
   }
 }
 
 Equipment Database:
-- E-101: Shell-and-tube heat exchanger (SYS-001), fouling risk covered
-- E-102: Plate heat exchanger (SYS-001), missing fouling scenarios
-- E-103: Air-cooled heat exchanger (SYS-001), missing fouling scenarios  
-- P-101: Centrifugal pump (SYS-001)
-- TI-201: Temperature instrument monitoring E-201, E-202, P-201
+Systems:
+- SYS-001: プロセス冷却系統 (Process Cooling System)
+- SYS-002: 原料供給系統 (Raw Material Supply System)  
+- SYS-003: 排水処理系統 (Wastewater Treatment System)
+- SYS-004: 電力供給系統 (Power Supply System)
+
+Equipment in SYS-001:
+- EQ005: 送風機1号機 (Blower #1), PRIMARY role
+- EQ006: ポンプ1号機 (Pump #1), PRIMARY role
+- EQ019: エアコン1号機 (Air Conditioner #1), SUPPORT role
+- EQ020: 換気扇1号機 (Ventilation Fan #1), SUPPORT role
+
+Equipment in SYS-002:
+- EQ013: 流量計1号機 (Flow Meter #1), PRIMARY role
+- EQ014: 圧力計1号機 (Pressure Gauge #1), PRIMARY role
+- EQ016: 制御盤1号機 (Control Panel #1), SUPPORT role
+
+Heat Exchangers (from risk assessment):
+- HX-100 through HX-109: Heat exchangers with varying risk coverage
+
+IMPORTANT: 
+- "System A" does not exist - suggest SYS-001 instead
+- "System B" does not exist - suggest SYS-002 instead
+- Use actual equipment IDs (EQ005, EQ006, etc.) not mock IDs (E-101, E-102, etc.)
 
 Department Responsibilities:
 - REFINERY (製油部門): Daily monitoring, visual inspections, parameter recording
@@ -189,7 +208,7 @@ Department Responsibilities:
 
 For MITIGATION_STATUS queries, use this results format:
 {
-  "equipment_id": "E-101",
+  "equipment_id": "EQ005",
   "department": "REFINERY", 
   "total_measures": 3,
   "implemented": [
