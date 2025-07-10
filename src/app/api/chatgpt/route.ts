@@ -269,11 +269,43 @@ Analyze this CMMS query and respond with the appropriate JSON format. Consider t
       ],
       model: 'gpt-4o',
       temperature: 0.3, // Lower temperature for more consistent JSON
-      max_tokens: type === 'cmms_query' ? 800 : 2000, // Shorter for CMMS to prevent truncation
+      max_tokens: type === 'cmms_query' ? 800 : type === 'insights' ? 4000 : 2000, // Higher limit for insights analysis
     })
 
+    const result = completion.choices[0].message.content
+    
+    // Check for truncation in insights analysis
+    if (type === 'insights' && result) {
+      const requiredSections = ['全体的な傾向と状態', '注意が必要な機器', '異常パターン', '推奨される保守アクション', '今後の監視ポイント']
+      const missingSection = requiredSections.find(section => !result.includes(section))
+      
+      if (missingSection || completion.choices[0].finish_reason === 'length') {
+        console.warn('Insights analysis appears truncated, missing section or length limit reached')
+        
+        // Attempt retry with higher token limit if original was at limit
+        if (completion.choices[0].finish_reason === 'length') {
+          console.log('Retrying with higher token limit due to truncation')
+          const retryCompletion = await openai.chat.completions.create({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            model: 'gpt-4o',
+            temperature: 0.3,
+            max_tokens: 6000, // Even higher limit for retry
+          })
+          
+          return NextResponse.json({
+            result: retryCompletion.choices[0].message.content,
+            usage: retryCompletion.usage,
+            retried: true
+          })
+        }
+      }
+    }
+
     return NextResponse.json({
-      result: completion.choices[0].message.content,
+      result,
       usage: completion.usage,
     })
   } catch (error: any) {
