@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ProcessMonitoringService } from '@/services/process-monitoring'
+import { SIMULATION_CONFIG } from '@/config/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,30 +45,45 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(notifications)
 
       case 'simulate':
+        // Get actual process parameters from database to simulate with real IDs
+        const monitoringService = new ProcessMonitoringService()
+        const { data: processParams } = await monitoringService['supabase']
+          .from('process_parameters')
+          .select('parameter_id, parameter_type')
+          .limit(3)
+        
+        // Use actual parameter IDs if available, otherwise use defaults
+        const parameterIds = processParams?.length ? processParams : [
+          { parameter_id: 'TI-101-01', parameter_type: 'TEMPERATURE' },
+          { parameter_id: 'VI-100-01', parameter_type: 'VIBRATION' },
+          { parameter_id: 'FI-100-01', parameter_type: 'FLOW' }
+        ]
+        
         // Simulate incoming process data for testing
-        const simulatedData = [
-          {
-            parameter_id: 'TI-101-01',
+        const simulatedData = parameterIds.map(param => {
+          let value: number
+          switch (param.parameter_type) {
+            case 'TEMPERATURE':
+              value = SIMULATION_CONFIG.TEMPERATURE_HIGH
+              break
+            case 'VIBRATION':
+              value = SIMULATION_CONFIG.VIBRATION_HIGH
+              break
+            case 'FLOW':
+              value = SIMULATION_CONFIG.FLOW_LOW
+              break
+            default:
+              value = 100.0
+          }
+          
+          return {
+            parameter_id: param.parameter_id,
             timestamp: new Date().toISOString(),
-            value: 85.5, // High temperature to trigger alerts
-            quality: 'GOOD',
-            source: 'DCS'
-          },
-          {
-            parameter_id: 'VI-100-01',
-            timestamp: new Date().toISOString(),
-            value: 3.2, // High vibration
-            quality: 'GOOD',
-            source: 'DCS'
-          },
-          {
-            parameter_id: 'FI-100-01',
-            timestamp: new Date().toISOString(),
-            value: 95.0, // Low flow rate
+            value,
             quality: 'GOOD',
             source: 'DCS'
           }
-        ]
+        })
 
         const simulationResult = await monitoringService.processIncomingData(simulatedData)
         return NextResponse.json({

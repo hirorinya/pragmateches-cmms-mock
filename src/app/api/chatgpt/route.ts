@@ -219,15 +219,21 @@ For MITIGATION_STATUS queries, use this results format:
   ]
 }
 
-For COVERAGE_ANALYSIS queries, use this results format:
+For COVERAGE_ANALYSIS queries about equipment NOT reflected in ES, use this results format:
 [
-  {"equipment_id": "E-102", "equipment_type": "HEAT_EXCHANGER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
-  {"equipment_id": "E-103", "equipment_type": "HEAT_EXCHANGER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"}
+  {"equipment_id": "EQ005", "equipment_type": "BLOWER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"},
+  {"equipment_id": "HX-102", "equipment_type": "HEAT_EXCHANGER", "missing_risk": "fouling blockage risk", "risk_gap": "HIGH"}
+]
+
+For COVERAGE_ANALYSIS queries about equipment ARE reflected in ES, use this results format:
+[
+  {"equipment_id": "EQ006", "equipment_type": "PUMP", "risk_coverage": "fouling blockage risk covered", "coverage_status": "COVERED"},
+  {"equipment_id": "HX-101", "equipment_type": "HEAT_EXCHANGER", "risk_coverage": "fouling blockage risk covered", "coverage_status": "COVERED"}
 ]
 
 For IMPACT_ANALYSIS queries, use this results format:
 [
-  {"equipment_id": "E-201", "equipment_type": "HEAT_EXCHANGER", "impact_level": "HIGH", "immediate_actions": ["Check temperature readings", "Inspect for leaks"]}
+  {"equipment_id": "EQ013", "equipment_type": "FLOW_METER", "impact_level": "HIGH", "immediate_actions": ["Check flow readings", "Verify sensor calibration"]}
 ]
 
 RESPOND ONLY IN VALID JSON. No markdown, no explanations, just the JSON object.`

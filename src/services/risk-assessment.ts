@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { RISK_THRESHOLDS, RPN_THRESHOLD } from '@/config/constants'
 
 interface FailureMode {
   failure_mode_id?: string
@@ -74,9 +75,9 @@ export class RiskAssessmentService {
   // Get risk level from likelihood and consequence scores
   getRiskLevel(likelihood: number, consequence: number): string {
     const riskScore = likelihood * consequence
-    if (riskScore >= 20) return 'EXTREME'
-    if (riskScore >= 12) return 'HIGH'
-    if (riskScore >= 6) return 'MEDIUM'
+    if (riskScore >= RISK_THRESHOLDS.EXTREME) return 'EXTREME'
+    if (riskScore >= RISK_THRESHOLDS.HIGH) return 'HIGH'
+    if (riskScore >= RISK_THRESHOLDS.MEDIUM) return 'MEDIUM'
     return 'LOW'
   }
 
@@ -175,8 +176,9 @@ export class RiskAssessmentService {
       )
 
       for (const strategy of relatedStrategies) {
-        // High RPN (>100) suggests increasing frequency
-        if (fm.severity_score * fm.occurrence_score * fm.detection_score > 100) {
+        // High RPN suggests increasing frequency
+        const rpnScore = fm.severity_score * fm.occurrence_score * fm.detection_score
+        if (rpnScore > RPN_THRESHOLD) {
           const currentFreq = strategy.frequency_value || 30
           const recommendedFreq = Math.max(7, Math.floor(currentFreq * 0.5)) // Reduce interval by 50%
 

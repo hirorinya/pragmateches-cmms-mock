@@ -3,6 +3,7 @@
 // ============================================
 
 import { createClient } from '@supabase/supabase-js'
+import { generateWorkOrderId } from '@/config/constants'
 
 interface EquipmentStrategy {
   strategy_id: string
@@ -255,9 +256,8 @@ export class TaskGenerationService {
       .rpc('generate_work_order_id')
 
     if (error) {
-      // Fallback ID generation
-      const timestamp = Date.now().toString().slice(-6)
-      return `WO${timestamp}`
+      // Fallback ID generation using centralized function
+      return generateWorkOrderId()
     }
 
     return data

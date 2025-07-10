@@ -1,5 +1,7 @@
 // Data aggregation utilities for multi-turn OpenAI graph generation
 
+import { DATE_RANGES, getRelativeDate } from '@/config/constants'
+
 export interface DataSchema {
   available_tables: {
     [tableName: string]: {
@@ -75,7 +77,7 @@ export async function getDataSchema(categoryTypeId: number): Promise<DataSchema>
       }
     },
     equipment_count: count || 0,
-    date_range: `${dateRangeStart?.[0]?.実施日 || '2024-01-01'} to ${dateRange?.[0]?.実施日 || '2024-12-31'}`,
+    date_range: `${dateRangeStart?.[0]?.実施日 || getRelativeDate(-DATE_RANGES.DEFAULT_PAST_DAYS)} to ${dateRange?.[0]?.実施日 || getRelativeDate(0)}`,
     category: categoryNames[categoryTypeId as keyof typeof categoryNames] || '未知'
   }
 }
