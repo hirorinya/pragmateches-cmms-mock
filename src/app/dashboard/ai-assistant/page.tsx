@@ -137,7 +137,7 @@ export default function AIAssistantPage() {
 
     let formatted = `## ${response.summary}\n\n`
 
-    if (response.results && response.results.length > 0) {
+    if (response.results && (Array.isArray(response.results) ? response.results.length > 0 : Object.keys(response.results).length > 0)) {
       formatted += `### 📊 Analysis Results:\n\n`
       
       // Remove duplicates based on equipment_id
@@ -156,9 +156,9 @@ export default function AIAssistantPage() {
           formatted += `- Missing Risk: ${result.missing_risk || 'fouling blockage risk'}\n`
           formatted += `- Risk Gap: ${result.risk_gap || 'HIGH'}\n\n`
         })
-      } else if (response.results.equipment_id) {
+      } else if (uniqueResults[0]?.equipment_id && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
         // Mitigation status format
-        const r = response.results
+        const r = uniqueResults[0]
         formatted += `**Equipment:** ${r.equipment_id}\n`
         formatted += `**Department:** ${r.department}\n`
         formatted += `**Total Measures:** ${r.total_measures}\n\n`
@@ -193,7 +193,21 @@ export default function AIAssistantPage() {
             formatted += '\n'
           }
         })
+      } else if (uniqueResults.length > 0) {
+        // Generic results format - fallback for any other result structure
+        formatted += `**Data Analysis:**\n`
+        uniqueResults.forEach((result: any, index: number) => {
+          formatted += `${index + 1}. ${JSON.stringify(result, null, 2)}\n\n`
+        })
       }
+    } else if (response.results && !Array.isArray(response.results) && typeof response.results === 'object') {
+      // Handle single object results that aren't arrays
+      formatted += `### 📊 Analysis Results:\n\n`
+      formatted += `**Equipment Analysis:**\n`
+      Object.entries(response.results).forEach(([key, value]) => {
+        formatted += `- **${key}**: ${value}\n`
+      })
+      formatted += '\n'
     }
 
     if (response.recommendations?.length > 0) {
