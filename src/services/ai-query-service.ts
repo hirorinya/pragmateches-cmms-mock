@@ -83,7 +83,7 @@ export class AIQueryService {
           data: {
             // Include relevant CMMS context
             equipment_types: ['HEAT_EXCHANGER', 'PUMP', 'TANK'],
-            systems: ['SYS-001', 'SYS-002'],
+            systems: ['SYS-001', 'SYS-002', 'SYS-003', 'SYS-004', 'SYS-005'],
             instruments: ['TI-201', 'PI-101', 'FI-301'],
             departments: ['REFINERY', 'MAINTENANCE'],
             query_context: 'CMMS maintenance management system'

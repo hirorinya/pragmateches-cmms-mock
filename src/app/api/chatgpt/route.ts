@@ -201,6 +201,7 @@ Systems:
 - SYS-002: 原料供給系統 (Raw Material Supply System)  
 - SYS-003: 排水処理系統 (Wastewater Treatment System)
 - SYS-004: 電力供給系統 (Power Supply System)
+- SYS-005: 安全監視系統 (Safety Monitoring System)
 
 Equipment in SYS-001:
 - EQ005: 送風機1号機 (Blower #1), PRIMARY role
@@ -212,6 +213,18 @@ Equipment in SYS-002:
 - EQ013: 流量計1号機 (Flow Meter #1), PRIMARY role
 - EQ014: 圧力計1号機 (Pressure Gauge #1), PRIMARY role
 - EQ016: 制御盤1号機 (Control Panel #1), SUPPORT role
+
+Equipment in SYS-003:
+- EQ017: 配管1号機 (Piping #1), PRIMARY role
+- EQ018: 弁1号機 (Valve #1), PRIMARY role
+
+Equipment in SYS-004:
+- EQ009: 変圧器1号機 (Transformer #1), CRITICAL role
+- EQ010: 配電盤1号機 (Distribution Panel #1), CRITICAL role
+- EQ012: 非常用発電機 (Emergency Generator), CRITICAL role
+
+Equipment in SYS-005:
+- No equipment currently mapped to this system
 
 Heat Exchangers (from risk assessment):
 - HX-100 through HX-109: Heat exchangers with varying risk coverage
