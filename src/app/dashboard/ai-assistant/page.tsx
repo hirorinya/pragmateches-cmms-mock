@@ -244,6 +244,35 @@ export default function AIAssistantPage() {
           if (equipment.設備種別名) formatted += `- **Type:** ${equipment.設備種別名}\n`
           formatted += '\n'
         })
+      } else if (uniqueResults.length > 0 && uniqueResults[0]?.strategy_id) {
+        // Equipment strategy format
+        const groupedByEquipment = uniqueResults.reduce((acc: any, strategy: any) => {
+          const equipmentId = strategy.equipment_id
+          if (!acc[equipmentId]) {
+            acc[equipmentId] = []
+          }
+          acc[equipmentId].push(strategy)
+          return acc
+        }, {})
+
+        Object.entries(groupedByEquipment).forEach(([equipmentId, strategies]: [string, any]) => {
+          formatted += `**🔧 Equipment ${equipmentId}**\n`
+          if (Array.isArray(strategies)) {
+            strategies.forEach((strategy: any, index: number) => {
+              formatted += `  ${index + 1}. **${strategy.strategy_name}**\n`
+              if (strategy.frequency_type && strategy.frequency_value) {
+                formatted += `     - **Frequency:** ${strategy.frequency_value} ${strategy.frequency_type}\n`
+              }
+              if (strategy.responsible_department) {
+                formatted += `     - **Department:** ${strategy.responsible_department}\n`
+              }
+              if (strategy.status) {
+                formatted += `     - **Status:** ${strategy.status}\n`
+              }
+              formatted += '\n'
+            })
+          }
+        })
       } else if (uniqueResults.length > 0) {
         // Generic results format - improved display
         formatted += `**Equipment Analysis:**\n\n`

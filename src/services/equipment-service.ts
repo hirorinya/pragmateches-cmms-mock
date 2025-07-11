@@ -361,6 +361,49 @@ export class EquipmentService {
   }
 
   /**
+   * Get all equipment strategies
+   */
+  async getEquipmentStrategies(): Promise<any[]> {
+    return withPerformanceTracking(
+      'equipment_service.getEquipmentStrategies',
+      async () => {
+        try {
+          const { data: strategies, error } = await supabase
+            .from('equipment_strategy')
+            .select(`
+              strategy_id,
+              equipment_id,
+              strategy_name,
+              frequency_type,
+              frequency_value,
+              responsible_department,
+              status,
+              equipment!inner(
+                設備名,
+                設備種別ID
+              )
+            `)
+            .order('equipment_id')
+
+          if (error) {
+            recordError(error, 'equipment_service.getEquipmentStrategies', 'high')
+            throw error
+          }
+
+          return strategies || []
+        } catch (error) {
+          recordError(
+            error instanceof Error ? error : new Error(String(error)),
+            'equipment_service.getEquipmentStrategies',
+            'high'
+          )
+          throw error
+        }
+      }
+    )
+  }
+
+  /**
    * Get cache statistics for monitoring
    */
   getCacheStats() {

@@ -62,6 +62,9 @@ export class AIService {
             case 'MITIGATION_STATUS':
               response = await this.handleMitigationStatus(query, entities)
               break
+            case 'EQUIPMENT_STRATEGY_LIST':
+              response = await this.handleEquipmentStrategyList(query, entities)
+              break
             default:
               response = this.handleUnknownQuery(query)
           }
@@ -311,6 +314,68 @@ export class AIService {
   }
 
   /**
+   * Handle equipment strategy list queries
+   */
+  private async handleEquipmentStrategyList(query: string, entities: any): Promise<AIQueryResponse> {
+    try {
+      const strategies = await this.equipmentService.getEquipmentStrategies()
+      
+      if (!strategies || strategies.length === 0) {
+        return {
+          query,
+          intent: 'EQUIPMENT_STRATEGY_LIST',
+          confidence: 0.8,
+          results: [],
+          summary: 'No equipment strategies found in the database',
+          recommendations: [
+            'Check if equipment strategies have been defined',
+            'Verify database connectivity'
+          ],
+          source: 'database'
+        }
+      }
+
+      // Extract unique equipment IDs
+      const equipmentIds = [...new Set(strategies.map(s => s.equipment_id))].sort()
+      
+      return {
+        query,
+        intent: 'EQUIPMENT_STRATEGY_LIST',
+        confidence: 0.95,
+        results: strategies.map(strategy => ({
+          equipment_id: strategy.equipment_id,
+          strategy_id: strategy.strategy_id,
+          strategy_name: strategy.strategy_name,
+          frequency_type: strategy.frequency_type,
+          frequency_value: strategy.frequency_value,
+          responsible_department: strategy.responsible_department,
+          status: strategy.status
+        })),
+        summary: `Found ${equipmentIds.length} equipment with defined strategies: ${equipmentIds.join(', ')}`,
+        recommendations: [
+          `Total strategies: ${strategies.length}`,
+          `Unique equipment: ${equipmentIds.length}`,
+          'You can ask about specific equipment strategies for more details'
+        ],
+        source: 'database'
+      }
+    } catch (error) {
+      return {
+        query,
+        intent: 'EQUIPMENT_STRATEGY_LIST',
+        confidence: 0.8,
+        results: [],
+        summary: 'Error retrieving equipment strategies from database',
+        recommendations: [
+          'Check database connectivity',
+          'Verify equipment strategy table exists'
+        ],
+        source: 'database'
+      }
+    }
+  }
+
+  /**
    * Handle unknown queries
    */
   private handleUnknownQuery(query: string): AIQueryResponse {
@@ -377,6 +442,15 @@ export class AIService {
     if (q.includes('mitigation') || q.includes('implementation') || 
         q.includes('responsible') || q.includes('緩和策') || q.includes('実施状況')) {
       return 'MITIGATION_STATUS'
+    }
+    
+    // Equipment strategy queries
+    if ((q.includes('equipment') && q.includes('strategy')) || 
+        q.includes('equipment strategy') || q.includes('maintenance strategies') ||
+        q.includes('equipment ids') || q.includes('equipment id') ||
+        (q.includes('show') && q.includes('equipment') && q.includes('strategy')) ||
+        (q.includes('list') && q.includes('equipment') && q.includes('strategy'))) {
+      return 'EQUIPMENT_STRATEGY_LIST'
     }
     
     return 'UNKNOWN'
