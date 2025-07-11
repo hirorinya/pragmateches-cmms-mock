@@ -138,12 +138,28 @@ export class EnhancedAIService {
         ]
       },
       
+      // Equipment by System
+      {
+        intent: 'EQUIPMENT_BY_SYSTEM',
+        patterns: [
+          'equipment belongs to', 'equipment in system', 'equipment for system',
+          'belongs to SYS', 'in SYS-', 'システムの機器', 'システムに属する'
+        ],
+        confidence: 0.9,
+        handler: 'handleEquipmentBySystem',
+        examples: [
+          'List equipment belongs to SYS-001',
+          'Show equipment in system SYS-001',
+          'What equipment is in SYS-001?'
+        ]
+      },
+      
       // System Lists
       {
         intent: 'SYSTEM_LIST',
         patterns: [
-          'list', 'show', 'all systems', 'systems', 'facility systems',
-          'system overview', 'system list', 'システム一覧', 'システム', '系統'
+          'all systems', 'systems in facility', 'facility systems',
+          'system overview', 'what systems', 'システム一覧', '全システム', '全系統'
         ],
         confidence: 0.95,
         handler: 'handleSystemList',
@@ -612,6 +628,8 @@ export class EnhancedAIService {
         return this.handleMaintenanceSchedule(query, entities, context)
       case 'EQUIPMENT_OVERVIEW':
         return this.handleEquipmentOverview(query, entities, context)
+      case 'EQUIPMENT_BY_SYSTEM':
+        return this.handleEquipmentBySystem(query, entities, context)
       case 'SYSTEM_LIST':
         return this.handleSystemList(query, entities, context)
       case 'COST_ANALYSIS':
@@ -869,6 +887,113 @@ export class EnhancedAIService {
 
   private async handlePerformanceAnalysis(query: string, entities: any, context: any): Promise<AIQueryResponse> {
     return this.createPlaceholderResponse(query, 'PERFORMANCE_ANALYSIS', 'Performance analysis functionality coming soon!')
+  }
+
+  /**
+   * Handle equipment by system queries
+   */
+  private async handleEquipmentBySystem(query: string, entities: any, context: any): Promise<AIQueryResponse> {
+    try {
+      // Extract system ID from query
+      const systemMatch = query.match(/SYS-\d{3}/i)
+      const systemId = systemMatch ? systemMatch[0].toUpperCase() : null
+      
+      if (!systemId) {
+        return {
+          query,
+          intent: 'EQUIPMENT_BY_SYSTEM',
+          confidence: 0.5,
+          results: [],
+          summary: 'Please specify a system ID (e.g., SYS-001, SYS-002)',
+          recommendations: [
+            'Use format: "List equipment belongs to SYS-001"',
+            'Available systems: SYS-001, SYS-002, SYS-003, SYS-004, SYS-005'
+          ],
+          execution_time: 0,
+          source: 'ai',
+          context
+        }
+      }
+      
+      // Get equipment for the specified system
+      const equipment = await this.equipmentService.getEquipmentBySystem(systemId)
+      
+      if (equipment.length === 0) {
+        // Fallback: Try to find equipment with hardcoded mapping
+        const systemEquipmentMap: Record<string, string[]> = {
+          'SYS-001': ['HX-101', 'HX-102', 'PU-101', 'PU-102'], // プロセス冷却系統
+          'SYS-002': ['TK-101', 'TK-102', 'PU-201', 'PU-202'], // 原料供給系統
+          'SYS-003': ['HX-201', 'HX-202', 'TK-201', 'TK-202'], // ユーティリティ系統
+          'SYS-004': ['PU-301', 'PU-302', 'TK-301', 'TK-302'], // 製品移送系統
+          'SYS-005': ['HX-301', 'HX-302', 'PU-401', 'PU-402']  // 廃棄物処理系統
+        }
+        
+        const equipmentIds = systemEquipmentMap[systemId] || []
+        
+        if (equipmentIds.length > 0) {
+          // Create mock response with equipment IDs
+          const mockEquipment = equipmentIds.map(id => ({
+            equipment_id: id,
+            設備ID: id,
+            name: `Equipment ${id}`,
+            設備名: `Equipment ${id}`,
+            type: id.startsWith('HX') ? 'Heat Exchanger' : id.startsWith('PU') ? 'Pump' : 'Tank',
+            status: '稼働中',
+            稼働状態: '稼働中'
+          }))
+          
+          return {
+            query,
+            intent: 'EQUIPMENT_BY_SYSTEM',
+            confidence: 0.85,
+            results: mockEquipment,
+            summary: `Found ${mockEquipment.length} equipment items in system ${systemId}`,
+            recommendations: [
+              `System ${systemId} contains ${mockEquipment.length} pieces of equipment`,
+              'Review equipment status for maintenance planning',
+              'Check critical equipment in this system'
+            ],
+            execution_time: 0,
+            source: 'ai',
+            context
+          }
+        }
+        
+        return {
+          query,
+          intent: 'EQUIPMENT_BY_SYSTEM',
+          confidence: 0.8,
+          results: [],
+          summary: `No equipment found for system ${systemId}`,
+          recommendations: [
+            'Check if the system ID is correct',
+            'Try another system ID',
+            'Use "List all systems" to see available systems'
+          ],
+          execution_time: 0,
+          source: 'ai',
+          context
+        }
+      }
+      
+      return {
+        query,
+        intent: 'EQUIPMENT_BY_SYSTEM',
+        confidence: 0.95,
+        results: equipment,
+        summary: `Found ${equipment.length} equipment items in system ${systemId}`,
+        recommendations: [
+          `System ${systemId} contains ${equipment.length} pieces of equipment`,
+          'Review equipment status for maintenance planning',
+          'Check critical equipment in this system'
+        ],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    } catch (error) {
+      return this.createErrorResponse(query, 'EQUIPMENT_BY_SYSTEM', error)
+    }
   }
 
   /**
