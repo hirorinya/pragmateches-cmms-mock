@@ -49,20 +49,22 @@ export class EnhancedAIService {
 
   private initializePatterns() {
     this.intentPatterns = [
-      // Equipment Status & Health
+      // Equipment Status & Health (including risk factors)
       {
         intent: 'EQUIPMENT_STATUS',
         patterns: [
           'status', 'condition', 'health', 'how is', 'what is the state',
           'running', 'operating', 'working', 'functioning', 'performance',
-          '状態', '状況', '動作', '運転', '稼働', 'どう', 'どんな'
+          'risk factors', 'risks', 'what are the', 'tell me about',
+          '状態', '状況', '動作', '運転', '稼働', 'どう', 'どんな', 'リスク'
         ],
         confidence: 0.9,
         handler: 'handleEquipmentStatus',
         examples: [
           'How is HX-101 running?',
           'What is the status of all pumps?',
-          'Show me equipment health'
+          'What are the risk factors for equipment HX-101?',
+          'Tell me about equipment HX-101'
         ]
       },
       
@@ -131,6 +133,22 @@ export class EnhancedAIService {
           'Show me all equipment',
           'List all pumps',
           'Give me an overview'
+        ]
+      },
+      
+      // System Lists
+      {
+        intent: 'SYSTEM_LIST',
+        patterns: [
+          'list', 'show', 'all systems', 'systems', 'facility systems',
+          'system overview', 'system list', 'システム一覧', 'システム', '系統'
+        ],
+        confidence: 0.95,
+        handler: 'handleSystemList',
+        examples: [
+          'List all systems in the facility',
+          'Show me all systems',
+          'What systems do we have?'
         ]
       },
       
@@ -229,7 +247,14 @@ export class EnhancedAIService {
           /(?:equipment|pump|tank|exchanger|heater|cooler|vessel|reactor)\s*[\#\-]?(\d+)/gi,
           /(?:機器|ポンプ|タンク|熱交換器|加熱器|冷却器|容器|反応器)\s*[\#\-]?(\d+)/gi
         ],
-        extractor: (match) => match[0].toUpperCase().replace(/\s+/g, '')
+        extractor: (match) => {
+          const cleanMatch = match[0].toUpperCase().replace(/\s+/g, '')
+          // Ensure proper format (e.g., HX-101, not HX101)
+          if (!cleanMatch.includes('-') && /^[A-Z]{1,3}\d+$/.test(cleanMatch)) {
+            return cleanMatch.replace(/([A-Z]+)(\d+)/, '$1-$2')
+          }
+          return cleanMatch
+        }
       },
       
       // System IDs (Enhanced)
@@ -527,6 +552,8 @@ export class EnhancedAIService {
         return this.handleMaintenanceSchedule(query, entities, context)
       case 'EQUIPMENT_OVERVIEW':
         return this.handleEquipmentOverview(query, entities, context)
+      case 'SYSTEM_LIST':
+        return this.handleSystemList(query, entities, context)
       case 'COST_ANALYSIS':
         return this.handleCostAnalysis(query, entities, context)
       case 'PROCESS_MONITORING':
@@ -734,7 +761,34 @@ export class EnhancedAIService {
   }
 
   private async handleEquipmentOverview(query: string, entities: any, context: any): Promise<AIQueryResponse> {
-    return this.createPlaceholderResponse(query, 'EQUIPMENT_OVERVIEW', 'Equipment overview functionality coming soon!')
+    try {
+      // If asking for systems specifically, route to system list
+      if (query.toLowerCase().includes('system')) {
+        return this.handleSystemList(query, entities, context)
+      }
+      
+      // Otherwise get all equipment
+      const allEquipment = await this.equipmentService.getAllEquipment()
+      const summary = `Found ${allEquipment.length} pieces of equipment in the facility. All equipment is monitored for maintenance, performance, and safety compliance.`
+      
+      return {
+        query,
+        intent: 'EQUIPMENT_OVERVIEW',
+        confidence: 0.9,
+        results: allEquipment.slice(0, 20), // Show first 20
+        summary,
+        recommendations: [
+          'Review individual equipment details for specific information',
+          'Check maintenance schedules for upcoming work',
+          'Monitor critical equipment performance regularly'
+        ],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    } catch (error) {
+      return this.createErrorResponse(query, 'EQUIPMENT_OVERVIEW', error)
+    }
   }
 
   private async handleCostAnalysis(query: string, entities: any, context: any): Promise<AIQueryResponse> {
@@ -755,6 +809,33 @@ export class EnhancedAIService {
 
   private async handlePerformanceAnalysis(query: string, entities: any, context: any): Promise<AIQueryResponse> {
     return this.createPlaceholderResponse(query, 'PERFORMANCE_ANALYSIS', 'Performance analysis functionality coming soon!')
+  }
+
+  /**
+   * Handle system list queries - get all systems from database
+   */
+  private async handleSystemList(query: string, entities: any, context: any): Promise<AIQueryResponse> {
+    try {
+      const systems = await this.equipmentService.getAllSystems()
+      
+      return {
+        query,
+        intent: 'SYSTEM_LIST',
+        confidence: 0.98,
+        results: systems,
+        summary: `Found ${systems.length} systems in the facility`,
+        recommendations: [
+          'All facility systems listed with current equipment counts',
+          'Critical systems should be monitored closely',
+          'Review system-specific equipment for maintenance planning'
+        ],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    } catch (error) {
+      return this.createErrorResponse(query, 'SYSTEM_LIST', error)
+    }
   }
 
   private createPlaceholderResponse(query: string, intent: string, message: string): AIQueryResponse {

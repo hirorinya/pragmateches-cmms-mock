@@ -30,21 +30,43 @@ export class AIQueryService {
 
   /**
    * Main query processing function
-   * Tries OpenAI first, falls back to enhanced AI service, then database service
+   * Database-first approach: Enhanced AI → Database → OpenAI (last resort)
    */
   async processQuery(query: string): Promise<AIQueryResponse> {
     const startTime = Date.now()
     
-    // Always ensure services are available for fallback
+    // Always ensure services are available
     if (!this.databaseService || !this.enhancedAIService) {
       await this.initializeServices()
     }
     
     try {
-      // Try OpenAI API first (with timeout)
+      // Try enhanced AI service first (has database access and better understanding)
+      const enhancedResponse = await this.enhancedAIService.processQuery(query)
+      enhancedResponse.execution_time = Date.now() - startTime
+      enhancedResponse.source = 'enhanced_ai'
+      console.log('✅ Enhanced AI service response successful')
+      return enhancedResponse
+    } catch (error) {
+      console.warn('❌ Enhanced AI service failed, trying basic database service:', error.message)
+    }
+
+    try {
+      // Fallback to basic database service (reliable database queries)
+      const databaseResponse = await this.databaseService.processQuery(query)
+      databaseResponse.execution_time = Date.now() - startTime
+      databaseResponse.source = 'database'
+      console.log('✅ Database service response successful')
+      return databaseResponse
+    } catch (error) {
+      console.warn('❌ Database service failed, trying OpenAI as last resort:', error.message)
+    }
+
+    try {
+      // Last resort: OpenAI API (only for completely unknown queries)
       const openaiPromise = this.tryOpenAI(query)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('OpenAI timeout')), 8000)
+        setTimeout(() => reject(new Error('OpenAI timeout')), 5000)
       )
       
       const openaiResponse = await Promise.race([openaiPromise, timeoutPromise]) as AIQueryResponse | null
@@ -52,33 +74,26 @@ export class AIQueryService {
       if (openaiResponse && openaiResponse.summary && openaiResponse.intent && openaiResponse !== null) {
         openaiResponse.execution_time = Date.now() - startTime
         openaiResponse.source = 'openai'
-        console.log('✅ OpenAI response successful')
+        console.log('⚠️ OpenAI response used as last resort')
         return openaiResponse
       } else {
-        console.warn('⚠️ OpenAI response incomplete or malformed, using enhanced AI fallback')
-        throw new Error('Incomplete or malformed OpenAI response')
+        throw new Error('OpenAI response incomplete or malformed')
       }
     } catch (error) {
-      console.warn('❌ OpenAI failed, trying enhanced AI service:', error.message)
+      console.error('❌ All AI services failed:', error.message)
     }
 
-    try {
-      // Try enhanced AI service with better natural language understanding
-      const enhancedResponse = await this.enhancedAIService.processQuery(query)
-      enhancedResponse.execution_time = Date.now() - startTime
-      enhancedResponse.source = 'enhanced_ai'
-      console.log('✅ Enhanced AI service response successful')
-      return enhancedResponse
-    } catch (error) {
-      console.warn('❌ Enhanced AI service failed, using basic database service:', error.message)
+    // Final error response
+    return {
+      query,
+      intent: 'ERROR',
+      confidence: 0,
+      results: [],
+      summary: 'Unable to process query. All AI services failed.',
+      recommendations: ['Try rephrasing your question', 'Check system status'],
+      execution_time: Date.now() - startTime,
+      source: 'database'
     }
-
-    // Final fallback to basic database service
-    const databaseResponse = await this.databaseService.processQuery(query)
-    databaseResponse.execution_time = Date.now() - startTime
-    databaseResponse.source = 'database'
-    console.log('✅ Database service response successful')
-    return databaseResponse
   }
 
   /**
