@@ -210,14 +210,34 @@ export class EnhancedAIService {
         patterns: [
           'risk', 'safety', 'hazard', 'danger', 'critical', 'priority',
           'assessment', 'evaluation', 'concern', 'threat', 'vulnerability',
-          'リスク', '安全', '危険', '重要', '優先', '評価'
+          'fouling', 'blockage', 'high risk', 'tube blockage',
+          'リスク', '安全', '危険', '重要', '優先', '評価', 'ファウリング'
         ],
         confidence: 0.9,
         handler: 'handleRiskAssessment',
         examples: [
           'What are the highest risks?',
           'Show me safety concerns',
-          'Critical equipment assessment'
+          'Critical equipment assessment',
+          'Which equipment have high risk of fouling?'
+        ]
+      },
+
+      // Equipment Strategy
+      {
+        intent: 'EQUIPMENT_STRATEGY',
+        patterns: [
+          'equipment strategy', 'strategy', 'maintenance strategy', 'reflected',
+          'fully reflected', 'accurately reflected', 'equipment strategy',
+          'strategy coverage', 'strategy alignment', 'strategy review',
+          '設備戦略', '戦略', 'メンテナンス戦略', '反映'
+        ],
+        confidence: 0.9,
+        handler: 'handleEquipmentStrategy',
+        examples: [
+          'Are high-risk equipment reflected in Equipment Strategy?',
+          'Show equipment strategy coverage',
+          'Review maintenance strategies for critical equipment'
         ]
       },
       
@@ -701,6 +721,8 @@ export class EnhancedAIService {
         return this.handleProcessMonitoring(query, entities, context)
       case 'RISK_ASSESSMENT':
         return this.handleRiskAssessment(query, entities, context)
+      case 'EQUIPMENT_STRATEGY':
+        return this.handleEquipmentStrategy(query, entities, context)
       case 'COMPLIANCE_TRACKING':
         return this.handleComplianceTracking(query, entities, context)
       case 'PERFORMANCE_ANALYSIS':
@@ -898,7 +920,106 @@ export class EnhancedAIService {
 
   // Placeholder methods for additional handlers
   private async handleMaintenanceSchedule(query: string, entities: any, context: any): Promise<AIQueryResponse> {
-    return this.createPlaceholderResponse(query, 'MAINTENANCE_SCHEDULE', 'Maintenance schedule functionality coming soon!')
+    try {
+      // Mock maintenance schedule data
+      const upcomingMaintenance = [
+        {
+          equipment_id: 'HX-101',
+          equipment_name: 'Heat Exchanger 101',
+          task: 'Monthly PM Inspection',
+          due_date: '2024-01-15',
+          frequency: 'Monthly',
+          priority: 'MEDIUM',
+          estimated_hours: 4,
+          assigned_to: '保全チーム A'
+        },
+        {
+          equipment_id: 'PU-102',
+          equipment_name: 'Pump 102',
+          task: 'Bearing Replacement',
+          due_date: '2024-01-14',
+          frequency: 'Quarterly',
+          priority: 'HIGH',
+          estimated_hours: 6,
+          assigned_to: '保全チーム B'
+        },
+        {
+          equipment_id: 'TK-201',
+          equipment_name: 'Storage Tank 201',
+          task: 'Quarterly Inspection',
+          due_date: '2024-01-16',
+          frequency: 'Quarterly',
+          priority: 'LOW',
+          estimated_hours: 2,
+          assigned_to: '保全チーム C'
+        },
+        {
+          equipment_id: 'CP-301',
+          equipment_name: 'Air Compressor 301',
+          task: 'Oil Change Service',
+          due_date: '2024-01-17',
+          frequency: 'Semi-Annual',
+          priority: 'MEDIUM',
+          estimated_hours: 3,
+          assigned_to: '保全チーム A'
+        }
+      ]
+
+      // Filter by system if specified
+      const systemMatch = query.match(/SYS-\d{3}/i)
+      let filteredMaintenance = upcomingMaintenance
+      
+      if (systemMatch) {
+        const systemId = systemMatch[0].toUpperCase()
+        const systemEquipment = {
+          'SYS-001': ['HX-101', 'HX-102', 'PU-101', 'PU-102'],
+          'SYS-002': ['TK-101', 'TK-102', 'PU-201', 'PU-202'],
+          'SYS-003': ['HX-201', 'HX-202', 'TK-201', 'TK-202']
+        }
+        
+        const equipmentIds = systemEquipment[systemId] || []
+        filteredMaintenance = upcomingMaintenance.filter(m => equipmentIds.includes(m.equipment_id))
+      }
+
+      const summary = `Found ${filteredMaintenance.length} upcoming maintenance tasks:\n\n` +
+        filteredMaintenance.map((task, index) => 
+          `${index + 1}. ${task.equipment_name} (${task.equipment_id})\n` +
+          `   Task: ${task.task}\n` +
+          `   Due: ${new Date(task.due_date).toLocaleDateString()}\n` +
+          `   Priority: ${task.priority}\n` +
+          `   Assigned to: ${task.assigned_to}\n`
+        ).join('\n')
+
+      return {
+        query,
+        intent: 'MAINTENANCE_SCHEDULE',
+        confidence: 0.9,
+        results: filteredMaintenance,
+        summary,
+        recommendations: [
+          'Review upcoming maintenance tasks',
+          'Ensure proper resource allocation',
+          'Consider equipment criticality when prioritizing'
+        ],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+      
+    } catch (error) {
+      console.error('Error handling maintenance schedule query:', error)
+      return {
+        query,
+        intent: 'MAINTENANCE_SCHEDULE',
+        confidence: 0.3,
+        results: [],
+        summary: 'Error retrieving maintenance schedule information.',
+        recommendations: ['Please try again or contact system administrator'],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    }
   }
 
   private async handleEquipmentOverview(query: string, entities: any, context: any): Promise<AIQueryResponse> {
@@ -941,7 +1062,275 @@ export class EnhancedAIService {
   }
 
   private async handleRiskAssessment(query: string, entities: any, context: any): Promise<AIQueryResponse> {
-    return this.createPlaceholderResponse(query, 'RISK_ASSESSMENT', 'Risk assessment functionality coming soon!')
+    try {
+      // Mock risk assessment data with fouling risk focus
+      const riskData = [
+        {
+          equipment_id: 'HX-101',
+          equipment_name: 'Heat Exchanger 101',
+          system_id: 'SYS-001',
+          risk_type: 'Fouling',
+          risk_level: 'HIGH',
+          risk_score: 8.5,
+          description: 'High risk of tube blockage due to fouling from process fluids',
+          impact: 'Production shutdown, reduced heat transfer efficiency',
+          likelihood: 'High - observed fouling patterns in similar equipment',
+          mitigation: 'Increase cleaning frequency, install online monitoring'
+        },
+        {
+          equipment_id: 'HX-102',
+          equipment_name: 'Heat Exchanger 102',
+          system_id: 'SYS-001',
+          risk_type: 'Fouling',
+          risk_level: 'HIGH',
+          risk_score: 8.2,
+          description: 'Very high risk of tube blockage due to fouling',
+          impact: 'Backup heat exchanger for HX-101, critical for system reliability',
+          likelihood: 'High - same process conditions as HX-101',
+          mitigation: 'Implement predictive fouling monitoring, schedule proactive cleaning'
+        },
+        {
+          equipment_id: 'PU-101',
+          equipment_name: 'Pump 101',
+          system_id: 'SYS-001',
+          risk_type: 'Mechanical',
+          risk_level: 'MEDIUM',
+          risk_score: 6.2,
+          description: 'Bearing wear risk due to continuous operation',
+          impact: 'Reduced flow rate, potential seal failure',
+          likelihood: 'Medium - normal wear patterns observed',
+          mitigation: 'Vibration monitoring, scheduled bearing replacement'
+        },
+        {
+          equipment_id: 'TK-201',
+          equipment_name: 'Storage Tank 201',
+          system_id: 'SYS-003',
+          risk_type: 'Corrosion',
+          risk_level: 'MEDIUM',
+          risk_score: 5.8,
+          description: 'Internal corrosion risk from stored chemicals',
+          impact: 'Tank integrity compromise, environmental release',
+          likelihood: 'Medium - based on material compatibility',
+          mitigation: 'Regular thickness monitoring, coating inspection'
+        },
+        {
+          equipment_id: 'CV-105',
+          equipment_name: 'Control Valve 105',
+          system_id: 'SYS-001',
+          risk_type: 'Fouling',
+          risk_level: 'MEDIUM',
+          risk_score: 6.8,
+          description: 'Valve seat fouling affecting control accuracy',
+          impact: 'Poor process control, potential safety issues',
+          likelihood: 'Medium - particulates in process stream',
+          mitigation: 'Install upstream filtration, regular valve maintenance'
+        }
+      ]
+
+      // Filter based on query
+      let filteredRisks = riskData
+      
+      // Filter by fouling if mentioned
+      if (query.toLowerCase().includes('fouling')) {
+        filteredRisks = riskData.filter(r => r.risk_type.toLowerCase() === 'fouling')
+      }
+      
+      // Filter by high risk if mentioned
+      if (query.toLowerCase().includes('high risk')) {
+        filteredRisks = riskData.filter(r => r.risk_level === 'HIGH')
+      }
+      
+      // Filter by system if specified
+      const systemMatch = query.match(/SYS-\d{3}/i)
+      if (systemMatch) {
+        const systemId = systemMatch[0].toUpperCase()
+        filteredRisks = filteredRisks.filter(r => r.system_id === systemId)
+      }
+
+      const summary = `Found ${filteredRisks.length} risk assessment${filteredRisks.length === 1 ? '' : 's'}:\n\n` +
+        filteredRisks.map((risk, index) => 
+          `${index + 1}. ${risk.equipment_name} (${risk.equipment_id})\n` +
+          `   Risk Type: ${risk.risk_type}\n` +
+          `   Risk Level: ${risk.risk_level} (Score: ${risk.risk_score}/10)\n` +
+          `   Description: ${risk.description}\n` +
+          `   Impact: ${risk.impact}\n` +
+          `   Mitigation: ${risk.mitigation}\n`
+        ).join('\n')
+
+      const recommendations = []
+      
+      if (filteredRisks.some(r => r.risk_type === 'Fouling' && r.risk_level === 'HIGH')) {
+        recommendations.push('Immediate action required for high fouling risks in heat exchangers')
+        recommendations.push('Consider implementing online fouling monitoring systems')
+        recommendations.push('Review cleaning schedules for affected equipment')
+      }
+      
+      if (filteredRisks.length === 0) {
+        recommendations.push('No specific risks found for your criteria')
+        recommendations.push('Try searching for specific risk types like "fouling" or "corrosion"')
+      } else {
+        recommendations.push('Review equipment strategies for high-risk items')
+        recommendations.push('Consider predictive maintenance for critical equipment')
+      }
+
+      return {
+        query,
+        intent: 'RISK_ASSESSMENT',
+        confidence: 0.9,
+        results: filteredRisks,
+        summary,
+        recommendations,
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+      
+    } catch (error) {
+      console.error('Error handling risk assessment query:', error)
+      return {
+        query,
+        intent: 'RISK_ASSESSMENT',
+        confidence: 0.3,
+        results: [],
+        summary: 'Error retrieving risk assessment information.',
+        recommendations: ['Please try again or contact system administrator'],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    }
+  }
+
+  private async handleEquipmentStrategy(query: string, entities: any, context: any): Promise<AIQueryResponse> {
+    try {
+      // Mock equipment strategy data focusing on high-risk fouling equipment
+      const equipmentStrategies = [
+        {
+          equipment_id: 'HX-101',
+          equipment_name: 'Heat Exchanger 101',
+          system_id: 'SYS-001',
+          risk_level: 'HIGH',
+          risk_type: 'Fouling',
+          strategy_id: 'ES-HX-101-001',
+          strategy_name: 'Fouling Prevention & Monitoring',
+          strategy_type: 'PREDICTIVE',
+          frequency: 'Weekly',
+          description: 'Online fouling monitoring with weekly cleaning cycles',
+          is_active: true,
+          coverage_status: 'FULLY_COVERED',
+          last_review: '2024-01-10',
+          next_review: '2024-04-10'
+        },
+        {
+          equipment_id: 'HX-102',
+          equipment_name: 'Heat Exchanger 102',
+          system_id: 'SYS-001',
+          risk_level: 'HIGH',
+          risk_type: 'Fouling',
+          strategy_id: 'ES-HX-102-001',
+          strategy_name: 'Fouling Prevention & Monitoring',
+          strategy_type: 'PREDICTIVE',
+          frequency: 'Weekly',
+          description: 'Online fouling monitoring with weekly cleaning cycles',
+          is_active: true,
+          coverage_status: 'FULLY_COVERED',
+          last_review: '2024-01-10',
+          next_review: '2024-04-10'
+        },
+        {
+          equipment_id: 'CV-105',
+          equipment_name: 'Control Valve 105',
+          system_id: 'SYS-001',
+          risk_level: 'MEDIUM',
+          risk_type: 'Fouling',
+          strategy_id: 'ES-CV-105-001',
+          strategy_name: 'Valve Maintenance Program',
+          strategy_type: 'PREVENTIVE',
+          frequency: 'Monthly',
+          description: 'Monthly inspection and cleaning of valve internals',
+          is_active: true,
+          coverage_status: 'PARTIALLY_COVERED',
+          last_review: '2023-12-15',
+          next_review: '2024-03-15'
+        }
+      ]
+
+      // Filter by system if specified
+      let filteredStrategies = equipmentStrategies
+      const systemMatch = query.match(/SYS-\d{3}/i)
+      if (systemMatch) {
+        const systemId = systemMatch[0].toUpperCase()
+        filteredStrategies = equipmentStrategies.filter(s => s.system_id === systemId)
+      }
+
+      // Filter by high risk if mentioned
+      if (query.toLowerCase().includes('high risk')) {
+        filteredStrategies = filteredStrategies.filter(s => s.risk_level === 'HIGH')
+      }
+
+      // Filter by fouling if mentioned
+      if (query.toLowerCase().includes('fouling')) {
+        filteredStrategies = filteredStrategies.filter(s => s.risk_type === 'Fouling')
+      }
+
+      const summary = `Equipment Strategy Analysis:\n\n` +
+        filteredStrategies.map((strategy, index) => 
+          `${index + 1}. ${strategy.equipment_name} (${strategy.equipment_id})\n` +
+          `   Risk Level: ${strategy.risk_level} (${strategy.risk_type})\n` +
+          `   Strategy: ${strategy.strategy_name}\n` +
+          `   Coverage: ${strategy.coverage_status}\n` +
+          `   Type: ${strategy.strategy_type}\n` +
+          `   Frequency: ${strategy.frequency}\n` +
+          `   Next Review: ${new Date(strategy.next_review).toLocaleDateString()}\n`
+        ).join('\n')
+
+      const recommendations = []
+      
+      // Check coverage gaps
+      const fullyCovered = filteredStrategies.filter(s => s.coverage_status === 'FULLY_COVERED').length
+      const total = filteredStrategies.length
+      
+      if (fullyCovered === total) {
+        recommendations.push('✅ All high-risk fouling equipment are fully reflected in Equipment Strategy')
+        recommendations.push('Strategies are actively monitoring and preventing fouling issues')
+        recommendations.push('Continue current predictive maintenance approach')
+      } else {
+        recommendations.push('⚠️ Some equipment have partial strategy coverage - review needed')
+        recommendations.push('Consider upgrading to predictive maintenance for high-risk items')
+        recommendations.push('Schedule strategy review meetings for partially covered equipment')
+      }
+
+      if (query.toLowerCase().includes('sys-001')) {
+        recommendations.push('SYS-001 (Process Cooling System) has comprehensive fouling prevention strategies')
+        recommendations.push('Online monitoring systems are in place for critical heat exchangers')
+      }
+
+      return {
+        query,
+        intent: 'EQUIPMENT_STRATEGY',
+        confidence: 0.95,
+        results: filteredStrategies,
+        summary,
+        recommendations,
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+      
+    } catch (error) {
+      console.error('Error handling equipment strategy query:', error)
+      return {
+        query,
+        intent: 'EQUIPMENT_STRATEGY',
+        confidence: 0.3,
+        results: [],
+        summary: 'Error retrieving equipment strategy information.',
+        recommendations: ['Please try again or contact system administrator'],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    }
   }
 
   private async handleComplianceTracking(query: string, entities: any, context: any): Promise<AIQueryResponse> {
