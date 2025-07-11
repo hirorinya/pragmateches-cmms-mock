@@ -48,11 +48,11 @@ export class EquipmentService {
         .select(`
           設備ID,
           設備名,
-          メーカー,
+          製造者,
           型式,
           設置場所,
           稼働状態,
-          設置日,
+          設置年月日,
           設備種別ID,
           equipment_type_master(設備種別名)
         `)
@@ -60,19 +60,21 @@ export class EquipmentService {
         .single()
 
       if (equipmentError || !equipment) {
-        console.warn(`Equipment ${equipmentId} not found in main table:`, equipmentError)
+        console.warn(`Equipment ${equipmentId} not found in main table:`, equipmentError?.message || 'No data returned')
         return null
       }
+
+      console.log(`✅ Equipment ${equipmentId} found:`, equipment)
 
       // Get system information if available
       const { data: systemMapping } = await supabase
         .from('equipment_system_mapping')
         .select(`
           system_id,
-          equipment_systems(system_name, criticality)
+          equipment_systems(system_name, criticality_level)
         `)
         .eq('equipment_id', equipmentId)
-        .single()
+        .maybeSingle()
 
       // Get latest maintenance history
       const { data: lastMaintenance } = await supabase
@@ -105,11 +107,11 @@ export class EquipmentService {
       const result: EquipmentInfo = {
         equipment_id: equipment.設備ID,
         name: equipment.設備名,
-        manufacturer: equipment.メーカー,
+        manufacturer: equipment.製造者,
         model: equipment.型式,
         location: equipment.設置場所,
         status: equipment.稼働状態,
-        installed_date: equipment.設置日,
+        installed_date: equipment.設置年月日,
         type: equipment.equipment_type_master?.設備種別名,
         system: systemMapping?.system_id,
         specifications: {

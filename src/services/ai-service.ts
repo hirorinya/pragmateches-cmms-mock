@@ -346,7 +346,9 @@ export class AIService {
     // Equipment info queries
     if ((q.includes('manufacturer') || q.includes('メーカー') || 
          q.includes('info') || q.includes('status') || q.includes('状況') ||
-         q.includes('details') || q.includes('詳細')) && 
+         q.includes('details') || q.includes('詳細') || q.includes('health') ||
+         q.includes('current') || q.includes('show me') || q.includes('現在') ||
+         q.includes('について')) && 
         this.hasEquipmentId(query)) {
       return 'EQUIPMENT_INFO'
     }
