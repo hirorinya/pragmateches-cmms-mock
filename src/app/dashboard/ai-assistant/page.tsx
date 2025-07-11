@@ -138,98 +138,159 @@ export default function AIAssistantPage() {
   }
 
   const formatAIResponse = (response: any) => {
-    // Handle malformed JSON responses
-    if (typeof response.summary !== 'string') {
-      console.error('Malformed AI response:', response)
-      return `## Response Processing Error\n\nReceived incomplete response from AI service. Please try again.\n\n**Debug Info:**\n- Intent: ${response.intent || 'Unknown'}\n- Confidence: ${response.confidence || 'Unknown'}`
+    // Parse JSON string responses from the API
+    let parsedResponse = response
+    if (typeof response === 'string') {
+      try {
+        parsedResponse = JSON.parse(response)
+      } catch (error) {
+        // If it's not valid JSON, treat it as plain text
+        return `## AI Response\n\n${response}`
+      }
     }
 
-    let formatted = `## ${response.summary}\n\n`
+    // Handle malformed JSON responses
+    if (typeof parsedResponse.summary !== 'string') {
+      console.error('Malformed AI response:', parsedResponse)
+      return `## Response Processing Error\n\nReceived incomplete response from AI service. Please try again.\n\n**Debug Info:**\n- Intent: ${parsedResponse.intent || 'Unknown'}\n- Confidence: ${parsedResponse.confidence || 'Unknown'}`
+    }
 
-    if (response.results && (Array.isArray(response.results) ? response.results.length > 0 : Object.keys(response.results).length > 0)) {
-      formatted += `### 📊 Analysis Results:\n\n`
+    let formatted = `## ${parsedResponse.summary}\n\n`
+
+    // Add metadata section for transparency
+    if (parsedResponse.intent || parsedResponse.confidence) {
+      formatted += `### 📋 Query Analysis\n`
+      formatted += `- **Intent:** ${parsedResponse.intent || 'Unknown'}\n`
+      formatted += `- **Confidence:** ${Math.round((parsedResponse.confidence || 0) * 100)}%\n`
+      if (parsedResponse.execution_time) {
+        formatted += `- **Processing Time:** ${parsedResponse.execution_time}ms\n`
+      }
+      formatted += '\n'
+    }
+
+    if (parsedResponse.results && (Array.isArray(parsedResponse.results) ? parsedResponse.results.length > 0 : Object.keys(parsedResponse.results).length > 0)) {
+      formatted += `### 📊 Analysis Results\n\n`
       
       // Remove duplicates based on equipment_id
-      const uniqueResults = Array.isArray(response.results) 
-        ? response.results.filter((result: any, index: number, arr: any[]) => 
+      const uniqueResults = Array.isArray(parsedResponse.results) 
+        ? parsedResponse.results.filter((result: any, index: number, arr: any[]) => 
             arr.findIndex(r => r.equipment_id === result.equipment_id) === index
           )
-        : [response.results]
+        : [parsedResponse.results]
       
       if (Array.isArray(uniqueResults) && uniqueResults[0]?.equipment_id && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
         // Coverage analysis format - handles both missing and covered scenarios
         uniqueResults.forEach((result: any, index: number) => {
-          formatted += `**${index + 1}. ${result.equipment_id || 'Unknown Equipment'}**\n`
-          formatted += `- Type: ${result.equipment_type || 'Heat Exchanger'}\n`
-          formatted += `- System: ${result.system || 'SYS-001'}\n`
+          formatted += `**${index + 1}. Equipment ${result.equipment_id || 'Unknown'}**\n`
+          formatted += `- **Type:** ${result.equipment_type || 'Heat Exchanger'}\n`
+          formatted += `- **System:** ${result.system || 'SYS-001'}\n`
+          formatted += `- **Location:** ${result.location || 'Not specified'}\n`
           
           if (result.missing_risk) {
-            formatted += `- Missing Risk: ${result.missing_risk}\n`
-            formatted += `- Risk Gap: ${result.risk_gap || 'HIGH'}\n\n`
+            formatted += `- **Missing Risk:** ${result.missing_risk}\n`
+            formatted += `- **Risk Gap Level:** ${result.risk_gap || 'HIGH'}\n`
           } else if (result.risk_coverage) {
-            formatted += `- Risk Coverage: ${result.risk_coverage}\n`
-            formatted += `- Coverage Status: ${result.coverage_status || 'COVERED'}\n\n`
+            formatted += `- **Risk Coverage:** ${result.risk_coverage}\n`
+            formatted += `- **Coverage Status:** ${result.coverage_status || 'COVERED'}\n`
           }
+          formatted += '\n'
         })
       } else if (uniqueResults[0]?.equipment_id && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
         // Mitigation status format
         const r = uniqueResults[0]
-        formatted += `**Equipment:** ${r.equipment_id}\n`
-        formatted += `**Department:** ${r.department}\n`
-        formatted += `**Total Measures:** ${r.total_measures}\n\n`
+        formatted += `**🔧 Equipment:** ${r.equipment_id}\n`
+        formatted += `**🏢 Department:** ${r.department}\n`
+        formatted += `**📋 Total Measures:** ${r.total_measures}\n\n`
         
         if (r.implemented?.length > 0) {
-          formatted += `**✅ Implemented (${r.implemented.length}):**\n`
-          r.implemented.forEach((measure: any) => {
-            formatted += `- ${measure.measure} (${measure.responsible_person})\n`
+          formatted += `**✅ Implemented Measures (${r.implemented.length}):**\n`
+          r.implemented.forEach((measure: any, index: number) => {
+            formatted += `${index + 1}. ${measure.measure} (👤 ${measure.responsible_person})\n`
           })
           formatted += '\n'
         }
         
         if (r.planned?.length > 0) {
-          formatted += `**📅 Planned (${r.planned.length}):**\n`
-          r.planned.forEach((measure: any) => {
-            formatted += `- ${measure.measure} (Start: ${measure.planned_start})\n`
+          formatted += `**📅 Planned Measures (${r.planned.length}):**\n`
+          r.planned.forEach((measure: any, index: number) => {
+            formatted += `${index + 1}. ${measure.measure} (📅 Start: ${measure.planned_start})\n`
           })
           formatted += '\n'
         }
       } else if (Array.isArray(uniqueResults) && uniqueResults[0]?.impact_level) {
         // Impact analysis format
-        uniqueResults.forEach((equipment: any) => {
-          formatted += `**${equipment.equipment_id}** (${equipment.equipment_type})\n`
-          formatted += `- Impact Level: ${equipment.impact_level}\n`
-          formatted += `- System: ${equipment.system || 'SYS-001'}\n\n`
+        uniqueResults.forEach((equipment: any, index: number) => {
+          formatted += `**${index + 1}. Equipment ${equipment.equipment_id}** (${equipment.equipment_type})\n`
+          formatted += `- **Impact Level:** ${equipment.impact_level}\n`
+          formatted += `- **System:** ${equipment.system || 'SYS-001'}\n`
           
           if (equipment.immediate_actions?.length > 0) {
-            formatted += `**⚡ Immediate Actions:**\n`
+            formatted += `- **⚡ Immediate Actions Required:**\n`
             equipment.immediate_actions.forEach((action: string) => {
-              formatted += `- ${action}\n`
+              formatted += `  • ${action}\n`
             })
-            formatted += '\n'
           }
+          formatted += '\n'
+        })
+      } else if (uniqueResults.length > 0 && uniqueResults[0]?.設備ID) {
+        // Equipment info format (Japanese fields)
+        uniqueResults.forEach((equipment: any, index: number) => {
+          formatted += `**${index + 1}. Equipment ${equipment.設備ID}**\n`
+          if (equipment.設備名) formatted += `- **Name:** ${equipment.設備名}\n`
+          if (equipment.製造者) formatted += `- **Manufacturer:** ${equipment.製造者}\n`
+          if (equipment.型式) formatted += `- **Model:** ${equipment.型式}\n`
+          if (equipment.設置場所) formatted += `- **Location:** ${equipment.設置場所}\n`
+          if (equipment.稼働状態) formatted += `- **Status:** ${equipment.稼働状態}\n`
+          if (equipment.設備種別名) formatted += `- **Type:** ${equipment.設備種別名}\n`
+          formatted += '\n'
         })
       } else if (uniqueResults.length > 0) {
-        // Generic results format - fallback for any other result structure
-        formatted += `**Data Analysis:**\n`
+        // Generic results format - improved display
+        formatted += `**Equipment Analysis:**\n\n`
         uniqueResults.forEach((result: any, index: number) => {
-          formatted += `${index + 1}. ${JSON.stringify(result, null, 2)}\n\n`
+          formatted += `**${index + 1}. Analysis Result**\n`
+          
+          // Display key-value pairs in a user-friendly way
+          Object.entries(result).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+              const displayKey = key
+                .replace(/_/g, ' ')
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+              
+              if (typeof value === 'object' && value !== null) {
+                formatted += `- **${displayKey}:** ${JSON.stringify(value, null, 2)}\n`
+              } else {
+                formatted += `- **${displayKey}:** ${value}\n`
+              }
+            }
+          })
+          formatted += '\n'
         })
       }
-    } else if (response.results && !Array.isArray(response.results) && typeof response.results === 'object') {
+    } else if (parsedResponse.results && !Array.isArray(parsedResponse.results) && typeof parsedResponse.results === 'object') {
       // Handle single object results that aren't arrays
-      formatted += `### 📊 Analysis Results:\n\n`
+      formatted += `### 📊 Analysis Results\n\n`
       formatted += `**Equipment Analysis:**\n`
-      Object.entries(response.results).forEach(([key, value]) => {
-        formatted += `- **${key}**: ${value}\n`
+      Object.entries(parsedResponse.results).forEach(([key, value]) => {
+        const displayKey = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+        formatted += `- **${displayKey}:** ${value}\n`
       })
       formatted += '\n'
     }
 
-    if (response.recommendations?.length > 0) {
-      formatted += `### 💡 Recommendations:\n\n`
-      response.recommendations.forEach((rec: string, index: number) => {
+    if (parsedResponse.recommendations?.length > 0) {
+      formatted += `### 💡 Recommendations\n\n`
+      parsedResponse.recommendations.forEach((rec: string, index: number) => {
         formatted += `${index + 1}. ${rec}\n`
       })
+      formatted += '\n'
+    }
+
+    // Add additional debug info if needed
+    if (parsedResponse.debug_info) {
+      formatted += `### 🔍 Debug Information\n`
+      formatted += `${parsedResponse.debug_info}\n`
     }
 
     return formatted
