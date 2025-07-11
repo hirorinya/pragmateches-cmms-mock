@@ -162,12 +162,8 @@ export class AIService {
     }
 
     try {
-      // Use the existing maintenance API (with proper base URL for server-side calls)
-      const baseUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-      const response = await fetch(`${baseUrl}/api/maintenance/recent-equipment?days=${days}`)
-      const maintenanceData = await response.json()
+      // Call database service directly instead of HTTP API to avoid server-side fetch issues
+      const maintenanceData = await this.getMaintenanceHistory(days)
 
       if (!maintenanceData.success) {
         return {
