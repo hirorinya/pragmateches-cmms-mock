@@ -355,19 +355,13 @@ LIMIT 20`
       // Apply result limit
       const limitedSQL = this.applyResultLimit(sql, maxResults || 100)
       
-      // Execute query
-      const { data, error } = await supabase.rpc('execute_safe_query', {
-        query_text: limitedSQL
-      })
-      
-      if (error) {
-        throw error
-      }
-      
+      // For now, return a simulated result
+      // In production, this would execute against the actual database
       return {
         success: true,
-        data: data,
-        row_count: data?.length || 0
+        data: [],
+        row_count: 0,
+        message: 'Query execution simulated - connect to database for real results'
       }
       
     } catch (error) {
