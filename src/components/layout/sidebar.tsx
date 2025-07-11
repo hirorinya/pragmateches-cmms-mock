@@ -2,11 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ClipboardCheck, ChevronRight, BarChart3, Brain, Settings, Activity, AlertTriangle, BookOpen } from "lucide-react"
+import { ClipboardCheck, ChevronRight, BarChart3, Brain, Settings, Activity, AlertTriangle, BookOpen, Wrench } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
 const menuItems = [
+  {
+    title: "Work Orders",
+    icon: Wrench,
+    href: "/dashboard/work-orders",
+  },
   {
     title: "検査結果",
     icon: ClipboardCheck,
