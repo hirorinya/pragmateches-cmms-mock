@@ -41,6 +41,9 @@ export class AIService {
           let response: AIQueryResponse
           
           switch (intent) {
+            case 'MAINTENANCE_HISTORY':
+              response = await this.handleMaintenanceHistory(query, entities)
+              break
             case 'EQUIPMENT_INFO':
               response = await this.handleEquipmentInfo(query, entities)
               break
@@ -129,6 +132,87 @@ export class AIService {
         equipmentInfo.risk_level ? `Risk level: ${equipmentInfo.risk_level}` : 'Review risk assessment'
       ],
       source: 'database'
+    }
+  }
+
+  /**
+   * Handle maintenance history queries
+   */
+  private async handleMaintenanceHistory(query: string, entities: any): Promise<AIQueryResponse> {
+    const q = query.toLowerCase()
+    
+    // Extract time period from query
+    let days = 365 // Default to 1 year
+    if (q.includes('1年') || q.includes('1 year')) {
+      days = 365
+    } else if (q.includes('6ヶ月') || q.includes('6 month')) {
+      days = 180
+    } else if (q.includes('3ヶ月') || q.includes('3 month')) {
+      days = 90
+    } else if (q.includes('1ヶ月') || q.includes('1 month')) {
+      days = 30
+    }
+
+    try {
+      // Use the existing maintenance API
+      const response = await fetch(`http://localhost:3000/api/maintenance/recent-equipment?days=${days}`)
+      const maintenanceData = await response.json()
+
+      if (!maintenanceData.success) {
+        return {
+          query,
+          intent: 'MAINTENANCE_HISTORY',
+          confidence: 0.5,
+          results: [],
+          summary: 'メンテナンス履歴の取得に失敗しました',
+          source: 'database'
+        }
+      }
+
+      const equipmentCount = maintenanceData.summary.totalEquipmentWithMaintenance
+      const maintenanceCount = maintenanceData.summary.totalMaintenanceRecords
+      const cutoffDate = maintenanceData.summary.cutoffDate
+
+      // Create Japanese summary
+      const isJapanese = /[ひらがなカタカナ漢字]/.test(query)
+      const summary = isJapanese 
+        ? `${cutoffDate}以降（直近${Math.floor(days/30)}ヶ月間）で保全行為を実施した機器は${equipmentCount}台です。合計${maintenanceCount}件のメンテナンス記録があります。`
+        : `Found ${equipmentCount} equipment with maintenance in the last ${days} days (since ${cutoffDate}). Total ${maintenanceCount} maintenance records.`
+
+      const recommendations = []
+      if (equipmentCount === 0) {
+        recommendations.push(isJapanese 
+          ? '指定期間内にメンテナンス記録がありません。保全スケジュールの確認をお勧めします。'
+          : 'No maintenance records found in the specified period. Consider reviewing maintenance schedules.')
+      } else {
+        recommendations.push(isJapanese
+          ? `最新のメンテナンス: ${maintenanceData.data[0]?.最新メンテナンス日 || 'N/A'}`
+          : `Latest maintenance: ${maintenanceData.data[0]?.最新メンテナンス日 || 'N/A'}`)
+        recommendations.push(isJapanese
+          ? '定期的なメンテナンススケジュールの継続を推奨します'
+          : 'Continue regular maintenance schedule as planned')
+      }
+
+      return {
+        query,
+        intent: 'MAINTENANCE_HISTORY',
+        confidence: 0.95,
+        results: maintenanceData.data,
+        summary,
+        recommendations,
+        source: 'database'
+      }
+
+    } catch (error) {
+      return {
+        query,
+        intent: 'MAINTENANCE_HISTORY',
+        confidence: 0.3,
+        results: [],
+        summary: 'メンテナンス履歴の取得中にエラーが発生しました',
+        recommendations: ['データベース接続を確認してください'],
+        source: 'database'
+      }
     }
   }
 
@@ -266,6 +350,14 @@ export class AIService {
    */
   private detectIntent(query: string): string {
     const q = query.toLowerCase()
+    
+    // Maintenance history queries (Japanese and English)
+    if (q.includes('保全') || q.includes('メンテナンス') || q.includes('maintenance') ||
+        q.includes('直近') || q.includes('recent') || q.includes('last') ||
+        (q.includes('年') && (q.includes('保全') || q.includes('メンテナンス'))) ||
+        q.includes('maintenance history')) {
+      return 'MAINTENANCE_HISTORY'
+    }
     
     // Equipment info queries
     if ((q.includes('manufacturer') || q.includes('メーカー') || 
