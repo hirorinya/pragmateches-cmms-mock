@@ -112,8 +112,29 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[API] Risk trends GET error:', error)
+    
+    // Provide specific error messages based on error type
+    let errorMessage = 'リスクトレンドデータの取得に失敗しました'
+    let suggestions = ['システム管理者にお問い合わせください']
+    
+    if (error?.message?.includes('no rows') || error?.message?.includes('PGRST116')) {
+      errorMessage = '指定された期間のリスクデータが見つかりません'
+      suggestions = ['期間を変更してお試しください', 'システムIDを確認してください']
+    } else if (error?.message?.includes('permission')) {
+      errorMessage = 'リスクデータへの読み取り権限がありません'
+      suggestions = ['管理者にアクセス権限の確認を依頼してください']
+    } else if (error?.message?.includes('timeout')) {
+      errorMessage = 'リスクデータの取得がタイムアウトしました'
+      suggestions = ['期間を短縮してください', '少し時間をおいて再度お試しください']
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch risk trends', details: error.message },
+      { 
+        error: errorMessage, 
+        details: error.message,
+        suggestions,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }

@@ -12,12 +12,12 @@ export const RISK_THRESHOLDS = {
 // RPN (Risk Priority Number) Threshold
 export const RPN_THRESHOLD = process.env.NEXT_PUBLIC_RPN_THRESHOLD ? parseInt(process.env.NEXT_PUBLIC_RPN_THRESHOLD) : 100
 
-// Department Names (should eventually come from database)
+// Department Names - TODO: Move to database configuration table
 export const DEPARTMENTS = {
-  REFINERY: '製油部門',
-  MAINTENANCE: 'メンテナンス部門',
-  OPERATIONS: '運転部門',
-  QUALITY: '品質管理部門'
+  REFINERY: process.env.NEXT_PUBLIC_DEPT_REFINERY || '製油部門',
+  MAINTENANCE: process.env.NEXT_PUBLIC_DEPT_MAINTENANCE || 'メンテナンス部門',
+  OPERATIONS: process.env.NEXT_PUBLIC_DEPT_OPERATIONS || '運転部門',
+  QUALITY: process.env.NEXT_PUBLIC_DEPT_QUALITY || '品質管理部門'
 } as const
 
 // Frequency Types
@@ -80,14 +80,14 @@ export const DATE_RANGES = {
   INSPECTION_FORECAST_DAYS: 30   // 1 month
 } as const
 
-// Simulation Data Configuration
+// Simulation Data Configuration - TODO: Move to database parameter configuration
 export const SIMULATION_CONFIG = {
-  TEMPERATURE_HIGH: 85.5,
-  TEMPERATURE_NORMAL: 65.0,
-  VIBRATION_HIGH: 3.2,
-  VIBRATION_NORMAL: 1.5,
-  FLOW_LOW: 95.0,
-  FLOW_NORMAL: 150.0
+  TEMPERATURE_HIGH: process.env.NEXT_PUBLIC_TEMP_HIGH_THRESHOLD ? parseFloat(process.env.NEXT_PUBLIC_TEMP_HIGH_THRESHOLD) : 85.5,
+  TEMPERATURE_NORMAL: process.env.NEXT_PUBLIC_TEMP_NORMAL_THRESHOLD ? parseFloat(process.env.NEXT_PUBLIC_TEMP_NORMAL_THRESHOLD) : 65.0,
+  VIBRATION_HIGH: process.env.NEXT_PUBLIC_VIBRATION_HIGH_THRESHOLD ? parseFloat(process.env.NEXT_PUBLIC_VIBRATION_HIGH_THRESHOLD) : 3.2,
+  VIBRATION_NORMAL: process.env.NEXT_PUBLIC_VIBRATION_NORMAL_THRESHOLD ? parseFloat(process.env.NEXT_PUBLIC_VIBRATION_NORMAL_THRESHOLD) : 1.5,
+  FLOW_LOW: process.env.NEXT_PUBLIC_FLOW_LOW_THRESHOLD ? parseFloat(process.env.NEXT_PUBLIC_FLOW_LOW_THRESHOLD) : 95.0,
+  FLOW_NORMAL: process.env.NEXT_PUBLIC_FLOW_NORMAL_THRESHOLD ? parseFloat(process.env.NEXT_PUBLIC_FLOW_NORMAL_THRESHOLD) : 150.0
 } as const
 
 // API Timeouts (milliseconds)

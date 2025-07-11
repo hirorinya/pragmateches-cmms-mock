@@ -404,6 +404,368 @@ export class EquipmentService {
   }
 
   /**
+   * Get equipment strategies by equipment ID
+   */
+  async getEquipmentStrategiesByEquipment(equipmentId: string): Promise<any[]> {
+    return withPerformanceTracking(
+      'equipment_service.getEquipmentStrategiesByEquipment',
+      async () => {
+        try {
+          const { data: strategies, error } = await supabase
+            .from('equipment_strategy')
+            .select(`
+              strategy_id,
+              equipment_id,
+              strategy_name,
+              strategy_type,
+              frequency_type,
+              frequency_value,
+              priority,
+              is_active,
+              created_at,
+              updated_at,
+              equipment!inner(設備名, 設備タグ, 設備種別ID)
+            `)
+            .eq('equipment_id', equipmentId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            recordError(error, 'equipment_service.getEquipmentStrategiesByEquipment', 'high')
+            throw error
+          }
+
+          return strategies || []
+        } catch (error) {
+          recordError(
+            error instanceof Error ? error : new Error(String(error)),
+            'equipment_service.getEquipmentStrategiesByEquipment',
+            'high'
+          )
+          throw error
+        }
+      }
+    )
+  }
+
+  /**
+   * Create new equipment strategy
+   */
+  async createEquipmentStrategy(strategyData: {
+    equipment_id: string
+    strategy_name: string
+    strategy_type?: string
+    frequency_type: string
+    frequency_value: number
+    priority?: string
+    description?: string
+  }): Promise<{ success: boolean, strategy_id?: string, error?: string }> {
+    return withPerformanceTracking(
+      'equipment_service.createEquipmentStrategy',
+      async () => {
+        try {
+          // Validate equipment exists
+          const equipment = await this.getEquipmentInfo(strategyData.equipment_id)
+          if (!equipment) {
+            return { success: false, error: '指定された設備が見つかりません' }
+          }
+
+          // Generate strategy ID
+          const strategyId = `ES-${strategyData.equipment_id}-${String(Date.now()).slice(-6)}`
+
+          const { data, error } = await supabase
+            .from('equipment_strategy')
+            .insert({
+              strategy_id: strategyId,
+              equipment_id: strategyData.equipment_id,
+              strategy_name: strategyData.strategy_name,
+              strategy_type: strategyData.strategy_type || 'PREVENTIVE',
+              frequency_type: strategyData.frequency_type,
+              frequency_value: strategyData.frequency_value,
+              priority: strategyData.priority || 'MEDIUM',
+              description: strategyData.description,
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select('strategy_id')
+            .single()
+
+          if (error) {
+            recordError(error, 'equipment_service.createEquipmentStrategy', 'high')
+            return { success: false, error: `戦略の作成に失敗しました: ${error.message}` }
+          }
+
+          // Invalidate relevant caches
+          this.invalidateEquipmentCache(strategyData.equipment_id)
+
+          return { success: true, strategy_id: data?.strategy_id || strategyId }
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error))
+          recordError(err, 'equipment_service.createEquipmentStrategy', 'high')
+          return { success: false, error: `戦略の作成中にエラーが発生しました: ${err.message}` }
+        }
+      }
+    )
+  }
+
+  /**
+   * Update equipment strategy
+   */
+  async updateEquipmentStrategy(
+    strategyId: string, 
+    updates: Partial<{
+      strategy_name: string
+      frequency_type: string
+      frequency_value: number
+      priority: string
+      description: string
+      is_active: boolean
+    }>
+  ): Promise<{ success: boolean, error?: string }> {
+    return withPerformanceTracking(
+      'equipment_service.updateEquipmentStrategy',
+      async () => {
+        try {
+          const { data, error } = await supabase
+            .from('equipment_strategy')
+            .update({
+              ...updates,
+              updated_at: new Date().toISOString()
+            })
+            .eq('strategy_id', strategyId)
+            .select('equipment_id')
+            .single()
+
+          if (error) {
+            recordError(error, 'equipment_service.updateEquipmentStrategy', 'high')
+            return { success: false, error: `戦略の更新に失敗しました: ${error.message}` }
+          }
+
+          if (!data) {
+            return { success: false, error: '指定された戦略が見つかりません' }
+          }
+
+          // Invalidate relevant caches
+          this.invalidateEquipmentCache(data.equipment_id)
+
+          return { success: true }
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error))
+          recordError(err, 'equipment_service.updateEquipmentStrategy', 'high')
+          return { success: false, error: `戦略の更新中にエラーが発生しました: ${err.message}` }
+        }
+      }
+    )
+  }
+
+  /**
+   * Delete equipment strategy (soft delete by setting is_active = false)
+   */
+  async deleteEquipmentStrategy(strategyId: string): Promise<{ success: boolean, error?: string }> {
+    return withPerformanceTracking(
+      'equipment_service.deleteEquipmentStrategy',
+      async () => {
+        try {
+          const { data, error } = await supabase
+            .from('equipment_strategy')
+            .update({
+              is_active: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('strategy_id', strategyId)
+            .select('equipment_id')
+            .single()
+
+          if (error) {
+            recordError(error, 'equipment_service.deleteEquipmentStrategy', 'high')
+            return { success: false, error: `戦略の削除に失敗しました: ${error.message}` }
+          }
+
+          if (!data) {
+            return { success: false, error: '指定された戦略が見つかりません' }
+          }
+
+          // Invalidate relevant caches
+          this.invalidateEquipmentCache(data.equipment_id)
+
+          return { success: true }
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error))
+          recordError(err, 'equipment_service.deleteEquipmentStrategy', 'high')
+          return { success: false, error: `戦略の削除中にエラーが発生しました: ${err.message}` }
+        }
+      }
+    )
+  }
+
+  /**
+   * Get overdue strategies
+   */
+  async getOverdueStrategies(): Promise<any[]> {
+    return withPerformanceTracking(
+      'equipment_service.getOverdueStrategies',
+      async () => {
+        try {
+          const currentDate = new Date().toISOString().split('T')[0]
+          
+          const { data: strategies, error } = await supabase
+            .from('equipment_strategy')
+            .select(`
+              strategy_id,
+              equipment_id,
+              strategy_name,
+              frequency_type,
+              frequency_value,
+              priority,
+              equipment!inner(設備名, 設備タグ),
+              task_generation_log!left(
+                generated_date,
+                next_generation_date,
+                status
+              )
+            `)
+            .eq('is_active', true)
+            .order('equipment_id')
+
+          if (error) {
+            recordError(error, 'equipment_service.getOverdueStrategies', 'high')
+            throw error
+          }
+
+          // Filter strategies that are overdue
+          const overdueStrategies = (strategies || []).filter(strategy => {
+            const lastGeneration = strategy.task_generation_log?.[0]
+            if (!lastGeneration) return true // No tasks generated yet
+
+            const nextDue = new Date(lastGeneration.next_generation_date)
+            const today = new Date(currentDate)
+            
+            return nextDue < today
+          })
+
+          return overdueStrategies
+        } catch (error) {
+          recordError(
+            error instanceof Error ? error : new Error(String(error)),
+            'equipment_service.getOverdueStrategies',
+            'high'
+          )
+          throw error
+        }
+      }
+    )
+  }
+
+  /**
+   * Get strategy effectiveness metrics
+   */
+  async getStrategyEffectiveness(equipmentId?: string): Promise<{
+    success: boolean
+    metrics?: {
+      total_strategies: number
+      active_strategies: number
+      overdue_strategies: number
+      completion_rate: number
+      avg_frequency_days: number
+      strategy_types: { [key: string]: number }
+    }
+    error?: string
+  }> {
+    return withPerformanceTracking(
+      'equipment_service.getStrategyEffectiveness',
+      async () => {
+        try {
+          let strategyQuery = supabase
+            .from('equipment_strategy')
+            .select(`
+              strategy_id,
+              strategy_type,
+              frequency_type,
+              frequency_value,
+              is_active,
+              task_generation_log!left(status)
+            `)
+
+          if (equipmentId) {
+            strategyQuery = strategyQuery.eq('equipment_id', equipmentId)
+          }
+
+          const { data: strategies, error } = await strategyQuery
+
+          if (error) {
+            recordError(error, 'equipment_service.getStrategyEffectiveness', 'high')
+            return { success: false, error: `効果性データの取得に失敗しました: ${error.message}` }
+          }
+
+          if (!strategies || strategies.length === 0) {
+            return {
+              success: true,
+              metrics: {
+                total_strategies: 0,
+                active_strategies: 0,
+                overdue_strategies: 0,
+                completion_rate: 0,
+                avg_frequency_days: 0,
+                strategy_types: {}
+              }
+            }
+          }
+
+          // Calculate metrics
+          const activeStrategies = strategies.filter(s => s.is_active)
+          const overdueStrategies = await this.getOverdueStrategies()
+          
+          const completedTasks = strategies.reduce((count, strategy) => {
+            const completedCount = strategy.task_generation_log?.filter(log => log.status === 'COMPLETED').length || 0
+            return count + completedCount
+          }, 0)
+
+          const totalTasks = strategies.reduce((count, strategy) => {
+            return count + (strategy.task_generation_log?.length || 0)
+          }, 0)
+
+          const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+
+          // Calculate average frequency in days
+          const avgFrequencyDays = activeStrategies.reduce((sum, strategy) => {
+            let days = strategy.frequency_value
+            if (strategy.frequency_type === 'WEEKLY') days *= 7
+            else if (strategy.frequency_type === 'MONTHLY') days *= 30
+            else if (strategy.frequency_type === 'YEARLY') days *= 365
+            return sum + days
+          }, 0) / Math.max(activeStrategies.length, 1)
+
+          // Count strategy types
+          const strategyTypes: { [key: string]: number } = {}
+          activeStrategies.forEach(strategy => {
+            const type = strategy.strategy_type || 'UNKNOWN'
+            strategyTypes[type] = (strategyTypes[type] || 0) + 1
+          })
+
+          return {
+            success: true,
+            metrics: {
+              total_strategies: strategies.length,
+              active_strategies: activeStrategies.length,
+              overdue_strategies: equipmentId ? 
+                overdueStrategies.filter(s => s.equipment_id === equipmentId).length :
+                overdueStrategies.length,
+              completion_rate: Math.round(completionRate * 100) / 100,
+              avg_frequency_days: Math.round(avgFrequencyDays * 100) / 100,
+              strategy_types: strategyTypes
+            }
+          }
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error))
+          recordError(err, 'equipment_service.getStrategyEffectiveness', 'high')
+          return { success: false, error: `効果性分析中にエラーが発生しました: ${err.message}` }
+        }
+      }
+    )
+  }
+
+  /**
    * Get cache statistics for monitoring
    */
   getCacheStats() {

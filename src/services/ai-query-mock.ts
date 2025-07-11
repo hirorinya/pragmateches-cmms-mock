@@ -1,5 +1,7 @@
-// Mock AI Query Service for Demo
+// Mock AI Query Service for Demo - TODO: Replace with actual AI service
 // This simulates intelligent responses without actual AI backend
+// PRODUCTION NOTE: This entire service should be replaced with real AI integration
+// All hardcoded data should be moved to the database
 
 interface AIQueryResponse {
   query: string
@@ -13,6 +15,7 @@ interface AIQueryResponse {
 
 export class AIQueryMockService {
   
+  // TODO: Replace with database queries to equipment table
   // Mock equipment data with classifications - updated to match actual database
   private mockEquipmentData: {
     [key: string]: {
@@ -35,6 +38,7 @@ export class AIQueryMockService {
     'TK-201': { type: 'TANK', subtype: 'Storage', system: 'SYS-002' }
   }
 
+  // TODO: Replace with database queries to instrument_mappings table
   // Mock instrument mappings - updated to match actual equipment IDs
   private mockInstrumentMappings = {
     'TI-201': {
@@ -54,6 +58,7 @@ export class AIQueryMockService {
     }
   }
 
+  // TODO: Replace with database queries to risk_scenarios table
   // Mock risk scenarios - updated to match actual equipment IDs
   private mockRiskScenarios: {
     [key: string]: Array<{
@@ -143,6 +148,7 @@ export class AIQueryMockService {
     ]
   }
 
+  // TODO: Replace with database queries to mitigation_measures table
   // Mock mitigation measures - updated to match actual equipment IDs
   private mockMitigationMeasures: {
     [key: string]: Array<{

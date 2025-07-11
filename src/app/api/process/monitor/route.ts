@@ -21,8 +21,28 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[API] Process monitoring error:', error)
+    
+    let errorMessage = 'プロセスデータの処理に失敗しました'
+    let suggestions = ['システム管理者にお問い合わせください']
+    
+    if (error?.message?.includes('permission')) {
+      errorMessage = 'プロセス監視システムへの書き込み権限がありません'
+      suggestions = ['管理者にアクセス権限の確認を依頼してください']
+    } else if (error?.message?.includes('invalid data')) {
+      errorMessage = '無効なプロセスデータ形式です'
+      suggestions = ['データ形式を確認してください', 'parameter_id, timestamp, value, quality, sourceフィールドが必要です']
+    } else if (error?.message?.includes('timeout')) {
+      errorMessage = 'プロセスデータの処理がタイムアウトしました'
+      suggestions = ['データサイズを減らしてお試しください', '少し時間をおいて再度お試しください']
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to process data', details: error.message },
+      { 
+        error: errorMessage, 
+        details: error.message,
+        suggestions,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
@@ -43,6 +63,20 @@ export async function GET(request: NextRequest) {
       case 'notifications':
         const notifications = await monitoringService.getPendingNotifications()
         return NextResponse.json(notifications)
+
+      case 'correlation':
+        const timeRange = parseInt(searchParams.get('hours') || '24')
+        const correlationResult = await monitoringService.getParameterCorrelation(timeRange)
+        return NextResponse.json(correlationResult)
+
+      case 'calculate-baselines':
+        const periodDays = parseInt(searchParams.get('days') || '30')
+        const baselineResult = await monitoringService.calculateBaselines(periodDays)
+        return NextResponse.json(baselineResult)
+
+      case 'update-dashboard':
+        const dashboardResult = await monitoringService.updateMonitoringDashboard()
+        return NextResponse.json(dashboardResult)
 
       case 'simulate':
         // Get actual process parameters from database to simulate with real IDs
@@ -93,15 +127,35 @@ export async function GET(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Use: status, notifications, or simulate' },
+          { error: 'Invalid action. Use: status, notifications, correlation, calculate-baselines, update-dashboard, or simulate' },
           { status: 400 }
         )
     }
 
   } catch (error: any) {
     console.error('[API] Process monitoring GET error:', error)
+    
+    let errorMessage = 'プロセス監視データの取得に失敗しました'
+    let suggestions = ['システム管理者にお問い合わせください']
+    
+    if (error?.message?.includes('permission')) {
+      errorMessage = 'プロセス監視データへの読み取り権限がありません'
+      suggestions = ['管理者にアクセス権限の確認を依頼してください']
+    } else if (error?.message?.includes('no rows') || error?.message?.includes('PGRST116')) {
+      errorMessage = '監視データが見つかりません'
+      suggestions = ['データが初期化されていない可能性があります', 'シミュレーションを実行してテストデータを生成してください']
+    } else if (error?.message?.includes('timeout')) {
+      errorMessage = '監視データの取得がタイムアウトしました'
+      suggestions = ['データ量が多い可能性があります', '少し時間をおいて再度お試しください']
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to get monitoring data', details: error.message },
+      { 
+        error: errorMessage, 
+        details: error.message,
+        suggestions,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }

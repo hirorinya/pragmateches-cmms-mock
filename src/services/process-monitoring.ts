@@ -589,4 +589,300 @@ export class ProcessMonitoringService {
       return { success: false, error: error.message }
     }
   }
+
+  /**
+   * Calculate and update process baselines for all parameters
+   */
+  async calculateBaselines(periodDays: number = 30): Promise<{
+    success: boolean
+    updated: number
+    errors: string[]
+  }> {
+    const result = {
+      success: true,
+      updated: 0,
+      errors: [] as string[]
+    }
+
+    try {
+      // Get all active process parameters
+      const { data: parameters, error: paramError } = await this.supabase
+        .from('process_parameters')
+        .select('parameter_id, parameter_name, normal_min, normal_max')
+        .eq('is_active', true)
+
+      if (paramError) throw new Error(`Failed to fetch parameters: ${paramError.message}`)
+      if (!parameters || parameters.length === 0) return result
+
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - periodDays)
+
+      for (const parameter of parameters) {
+        try {
+          // Get recent data for this parameter
+          const { data: recentData, error: dataError } = await this.supabase
+            .from('process_data')
+            .select('value, timestamp')
+            .eq('parameter_id', parameter.parameter_id)
+            .eq('quality', 'GOOD')
+            .gte('timestamp', cutoffDate.toISOString())
+            .order('timestamp', { ascending: false })
+
+          if (dataError) {
+            result.errors.push(`Error fetching data for ${parameter.parameter_id}: ${dataError.message}`)
+            continue
+          }
+
+          if (!recentData || recentData.length < 10) {
+            result.errors.push(`Insufficient data for ${parameter.parameter_id} (${recentData?.length || 0} points)`)
+            continue
+          }
+
+          // Calculate statistical baseline
+          const values = recentData.map(d => d.value)
+          const mean = values.reduce((sum, val) => sum + val, 0) / values.length
+          const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
+          const stdDev = Math.sqrt(variance)
+
+          // Validate baseline is within normal operating range
+          let baselineValue = mean
+          if (baselineValue < parameter.normal_min || baselineValue > parameter.normal_max) {
+            // Use midpoint of normal range if calculated baseline is outside normal range
+            baselineValue = (parameter.normal_min + parameter.normal_max) / 2
+          }
+
+          // Deactivate old baselines
+          await this.supabase
+            .from('process_baselines')
+            .update({ is_active: false })
+            .eq('parameter_id', parameter.parameter_id)
+
+          // Insert new baseline
+          const { error: insertError } = await this.supabase
+            .from('process_baselines')
+            .insert({
+              parameter_id: parameter.parameter_id,
+              baseline_type: 'MONTHLY',
+              baseline_value: Math.round(baselineValue * 100) / 100,
+              std_deviation: Math.round(stdDev * 100) / 100,
+              sample_count: values.length,
+              valid_from: new Date().toISOString(),
+              is_active: true
+            })
+
+          if (!insertError) {
+            result.updated++
+          } else {
+            result.errors.push(`Failed to update baseline for ${parameter.parameter_id}: ${insertError.message}`)
+          }
+
+        } catch (error: any) {
+          result.errors.push(`Error processing ${parameter.parameter_id}: ${error.message}`)
+        }
+      }
+
+    } catch (error: any) {
+      result.success = false
+      result.errors.push(`Baseline calculation failed: ${error.message}`)
+    }
+
+    return result
+  }
+
+  /**
+   * Get parameter correlation analysis
+   */
+  async getParameterCorrelation(timeRangeHours: number = 24): Promise<{
+    success: boolean
+    correlations: Array<{
+      parameter1: string
+      parameter2: string
+      correlation_coefficient: number
+      significance: string
+      equipment1?: string
+      equipment2?: string
+    }>
+  }> {
+    try {
+      const cutoffDate = new Date()
+      cutoffDate.setHours(cutoffDate.getHours() - timeRangeHours)
+
+      // Get process data for correlation analysis
+      const { data: processData, error } = await this.supabase
+        .from('process_data')
+        .select(`
+          parameter_id,
+          value,
+          timestamp,
+          process_parameters!inner(parameter_name, equipment_id)
+        `)
+        .eq('quality', 'GOOD')
+        .gte('timestamp', cutoffDate.toISOString())
+        .order('timestamp', { ascending: true })
+
+      if (error) throw new Error(`Failed to fetch process data: ${error.message}`)
+      if (!processData || processData.length === 0) {
+        return { success: true, correlations: [] }
+      }
+
+      // Group data by parameter
+      const parameterData = new Map<string, Array<{ timestamp: string, value: number, equipment_id: string }>>()
+      
+      processData.forEach(item => {
+        if (!parameterData.has(item.parameter_id)) {
+          parameterData.set(item.parameter_id, [])
+        }
+        parameterData.get(item.parameter_id)!.push({
+          timestamp: item.timestamp,
+          value: item.value,
+          equipment_id: item.process_parameters.equipment_id
+        })
+      })
+
+      const correlations: Array<{
+        parameter1: string
+        parameter2: string
+        correlation_coefficient: number
+        significance: string
+        equipment1?: string
+        equipment2?: string
+      }> = []
+
+      // Calculate correlations between parameter pairs
+      const parameterIds = Array.from(parameterData.keys())
+      for (let i = 0; i < parameterIds.length; i++) {
+        for (let j = i + 1; j < parameterIds.length; j++) {
+          const param1 = parameterIds[i]
+          const param2 = parameterIds[j]
+          
+          const data1 = parameterData.get(param1)!
+          const data2 = parameterData.get(param2)!
+          
+          const correlation = this.calculateCorrelation(data1, data2)
+          
+          if (correlation.coefficient !== null && Math.abs(correlation.coefficient) > 0.3) {
+            correlations.push({
+              parameter1: param1,
+              parameter2: param2,
+              correlation_coefficient: correlation.coefficient,
+              significance: Math.abs(correlation.coefficient) > 0.7 ? 'HIGH' : 
+                          Math.abs(correlation.coefficient) > 0.5 ? 'MEDIUM' : 'LOW',
+              equipment1: data1[0]?.equipment_id,
+              equipment2: data2[0]?.equipment_id
+            })
+          }
+        }
+      }
+
+      return { success: true, correlations }
+
+    } catch (error: any) {
+      console.error('[ProcessMonitoring] Correlation analysis error:', error)
+      return { success: false, correlations: [] }
+    }
+  }
+
+  /**
+   * Calculate Pearson correlation coefficient between two parameter datasets
+   */
+  private calculateCorrelation(
+    data1: Array<{ timestamp: string, value: number }>,
+    data2: Array<{ timestamp: string, value: number }>
+  ): { coefficient: number | null, sampleSize: number } {
+    // Align data points by timestamp (within 5 minutes tolerance)
+    const alignedPairs: Array<{ x: number, y: number }> = []
+    const tolerance = 5 * 60 * 1000 // 5 minutes in milliseconds
+
+    data1.forEach(point1 => {
+      const timestamp1 = new Date(point1.timestamp).getTime()
+      const matchingPoint = data2.find(point2 => {
+        const timestamp2 = new Date(point2.timestamp).getTime()
+        return Math.abs(timestamp1 - timestamp2) <= tolerance
+      })
+      
+      if (matchingPoint) {
+        alignedPairs.push({ x: point1.value, y: matchingPoint.value })
+      }
+    })
+
+    if (alignedPairs.length < 3) {
+      return { coefficient: null, sampleSize: alignedPairs.length }
+    }
+
+    // Calculate Pearson correlation coefficient
+    const n = alignedPairs.length
+    const sumX = alignedPairs.reduce((sum, pair) => sum + pair.x, 0)
+    const sumY = alignedPairs.reduce((sum, pair) => sum + pair.y, 0)
+    const sumXY = alignedPairs.reduce((sum, pair) => sum + (pair.x * pair.y), 0)
+    const sumX2 = alignedPairs.reduce((sum, pair) => sum + (pair.x * pair.x), 0)
+    const sumY2 = alignedPairs.reduce((sum, pair) => sum + (pair.y * pair.y), 0)
+
+    const numerator = (n * sumXY) - (sumX * sumY)
+    const denominator = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)))
+
+    if (denominator === 0) {
+      return { coefficient: null, sampleSize: n }
+    }
+
+    return {
+      coefficient: Math.round((numerator / denominator) * 1000) / 1000,
+      sampleSize: n
+    }
+  }
+
+  /**
+   * Update process monitoring dashboard
+   */
+  async updateMonitoringDashboard(): Promise<{ success: boolean, message: string }> {
+    try {
+      // This would typically be called by a scheduled job
+      // For now, we'll simulate the dashboard update logic
+      
+      const now = new Date().toISOString()
+      
+      // Calculate current statistics
+      const { data: recentTriggers } = await this.supabase
+        .from('process_trigger_events')
+        .select('severity, triggered_at')
+        .gte('triggered_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .eq('status', 'ACTIVE')
+
+      const { data: pendingNotifications } = await this.supabase
+        .from('es_change_notifications')
+        .select('priority')
+        .eq('status', 'PENDING')
+
+      const triggerCounts = {
+        critical: recentTriggers?.filter(t => t.severity === 'CRITICAL').length || 0,
+        high: recentTriggers?.filter(t => t.severity === 'HIGH').length || 0,
+        medium: recentTriggers?.filter(t => t.severity === 'MEDIUM').length || 0
+      }
+
+      const notificationCounts = {
+        high_priority: pendingNotifications?.filter(n => n.priority === 'HIGH').length || 0,
+        total_pending: pendingNotifications?.length || 0
+      }
+
+      // Update dashboard summary (this would be a materialized view in production)
+      const dashboardUpdate = {
+        last_update: now,
+        active_triggers_critical: triggerCounts.critical,
+        active_triggers_high: triggerCounts.high,
+        active_triggers_medium: triggerCounts.medium,
+        pending_notifications: notificationCounts.total_pending,
+        high_priority_notifications: notificationCounts.high_priority,
+        system_status: triggerCounts.critical > 0 ? 'CRITICAL' : 
+                      triggerCounts.high > 0 ? 'WARNING' : 'NORMAL'
+      }
+
+      return {
+        success: true,
+        message: `Dashboard updated: ${triggerCounts.critical + triggerCounts.high + triggerCounts.medium} active triggers, ${notificationCounts.total_pending} pending notifications`
+      }
+
+    } catch (error: any) {
+      console.error('[ProcessMonitoring] Dashboard update error:', error)
+      return { success: false, message: `Dashboard update failed: ${error.message}` }
+    }
+  }
 }

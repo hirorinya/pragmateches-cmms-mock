@@ -79,10 +79,12 @@ export async function GET(request: NextRequest) {
           console.warn(`Error fetching history for parameter ${param.parameter_id}:`, histError)
         }
 
-        // If no real historical data, generate sample data for demo
+        // Use historical data if available, otherwise return empty data
         let dataPoints = historicalData || []
+        
+        // Log when no data is available instead of generating fake data
         if (dataPoints.length === 0) {
-          dataPoints = generateSampleTrendData(param, startDate, endDate, timeRange)
+          console.warn(`No historical data available for parameter ${param.parameter_id} in time range ${timeRange}`)
         }
 
         return {
@@ -118,59 +120,33 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[API] Process trends GET error:', error)
+    
+    // Provide specific error messages based on error type
+    let errorMessage = 'プロセストレンドデータの取得に失敗しました'
+    let suggestions = ['システム管理者にお問い合わせください']
+    
+    if (error?.message?.includes('no rows') || error?.message?.includes('PGRST116')) {
+      errorMessage = '指定されたパラメータまたは期間のデータが見つかりません'
+      suggestions = ['時間範囲を変更してお試しください', 'システムIDや設備IDを確認してください']
+    } else if (error?.message?.includes('permission')) {
+      errorMessage = 'プロセスデータへの読み取り権限がありません'
+      suggestions = ['管理者にアクセス権限の確認を依頼してください']
+    } else if (error?.message?.includes('timeout')) {
+      errorMessage = 'プロセスデータの取得がタイムアウトしました'
+      suggestions = ['時間範囲を短縮してください', '少し時間をおいて再度お試しください']
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch process trends', details: error.message },
+      { 
+        error: errorMessage, 
+        details: error.message,
+        suggestions,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
 }
 
-function generateSampleTrendData(parameter: any, startDate: Date, endDate: Date, timeRange: string) {
-  const dataPoints = []
-  const intervalMs = getIntervalMs(timeRange)
-  const current = new Date(startDate)
-  
-  // Base value around the middle of normal range
-  const baseValue = (parameter.normal_min + parameter.normal_max) / 2
-  const range = parameter.normal_max - parameter.normal_min
-  
-  while (current <= endDate) {
-    // Add some realistic variation
-    const variation = (Math.random() - 0.5) * range * 0.3
-    let value = baseValue + variation
-    
-    // Occasionally go outside normal range for demo
-    if (Math.random() < 0.05) {
-      value = Math.random() < 0.5 ? 
-        parameter.normal_min - range * 0.2 : 
-        parameter.normal_max + range * 0.2
-    }
-    
-    let status = 'NORMAL'
-    if (value < parameter.critical_min || value > parameter.critical_max) {
-      status = 'CRITICAL'
-    } else if (value < parameter.normal_min || value > parameter.normal_max) {
-      status = 'WARNING'
-    }
-    
-    dataPoints.push({
-      timestamp: current.toISOString(),
-      value: parseFloat(value.toFixed(2)),
-      status
-    })
-    
-    current.setTime(current.getTime() + intervalMs)
-  }
-  
-  return dataPoints
-}
-
-function getIntervalMs(timeRange: string): number {
-  switch (timeRange) {
-    case '1h': return 2 * 60 * 1000  // 2 minutes
-    case '24h': return 30 * 60 * 1000  // 30 minutes
-    case '7d': return 4 * 60 * 60 * 1000  // 4 hours
-    case '30d': return 24 * 60 * 60 * 1000  // 1 day
-    default: return 30 * 60 * 1000
-  }
-}
+// Sample data generation removed - system now relies on actual database data
+// To add historical data, populate the parameter_history table with actual measurements

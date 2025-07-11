@@ -16,7 +16,8 @@ import {
   MessageSquare,
   Lightbulb,
   Database,
-  Activity
+  Activity,
+  CheckCircle
 } from 'lucide-react'
 import { aiQueryService } from '@/services/ai-query-service'
 
@@ -87,6 +88,22 @@ export default function AIAssistantPage() {
       query: 'Which equipment in SYS-002 are not reflected in ES for fouling blockage risk?',
       icon: <AlertTriangle className="h-4 w-4" />,
       category: 'Risk Assessment'
+    },
+    {
+      id: 'cost-analysis',
+      title: 'Maintenance Cost Analysis',
+      description: 'Analyze maintenance costs and trends',
+      query: 'Show me the maintenance cost analysis for the last quarter by equipment type',
+      icon: <TrendingUp className="h-4 w-4" />,
+      category: 'Financial Analysis'
+    },
+    {
+      id: 'compliance-tracking',
+      title: 'Compliance Status Check',
+      description: 'Check compliance with inspection schedules',
+      query: 'What is the current compliance status for inspection requirements?',
+      icon: <CheckCircle className="h-4 w-4" />,
+      category: 'Compliance'
     }
   ]
 

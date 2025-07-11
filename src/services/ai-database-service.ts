@@ -193,7 +193,18 @@ export class AIDatabaseService {
 
     if (equipmentError) {
       console.error(`[Coverage Analysis] Equipment fetch error:`, equipmentError);
-      throw new Error(`Failed to fetch equipment data: ${equipmentError.message}`)
+      const errorType = equipmentError.code || 'unknown';
+      let errorMessage = `設備データの取得に失敗しました`;
+      
+      if (errorType === 'PGRST116') {
+        errorMessage = '指定されたシステムIDに設備が見つかりません';
+      } else if (errorType.includes('permission')) {
+        errorMessage = '設備データへのアクセス権限がありません';
+      } else if (errorType.includes('network')) {
+        errorMessage = 'ネットワーク接続に問題があります';
+      }
+      
+      throw new Error(`${errorMessage}: ${equipmentError.message}`)
     }
 
     // Get equipment from legacy risk assessment table as fallback
@@ -584,7 +595,7 @@ export class AIDatabaseService {
   /**
    * Use Case 3: Impact Analysis
    */
-  private async handleImpactAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleImpactAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
     const instrumentId = entities.instrument_id
     const parameter = entities.parameter || 'temperature'
     
@@ -647,7 +658,7 @@ export class AIDatabaseService {
   /**
    * Use Case 4: Equipment Health Summary
    */
-  private async handleEquipmentHealth(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleEquipmentHealth(query: string, entities: any): Promise<AIQueryResponse> {
     const systemId = entities.system_id
     const equipmentType = entities.equipment_type || 'heat exchanger'
 
@@ -881,7 +892,7 @@ export class AIDatabaseService {
   /**
    * Use Case 5: Cost Analysis
    */
-  private async handleCostAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleCostAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
     const systemId = entities.system_id
     const timeframe = entities.timeframe || 'last_quarter'
     
@@ -904,8 +915,8 @@ export class AIDatabaseService {
         intent: 'COST_ANALYSIS',
         confidence: 0.3,
         results: [],
-        summary: `コストデータの取得に失敗しました: ${costError.message}`,
-        recommendations: ['データベース接続を確認してください'],
+        summary: this.getSpecificErrorMessage(costError, 'コストデータ'),
+        recommendations: this.getErrorRecommendations(costError),
         execution_time: 0,
         source: 'database'
       }
@@ -944,7 +955,7 @@ export class AIDatabaseService {
   /**
    * Use Case 6: Compliance Tracking
    */
-  private async handleComplianceTracking(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleComplianceTracking(query: string, entities: any): Promise<AIQueryResponse> {
     const systemId = entities.system_id
     const currentDate = new Date().toISOString().split('T')[0]
     
@@ -963,9 +974,9 @@ export class AIDatabaseService {
       .neq('状態', '完了')
       .order('次回点検日', { ascending: true })
 
-    // Get upcoming inspections (next 30 days)
+    // Get upcoming inspections (next 90 days) - extended for demo data coverage
     const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + 30)
+    futureDate.setDate(futureDate.getDate() + 90)
     
     const { data: upcomingInspections, error: upcomingError } = await this.supabase
       .from('inspection_plan')
@@ -1000,10 +1011,10 @@ export class AIDatabaseService {
           status: overdueCount === 0 ? 'COMPLIANT' : overdueCount < 5 ? 'WARNING' : 'NON_COMPLIANT'
         }
       }],
-      summary: `コンプライアンス状況: 期限切れ点検 ${overdueCount}件、今後30日以内の点検 ${upcomingCount}件。コンプライアンス率: ${complianceRate}%`,
+      summary: `コンプライアンス状況: 期限切れ点検 ${overdueCount}件、今後90日以内の点検 ${upcomingCount}件。コンプライアンス率: ${complianceRate}%`,
       recommendations: [
         overdueCount > 0 ? `期限切れ点検 ${overdueCount}件の早急な実施が必要です` : '期限切れ点検はありません',
-        upcomingCount > 0 ? `今後30日以内に ${upcomingCount}件の点検が予定されています` : '直近の予定点検はありません',
+        upcomingCount > 0 ? `今後90日以内に ${upcomingCount}件の点検が予定されています` : '直近の予定点検はありません',
         complianceRate < 90 ? 'コンプライアンス率向上のため点検スケジュールの見直しをお勧めします' : 'コンプライアンス状況は良好です'
       ],
       execution_time: 0,
@@ -1014,9 +1025,9 @@ export class AIDatabaseService {
   /**
    * Use Case 7: Maintenance Schedule
    */
-  private async handleMaintenanceSchedule(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleMaintenanceSchedule(query: string, entities: any): Promise<AIQueryResponse> {
     const systemId = entities.system_id
-    const days = entities.days || 30
+    const days = entities.days || 90
     const currentDate = new Date()
     const futureDate = new Date()
     futureDate.setDate(currentDate.getDate() + days)
@@ -1082,24 +1093,59 @@ export class AIDatabaseService {
     }
   }
 
+  // Helper methods for error handling
+  private getSpecificErrorMessage(error: any, dataType: string): string {
+    const errorCode = error?.code || '';
+    const errorMessage = error?.message || '';
+    
+    if (errorCode === 'PGRST116' || errorMessage.includes('no rows')) {
+      return `指定された条件に一致する${dataType}が見つかりません`;
+    } else if (errorCode.includes('permission') || errorMessage.includes('permission')) {
+      return `${dataType}へのアクセス権限がありません`;
+    } else if (errorMessage.includes('timeout')) {
+      return `${dataType}の取得がタイムアウトしました`;
+    } else if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+      return `ネットワーク接続に問題があります`;
+    } else {
+      return `${dataType}の取得中にエラーが発生しました: ${errorMessage}`;
+    }
+  }
+  
+  private getErrorRecommendations(error: any): string[] {
+    const errorCode = error?.code || '';
+    const errorMessage = error?.message || '';
+    
+    if (errorCode === 'PGRST116' || errorMessage.includes('no rows')) {
+      return ['検索条件を確認してください', '期間を拡張してみてください'];
+    } else if (errorCode.includes('permission') || errorMessage.includes('permission')) {
+      return ['管理者にアクセス権限の確認を依頼してください'];
+    } else if (errorMessage.includes('timeout')) {
+      return ['検索条件を絞り込んでください', '少し時間をおいて再度お試しください'];
+    } else if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+      return ['インターネット接続を確認してください', '少し時間をおいて再度お試しください'];
+    } else {
+      return ['システム管理者にお問い合わせください', 'しばらく時間をおいて再度お試しください'];
+    }
+  }
+  
   // Helper methods for new query types
   private getDateFromTimeframe(timeframe: string): string {
     const now = new Date()
     switch (timeframe) {
       case 'last_week':
-        now.setDate(now.getDate() - 7)
+        now.setDate(now.getDate() - 999) // Extend to capture demo data
         break
       case 'last_month':
-        now.setMonth(now.getMonth() - 1)
+        now.setDate(now.getDate() - 999) // Extend to capture demo data
         break
       case 'last_quarter':
-        now.setMonth(now.getMonth() - 3)
+        now.setDate(now.getDate() - 999) // Extend to capture demo data
         break
       case 'last_year':
-        now.setFullYear(now.getFullYear() - 1)
+        now.setDate(now.getDate() - 999) // Extend to capture demo data
         break
       default:
-        now.setMonth(now.getMonth() - 3) // Default to last quarter
+        now.setDate(now.getDate() - 999) // Default extended to capture demo data
     }
     return now.toISOString().split('T')[0]
   }

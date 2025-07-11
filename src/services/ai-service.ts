@@ -66,6 +66,21 @@ export class AIService {
             case 'EQUIPMENT_STRATEGY_LIST':
               response = await this.handleEquipmentStrategyList(query, entities)
               break
+            case 'IMPACT_ANALYSIS':
+              response = await this.handleImpactAnalysis(query, entities)
+              break
+            case 'EQUIPMENT_HEALTH':
+              response = await this.handleEquipmentHealth(query, entities)
+              break
+            case 'COST_ANALYSIS':
+              response = await this.handleCostAnalysis(query, entities)
+              break
+            case 'COMPLIANCE_TRACKING':
+              response = await this.handleComplianceTracking(query, entities)
+              break
+            case 'MAINTENANCE_SCHEDULE':
+              response = await this.handleMaintenanceSchedule(query, entities)
+              break
             default:
               response = this.handleUnknownQuery(query)
           }
@@ -210,14 +225,34 @@ export class AIService {
         source: 'database'
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error(`[Maintenance History] Query failed:`, error);
+      const errorMessage = error?.message || 'Unknown error';
+      let summary = 'メンテナンス履歴の取得中にエラーが発生しました';
+      let recommendations = ['システム管理者にお問い合わせください'];
+      
+      // Provide specific error guidance based on error type
+      if (errorMessage.includes('permission')) {
+        summary = 'メンテナンス履歴へのアクセス権限がありません';
+        recommendations = ['管理者にアクセス権限の確認を依頼してください'];
+      } else if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        summary = 'ネットワーク接続に問題があります';
+        recommendations = ['インターネット接続を確認してください', '少し時間をおいて再度お試しください'];
+      } else if (errorMessage.includes('timeout')) {
+        summary = 'データ取得がタイムアウトしました';
+        recommendations = ['検索条件を絞り込んでください', '少し時間をおいて再度お試しください'];
+      } else if (errorMessage.includes('not found') || errorMessage.includes('empty')) {
+        summary = '指定された条件に一致するメンテナンス履歴が見つかりません';
+        recommendations = ['検索期間を延長してください', '設備IDや条件を確認してください'];
+      }
+      
       return {
         query,
         intent: 'MAINTENANCE_HISTORY',
         confidence: 0.3,
         results: [],
-        summary: 'メンテナンス履歴の取得中にエラーが発生しました',
-        recommendations: ['データベース接続を確認してください'],
+        summary,
+        recommendations,
         source: 'database'
       }
     }
@@ -459,6 +494,66 @@ export class AIService {
   }
 
   /**
+   * Handle impact analysis queries
+   */
+  private async handleImpactAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
+    // Use the database service for impact analysis
+    const databaseResult = await this.databaseService.handleImpactAnalysis(query, entities)
+    return {
+      ...databaseResult,
+      source: 'database'
+    }
+  }
+
+  /**
+   * Handle equipment health queries
+   */
+  private async handleEquipmentHealth(query: string, entities: any): Promise<AIQueryResponse> {
+    // Use the database service for equipment health
+    const databaseResult = await this.databaseService.handleEquipmentHealth(query, entities)
+    return {
+      ...databaseResult,
+      source: 'database'
+    }
+  }
+
+  /**
+   * Handle cost analysis queries
+   */
+  private async handleCostAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
+    // Use the database service for cost analysis
+    const databaseResult = await this.databaseService.handleCostAnalysis(query, entities)
+    return {
+      ...databaseResult,
+      source: 'database'
+    }
+  }
+
+  /**
+   * Handle compliance tracking queries
+   */
+  private async handleComplianceTracking(query: string, entities: any): Promise<AIQueryResponse> {
+    // Use the database service for compliance tracking
+    const databaseResult = await this.databaseService.handleComplianceTracking(query, entities)
+    return {
+      ...databaseResult,
+      source: 'database'
+    }
+  }
+
+  /**
+   * Handle maintenance schedule queries
+   */
+  private async handleMaintenanceSchedule(query: string, entities: any): Promise<AIQueryResponse> {
+    // Use the database service for maintenance schedule
+    const databaseResult = await this.databaseService.handleMaintenanceSchedule(query, entities)
+    return {
+      ...databaseResult,
+      source: 'database'
+    }
+  }
+
+  /**
    * Handle unknown queries
    */
   private handleUnknownQuery(query: string): AIQueryResponse {
@@ -538,6 +633,40 @@ export class AIService {
     if (q.includes('mitigation') || q.includes('implementation') || 
         q.includes('responsible') || q.includes('緩和策') || q.includes('実施状況')) {
       return 'MITIGATION_STATUS'
+    }
+    
+    // Impact analysis queries
+    if (q.includes('impact') || q.includes('affected') || q.includes('cascade') ||
+        q.includes('influence') || q.includes('consequence') || q.includes('影響')) {
+      return 'IMPACT_ANALYSIS'
+    }
+    
+    // Equipment health queries
+    if (q.includes('health') || q.includes('condition') || q.includes('status') ||
+        q.includes('state') || q.includes('current') || q.includes('健康状態') ||
+        q.includes('状態') || q.includes('現在の')) {
+      return 'EQUIPMENT_HEALTH'
+    }
+    
+    // Cost analysis queries
+    if (q.includes('cost') || q.includes('expense') || q.includes('budget') ||
+        q.includes('financial') || q.includes('money') || q.includes('コスト') ||
+        q.includes('費用') || q.includes('予算')) {
+      return 'COST_ANALYSIS'
+    }
+    
+    // Compliance tracking queries
+    if (q.includes('compliance') || q.includes('regulation') || q.includes('standard') ||
+        q.includes('audit') || q.includes('requirement') || q.includes('コンプライアンス') ||
+        q.includes('規制') || q.includes('基準')) {
+      return 'COMPLIANCE_TRACKING'
+    }
+    
+    // Maintenance schedule queries
+    if (q.includes('schedule') || q.includes('planned') || q.includes('upcoming') ||
+        q.includes('future') || q.includes('calendar') || q.includes('スケジュール') ||
+        q.includes('予定') || q.includes('今後')) {
+      return 'MAINTENANCE_SCHEDULE'
     }
     
     return 'UNKNOWN'
