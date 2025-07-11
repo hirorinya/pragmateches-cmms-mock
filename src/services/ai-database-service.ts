@@ -105,9 +105,9 @@ export class AIDatabaseService {
   }
 
   /**
-   * Use Case 1: Risk Coverage Analysis
+   * Use Case 1: Risk Coverage Analysis - Real Database Implementation
    */
-  private async handleCoverageAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleCoverageAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
     const systemId = entities.system_id
     const riskType = entities.risk_type || 'fouling'
     const isAskingForMissing = query.toLowerCase().includes('not') || query.toLowerCase().includes('missing') || query.toLowerCase().includes('ない')
@@ -130,19 +130,27 @@ export class AIDatabaseService {
     }
     
     if (!systemId) {
+      // Get available systems from database
+      const { data: availableSystems, error: systemsError } = await this.supabase
+        .from('equipment_systems')
+        .select('system_id, system_name')
+        .eq('is_active', true)
+        .order('system_id')
+      
+      const systemList = availableSystems?.map(s => `• ${s.system_id}: ${s.system_name}`) || [
+        '• SYS-001: プロセス冷却系統 (Process Cooling System)',
+        '• SYS-002: 原料供給系統 (Raw Material Supply System)',
+        '• SYS-003: 排水処理系統 (Wastewater Treatment System)',
+        '• SYS-004: 電力供給系統 (Power Supply System)'
+      ]
+      
       return {
         query,
         intent: 'COVERAGE_ANALYSIS',
         confidence: 0.5,
         results: [],
         summary: 'Please specify which system you want to analyze.',
-        recommendations: [
-          'Available systems:',
-          '• SYS-001: プロセス冷却系統 (Process Cooling System)',
-          '• SYS-002: 原料供給系統 (Raw Material Supply System)', 
-          '• SYS-003: 排水処理系統 (Wastewater Treatment System)',
-          '• SYS-004: 電力供給系統 (Power Supply System)'
-        ],
+        recommendations: ['Available systems:', ...systemList],
         execution_time: 0,
         source: 'database'
       }
@@ -168,7 +176,7 @@ export class AIDatabaseService {
       }
     }
 
-    // Get equipment in the system
+    // Get all equipment in the system with proper joins
     const { data: equipmentData, error: equipmentError } = await this.supabase
       .from('equipment_system_mapping')
       .select(`
@@ -184,69 +192,100 @@ export class AIDatabaseService {
       .eq('system_id', systemId)
 
     if (equipmentError) {
+      console.error(`[Coverage Analysis] Equipment fetch error:`, equipmentError);
       throw new Error(`Failed to fetch equipment data: ${equipmentError.message}`)
     }
 
-    // Get heat exchangers from risk assessment data
-    const { data: heatExchangers, error: hxError } = await this.supabase
+    // Get equipment from legacy risk assessment table as fallback
+    const { data: legacyEquipment, error: legacyError } = await this.supabase
       .from('equipment_risk_assessment')
-      .select('*')
-      .like('機器ID', 'HX-%')
-
-    if (hxError) {
-      console.warn('Could not fetch heat exchanger data:', hxError.message)
+      .select('機器ID, リスクシナリオ')
+      .not('機器ID', 'is', null)
+    
+    if (legacyError) {
+      console.warn(`[Coverage Analysis] Legacy equipment fetch warning:`, legacyError.message);
     }
 
-    // Get risk scenarios/failure modes
-    const { data: riskData, error: riskError } = await this.supabase
+    // Get failure modes/risk scenarios for the system
+    const { data: failureModes, error: failureError } = await this.supabase
       .from('failure_modes')
-      .select('*')
+      .select('equipment_id, failure_mode, rpn_score')
       .eq('system_id', systemId)
+      .eq('is_active', true)
 
+    // Also check risk scenarios table
+    const { data: riskScenarios, error: riskError } = await this.supabase
+      .from('risk_scenarios')
+      .select('scenario_name, system_id')
+      .eq('system_id', systemId)
+      .eq('is_active', true)
+    
+    if (failureError) {
+      console.warn(`[Coverage Analysis] Failure modes fetch warning:`, failureError?.message);
+    }
+    
     if (riskError) {
-      console.warn('Could not fetch risk data:', riskError.message)
+      console.warn(`[Coverage Analysis] Risk scenarios fetch warning:`, riskError?.message);
     }
 
-    // Combine equipment sources
+    // Combine all equipment sources
     const allEquipment = [
       ...(equipmentData || []),
-      ...(heatExchangers || []).map(hx => ({
-        equipment_id: hx.機器ID,
+      // Add legacy equipment if not already included
+      ...(legacyEquipment || []).filter(legacy => 
+        !(equipmentData || []).some(eq => eq.equipment_id === legacy.機器ID)
+      ).map(legacy => ({
+        equipment_id: legacy.機器ID,
         role_in_system: 'PRIMARY',
         equipment: {
-          設備名: `Heat Exchanger ${hx.機器ID}`,
-          設備タグ: hx.機器ID,
+          設備名: legacy.機器ID,
+          設備タグ: legacy.機器ID,
           equipment_type_master: {
-            設備種別名: 'Heat Exchanger'
+            設備種別名: legacy.機器ID.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
           }
         }
       }))
     ]
 
-    // Filter for heat exchangers if query mentions them
-    const heatExchangerEquipment = allEquipment.filter(eq => 
-      eq.equipment?.equipment_type_master?.設備種別名?.toLowerCase().includes('heat') ||
-      eq.equipment?.設備名?.toLowerCase().includes('heat') ||
-      eq.equipment_id?.includes('HX-')
-    )
-
-    const targetEquipment = query.toLowerCase().includes('heat exchanger') ? heatExchangerEquipment : allEquipment
-
-    // Analyze risk coverage
-    const equipmentWithRisk = targetEquipment.filter(eq => {
-      const hasRiskScenario = (riskData || []).some(risk => 
-        risk.equipment_id === eq.equipment_id && 
-        risk.failure_mode.toLowerCase().includes(riskType.toLowerCase())
+    // Filter for specific equipment types if mentioned in query
+    let targetEquipment = allEquipment
+    if (query.toLowerCase().includes('heat exchanger')) {
+      targetEquipment = allEquipment.filter(eq => 
+        eq.equipment?.equipment_type_master?.設備種別名?.toLowerCase().includes('heat') ||
+        eq.equipment?.設備名?.toLowerCase().includes('heat') ||
+        eq.equipment_id?.includes('HX-')
       )
-      return hasRiskScenario
+    }
+
+    // Analyze risk coverage - check if equipment has failure modes for the specified risk type
+    const equipmentWithRisk = targetEquipment.filter(eq => {
+      // Check failure modes
+      const hasFailureMode = (failureModes || []).some(fm => 
+        fm.equipment_id === eq.equipment_id && 
+        fm.failure_mode.toLowerCase().includes(riskType.toLowerCase())
+      )
+      
+      // Check legacy risk assessment
+      const hasLegacyRisk = (legacyEquipment || []).some(legacy => 
+        legacy.機器ID === eq.equipment_id &&
+        legacy.リスクシナリオ?.toLowerCase().includes(riskType.toLowerCase())
+      )
+      
+      return hasFailureMode || hasLegacyRisk
     })
 
     const equipmentWithoutRisk = targetEquipment.filter(eq => {
-      const hasRiskScenario = (riskData || []).some(risk => 
-        risk.equipment_id === eq.equipment_id && 
-        risk.failure_mode.toLowerCase().includes(riskType.toLowerCase())
+      const hasFailureMode = (failureModes || []).some(fm => 
+        fm.equipment_id === eq.equipment_id && 
+        fm.failure_mode.toLowerCase().includes(riskType.toLowerCase())
       )
-      return !hasRiskScenario
+      
+      const hasLegacyRisk = (legacyEquipment || []).some(legacy => 
+        legacy.機器ID === eq.equipment_id &&
+        legacy.リスクシナリオ?.toLowerCase().includes(riskType.toLowerCase())
+      )
+      
+      return !hasFailureMode && !hasLegacyRisk
     })
 
     const systemName = systemInfo.system_name
@@ -256,7 +295,7 @@ export class AIDatabaseService {
     return {
       query,
       intent: 'COVERAGE_ANALYSIS',
-      confidence: 0.92,
+      confidence: 0.95,
       results: targetList.map(eq => ({
         equipment_id: eq.equipment_id,
         equipment_name: eq.equipment?.設備名 || eq.equipment_id,
@@ -265,16 +304,21 @@ export class AIDatabaseService {
         system_name: systemName,
         role_in_system: eq.role_in_system,
         risk_status: isAskingForMissing ? 'MISSING_COVERAGE' : 'HAS_COVERAGE',
-        risk_type: riskType
+        risk_type: riskType,
+        // Add additional analysis data
+        failure_mode_count: (failureModes || []).filter(fm => fm.equipment_id === eq.equipment_id).length,
+        highest_rpn: Math.max(...(failureModes || []).filter(fm => fm.equipment_id === eq.equipment_id).map(fm => fm.rpn_score || 0), 0)
       })),
-      summary: `Found ${targetList.length} equipment in ${systemName} (${systemId}) that are ${resultType} in ES for ${riskType} risk.`,
+      summary: `Found ${targetList.length} equipment in ${systemName} (${systemId}) that are ${resultType} in ES for ${riskType} risk. Total equipment in system: ${targetEquipment.length}.`,
       recommendations: isAskingForMissing ? [
         `Add ${riskType} risk scenarios for: ${targetList.map(eq => eq.equipment_id).join(', ')}`,
         'Conduct FMEA review for identified equipment',
-        'Update risk assessment database'
+        'Update risk assessment database with missing failure modes',
+        'Consider if these equipment items should have ES maintenance strategies'
       ] : [
         `Equipment with ${riskType} risk coverage: ${targetList.map(eq => eq.equipment_id).join(', ')}`,
-        'Review effectiveness of existing mitigation measures'
+        'Review effectiveness of existing mitigation measures',
+        'Verify ES maintenance strategies align with risk scenarios'
       ],
       execution_time: 0,
       source: 'database'
@@ -282,9 +326,9 @@ export class AIDatabaseService {
   }
 
   /**
-   * Use Case 2: Mitigation Status Analysis
+   * Use Case 2: Mitigation Status Analysis - Real Database Implementation
    */
-  private async handleMitigationStatus(query: string, entities: any): Promise<AIQueryResponse> {
+  public async handleMitigationStatus(query: string, entities: any): Promise<AIQueryResponse> {
     const equipmentId = entities.equipment_id
     const department = entities.department || 'REFINERY'
     
@@ -301,76 +345,236 @@ export class AIDatabaseService {
       }
     }
 
-    // Get equipment information
+    // Get equipment information from main equipment table
     const { data: equipmentInfo, error: equipmentError } = await this.supabase
       .from('equipment')
-      .select('*')
+      .select(`
+        設備ID,
+        設備名,
+        設備種別ID,
+        設置場所,
+        稼働状態,
+        equipment_type_master(設備種別名)
+      `)
       .eq('設備ID', equipmentId)
       .single()
 
-    if (equipmentError) {
-      // Try heat exchanger table
-      const { data: hxInfo, error: hxError } = await this.supabase
+    let equipmentFound = !!equipmentInfo
+    let equipmentData = equipmentInfo
+    
+    // If not found in main table, try legacy risk assessment table
+    if (equipmentError && !equipmentFound) {
+      const { data: legacyEquipment, error: legacyError } = await this.supabase
         .from('equipment_risk_assessment')
-        .select('*')
+        .select('機器ID, リスクシナリオ, 緩和策')
         .eq('機器ID', equipmentId)
         .single()
 
-      if (hxError) {
-        return {
-          query,
-          intent: 'MITIGATION_STATUS',
-          confidence: 0.3,
-          results: [],
-          summary: `Equipment ${equipmentId} not found in database.`,
-          recommendations: ['Check equipment ID spelling'],
-          execution_time: 0,
-          source: 'database'
+      if (legacyEquipment) {
+        equipmentFound = true
+        equipmentData = {
+          設備ID: legacyEquipment.機器ID,
+          設備名: legacyEquipment.機器ID,
+          設備種別ID: null,
+          設置場所: 'Unknown',
+          稼働状態: 'Unknown',
+          equipment_type_master: {
+            設備種別名: legacyEquipment.機器ID.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
+          }
         }
       }
     }
 
-    // Get equipment strategies
+    if (!equipmentFound) {
+      return {
+        query,
+        intent: 'MITIGATION_STATUS',
+        confidence: 0.3,
+        results: [],
+        summary: `Equipment ${equipmentId} not found in database.`,
+        recommendations: ['Check equipment ID spelling', 'Verify equipment exists in system'],
+        execution_time: 0,
+        source: 'database'
+      }
+    }
+
+    // Get equipment strategies (maintenance strategies)
     const { data: strategies, error: strategyError } = await this.supabase
       .from('equipment_strategy')
-      .select('*')
+      .select(`
+        strategy_id,
+        strategy_name,
+        strategy_type,
+        frequency_type,
+        frequency_value,
+        task_description,
+        priority,
+        is_active,
+        estimated_duration_hours,
+        required_skill_level
+      `)
       .eq('equipment_id', equipmentId)
+      .eq('is_active', true)
+    
+    if (strategyError) {
+      console.warn(`[Mitigation Status] Strategy fetch warning:`, strategyError?.message);
+    }
 
-    // Get failure modes and mitigation measures
+    // Get task generation history to understand implementation status
+    const { data: taskHistory, error: taskError } = await this.supabase
+      .from('task_generation_log')
+      .select(`
+        strategy_id,
+        generated_date,
+        next_generation_date,
+        status,
+        assigned_staff_id,
+        work_order_id
+      `)
+      .in('strategy_id', (strategies || []).map(s => s.strategy_id))
+      .order('generated_date', { ascending: false })
+    
+    if (taskError) {
+      console.warn(`[Mitigation Status] Task history fetch warning:`, taskError?.message);
+    }
+
+    // Get failure modes and risk scenarios for context
     const { data: failureModes, error: failureError } = await this.supabase
       .from('failure_modes')
-      .select('*')
+      .select(`
+        failure_mode_id,
+        failure_mode,
+        rpn_score,
+        current_controls,
+        recommended_actions
+      `)
       .eq('equipment_id', equipmentId)
+      .eq('is_active', true)
+    
+    if (failureError) {
+      console.warn(`[Mitigation Status] Failure modes fetch warning:`, failureError?.message);
+    }
 
-    const implementedMeasures = (strategies || []).filter(s => s.status === 'ACTIVE')
-    const plannedMeasures = (strategies || []).filter(s => s.status === 'PLANNED')
+    // Get legacy mitigation data
+    const { data: legacyMitigation, error: legacyMitigationError } = await this.supabase
+      .from('equipment_risk_assessment')
+      .select('緩和策, リスクレベル（5段階）')
+      .eq('機器ID', equipmentId)
+    
+    if (legacyMitigationError) {
+      console.warn(`[Mitigation Status] Legacy mitigation fetch warning:`, legacyMitigationError?.message);
+    }
+
+    // Get recent work orders for this equipment
+    const { data: recentWorkOrders, error: workOrderError } = await this.supabase
+      .from('work_order')
+      .select(`
+        作業指示ID,
+        作業内容,
+        状態,
+        計画開始日時,
+        実際開始日時,
+        実際終了日時
+      `)
+      .eq('設備ID', equipmentId)
+      .order('計画開始日時', { ascending: false })
+      .limit(10)
+    
+    if (workOrderError) {
+      console.warn(`[Mitigation Status] Work orders fetch warning:`, workOrderError?.message);
+    }
+
+    // Get recent maintenance history
+    const { data: maintenanceHistory, error: maintenanceError } = await this.supabase
+      .from('maintenance_history')
+      .select(`
+        実施日,
+        作業内容,
+        作業結果,
+        次回推奨日
+      `)
+      .eq('設備ID', equipmentId)
+      .order('実施日', { ascending: false })
+      .limit(5)
+    
+    if (maintenanceError) {
+      console.warn(`[Mitigation Status] Maintenance history fetch warning:`, maintenanceError?.message);
+    }
+
+    // Analyze strategy implementation status
+    const activeStrategies = (strategies || []).filter(s => s.is_active)
+    const strategyStatusMap = new Map()
+    
+    activeStrategies.forEach(strategy => {
+      const latestTask = (taskHistory || []).find(t => t.strategy_id === strategy.strategy_id)
+      const nextDue = latestTask?.next_generation_date || new Date().toISOString().split('T')[0]
+      const isOverdue = new Date(nextDue) < new Date()
+      
+      strategyStatusMap.set(strategy.strategy_id, {
+        strategy: strategy,
+        latest_task: latestTask,
+        next_due: nextDue,
+        is_overdue: isOverdue,
+        status: latestTask?.status || 'PENDING'
+      })
+    })
+
+    // Calculate completion rates
+    const totalStrategies = activeStrategies.length
+    const implementedStrategies = (taskHistory || []).filter(t => t.status === 'GENERATED' || t.status === 'ASSIGNED').length
+    const overdueStrategies = Array.from(strategyStatusMap.values()).filter(s => s.is_overdue).length
+    const completionRate = totalStrategies > 0 ? Math.round((implementedStrategies / totalStrategies) * 100) : 0
 
     return {
       query,
       intent: 'MITIGATION_STATUS',
-      confidence: 0.88,
+      confidence: 0.92,
       results: [{
         equipment_id: equipmentId,
-        equipment_name: equipmentInfo?.設備名 || equipmentId,
+        equipment_name: equipmentData?.設備名 || equipmentId,
+        equipment_type: equipmentData?.equipment_type_master?.設備種別名 || 'Unknown',
+        location: equipmentData?.設置場所 || 'Unknown',
+        operational_status: equipmentData?.稼働状態 || 'Unknown',
         department: department,
-        total_measures: (strategies || []).length,
-        implemented: implementedMeasures.map(m => ({
-          measure: m.strategy_name,
-          frequency: m.frequency_type,
-          responsible_person: m.responsible_person || 'Unknown'
+        
+        // Strategy analysis
+        total_strategies: totalStrategies,
+        active_strategies: activeStrategies.length,
+        implemented_count: implementedStrategies,
+        overdue_count: overdueStrategies,
+        completion_rate: completionRate,
+        
+        // Detailed strategy status
+        strategy_details: Array.from(strategyStatusMap.values()).map(s => ({
+          strategy_id: s.strategy.strategy_id,
+          strategy_name: s.strategy.strategy_name,
+          strategy_type: s.strategy.strategy_type,
+          frequency: `${s.strategy.frequency_value} ${s.strategy.frequency_type}`,
+          next_due: s.next_due,
+          is_overdue: s.is_overdue,
+          status: s.status,
+          priority: s.strategy.priority,
+          estimated_hours: s.strategy.estimated_duration_hours
         })),
-        planned: plannedMeasures.map(m => ({
-          measure: m.strategy_name,
-          planned_start: m.next_execution_date,
-          responsible_person: m.responsible_person || 'Unknown'
-        })),
-        risk_scenarios: (failureModes || []).length
+        
+        // Risk context
+        risk_scenarios: (failureModes || []).length,
+        highest_rpn: Math.max(...(failureModes || []).map(fm => fm.rpn_score || 0), 0),
+        
+        // Recent activity
+        recent_work_orders: (recentWorkOrders || []).length,
+        recent_maintenance: (maintenanceHistory || []).length,
+        
+        // Legacy mitigation measures
+        legacy_mitigation: (legacyMitigation || []).map(lm => lm.緩和策).filter(Boolean)
       }],
-      summary: `Implementation status for ${equipmentId}: ${implementedMeasures.length} implemented, ${plannedMeasures.length} planned measures.`,
+      summary: `Implementation status for ${equipmentId}: ${implementedStrategies}/${totalStrategies} strategies implemented (${completionRate}% completion rate). ${overdueStrategies} overdue strategies. ${(failureModes || []).length} risk scenarios identified.`,
       recommendations: [
-        'Review planned measures execution timeline',
-        'Ensure adequate resources for implementation',
-        'Monitor effectiveness of implemented measures'
+        overdueStrategies > 0 ? `Address ${overdueStrategies} overdue maintenance strategies immediately` : 'All strategies are on schedule',
+        completionRate < 80 ? 'Improve maintenance strategy implementation rate' : 'Good implementation rate maintained',
+        (failureModes || []).length > 0 ? `Monitor ${(failureModes || []).length} identified risk scenarios` : 'No active risk scenarios found',
+        'Review strategy effectiveness based on recent maintenance history',
+        'Ensure adequate resources for upcoming maintenance activities'
       ],
       execution_time: 0,
       source: 'database'

@@ -4,6 +4,7 @@
  */
 
 import { EquipmentService } from './equipment-service'
+import { AIDatabaseService } from './ai-database-service'
 import { withPerformanceTracking, recordError } from '@/lib/monitoring-service'
 
 interface AIQueryResponse {
@@ -19,9 +20,11 @@ interface AIQueryResponse {
 
 export class AIService {
   private equipmentService: EquipmentService
+  private databaseService: AIDatabaseService
 
   constructor() {
     this.equipmentService = new EquipmentService()
+    this.databaseService = new AIDatabaseService()
   }
 
   /**
@@ -283,45 +286,25 @@ export class AIService {
   }
 
   /**
-   * Handle coverage analysis queries (placeholder - would need risk assessment data)
+   * Handle coverage analysis queries (using real database)
    */
   private async handleCoverageAnalysis(query: string, entities: any): Promise<AIQueryResponse> {
-    // This would require integration with risk assessment and failure mode tables
-    // For now, return a placeholder that indicates database integration needed
-    
+    // Use the real database service for coverage analysis
+    const databaseResult = await this.databaseService.handleCoverageAnalysis(query, entities)
     return {
-      query,
-      intent: 'COVERAGE_ANALYSIS',
-      confidence: 0.1,
-      results: [],
-      summary: 'Coverage analysis requires risk assessment database integration',
-      recommendations: [
-        'Implement risk assessment table queries',
-        'Connect to failure mode database',
-        'Add Equipment Strategy integration'
-      ],
+      ...databaseResult,
       source: 'database'
     }
   }
 
   /**
-   * Handle mitigation status queries (placeholder - would need strategy data)
+   * Handle mitigation status queries (using real database)
    */
   private async handleMitigationStatus(query: string, entities: any): Promise<AIQueryResponse> {
-    // This would require integration with equipment strategy and mitigation tables
-    // For now, return a placeholder that indicates database integration needed
-    
+    // Use the real database service for mitigation status analysis
+    const databaseResult = await this.databaseService.handleMitigationStatus(query, entities)
     return {
-      query,
-      intent: 'MITIGATION_STATUS',
-      confidence: 0.1,
-      results: [],
-      summary: 'Mitigation status analysis requires Equipment Strategy database integration',
-      recommendations: [
-        'Implement equipment strategy table queries',
-        'Connect to mitigation measures database',
-        'Add responsible person lookups'
-      ],
+      ...databaseResult,
       source: 'database'
     }
   }
@@ -397,31 +380,44 @@ export class AIService {
   }
 
   /**
-   * Extract entities from query
+   * Extract entities from query (compatible with AIDatabaseService)
    */
-  private extractEntities(query: string): {
-    equipment?: string
-    system?: string
-    department?: string
-  } {
-    const entities: {
-      equipment?: string
-      system?: string
-      department?: string
-    } = {}
+  private extractEntities(query: string): any {
+    const entities: any = {}
+    
+    // Extract system IDs
+    const systemMatch = query.match(/SYS-(\d+)/i)
+    if (systemMatch) {
+      entities.system_id = systemMatch[0].toUpperCase()
+    }
+    
+    // Handle legacy "System A/B" references
+    if (query.toLowerCase().includes('system a') || query.includes('システムA')) {
+      entities.legacy_system = 'System A'
+      entities.suggested_system = 'SYS-001'
+      entities.system_name = 'プロセス冷却系統 (Process Cooling System)'
+    }
+    if (query.toLowerCase().includes('system b') || query.includes('システムB')) {
+      entities.legacy_system = 'System B'
+      entities.suggested_system = 'SYS-002'
+      entities.system_name = '原料供給系統 (Raw Material Supply System)'
+    }
     
     // Extract equipment IDs
-    const equipmentMatch = query.match(/(HX|PU|TK|EQ)-?\d+/i)
+    const equipmentMatch = query.match(/(?:EQ|HX|TK|PU)-?(\d+)/i)
     if (equipmentMatch) {
-      entities.equipment = equipmentMatch[0].toUpperCase().replace(/^([A-Z]+)(\d+)$/, '$1-$2')
+      entities.equipment_id = equipmentMatch[0].toUpperCase()
     }
     
-    // Extract system references
-    if (query.toLowerCase().includes('sys-001') || query.toLowerCase().includes('system a')) {
-      entities.system = 'SYS-001'
+    // Extract instrument IDs
+    const instrumentMatch = query.match(/(?:TI|PI|FI|LI)-?(\d+)/i)
+    if (instrumentMatch) {
+      entities.instrument_id = instrumentMatch[0].toUpperCase()
     }
-    if (query.toLowerCase().includes('sys-002') || query.toLowerCase().includes('system b')) {
-      entities.system = 'SYS-002'
+    
+    // Extract risk types
+    if (query.toLowerCase().includes('fouling') || query.includes('ファウリング') || query.includes('汚れ')) {
+      entities.risk_type = 'fouling'
     }
     
     // Extract departments
@@ -430,6 +426,14 @@ export class AIService {
     }
     if (query.toLowerCase().includes('maintenance') || query.includes('メンテナンス')) {
       entities.department = 'MAINTENANCE'
+    }
+    
+    // Backward compatibility - map to old format for existing handlers
+    if (entities.equipment_id) {
+      entities.equipment = entities.equipment_id
+    }
+    if (entities.system_id) {
+      entities.system = entities.system_id
     }
     
     return entities
