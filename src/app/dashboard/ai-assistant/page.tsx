@@ -50,61 +50,70 @@ export default function AIAssistantPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const quickQueries: QuickQuery[] = [
+    // Enhanced Natural Language Examples
     {
-      id: 'coverage-analysis',
-      title: 'Risk Coverage Analysis',
-      description: 'Find equipment missing specific risk scenarios',
-      query: 'Which equipment in SYS-001 are not reflected in ES for fouling blockage risk?',
+      id: 'equipment-problems',
+      title: 'What Problems Do We Have?',
+      description: 'Natural language query for current equipment issues',
+      query: 'What equipment problems do we have right now?',
       icon: <AlertTriangle className="h-4 w-4" />,
-      category: 'Risk Assessment'
+      category: 'Problems'
     },
     {
-      id: 'mitigation-status',
-      title: 'Mitigation Status Check',
-      description: 'Check implementation status by department',
-      query: 'What is the implementation status of risk mitigation measures for EQ005 by the refinery department?',
-      icon: <TrendingUp className="h-4 w-4" />,
-      category: 'Maintenance Tracking'
-    },
-    {
-      id: 'impact-analysis',
-      title: 'Instrument Impact Analysis',
-      description: 'Analyze cascade effects of parameter changes',
-      query: 'If TI-201 temperature increased, which equipment would be affected and what actions are needed?',
+      id: 'equipment-status',
+      title: 'How Are Things Running?',
+      description: 'Natural language equipment status check',
+      query: 'How is all our equipment running today?',
       icon: <Activity className="h-4 w-4" />,
-      category: 'Process Monitoring'
+      category: 'Status'
     },
     {
-      id: 'equipment-health',
-      title: 'Equipment Health Summary',
-      description: 'Get overall equipment status',
-      query: 'Show me all equipment IDs that are in the equipment strategy table',
+      id: 'maintenance-due',
+      title: 'What Maintenance Is Due?',
+      description: 'Natural language maintenance schedule query',
+      query: 'What maintenance work is due this week?',
+      icon: <Clock className="h-4 w-4" />,
+      category: 'Schedule'
+    },
+    {
+      id: 'recent-work',
+      title: 'Show Recent Work',
+      description: 'Natural language maintenance history',
+      query: 'Show me what maintenance work was done recently',
+      icon: <MessageSquare className="h-4 w-4" />,
+      category: 'History'
+    },
+    {
+      id: 'specific-equipment',
+      title: 'Tell Me About HX-101',
+      description: 'Natural language equipment info query',
+      query: 'Tell me about equipment HX-101 - how is it running?',
+      icon: <Lightbulb className="h-4 w-4" />,
+      category: 'Equipment'
+    },
+    {
+      id: 'all-equipment',
+      title: 'Show All Equipment',
+      description: 'Natural language overview request',
+      query: 'Show me all equipment in the facility',
       icon: <Database className="h-4 w-4" />,
-      category: 'System Overview'
+      category: 'Overview'
     },
     {
-      id: 'system-002-coverage',
-      title: 'SYS-002 Coverage Analysis',
-      description: 'Check risk coverage for Raw Material Supply System',
-      query: 'Which equipment in SYS-002 are not reflected in ES for fouling blockage risk?',
+      id: 'critical-issues',
+      title: 'Any Critical Issues?',
+      description: 'Natural language critical status check',
+      query: 'Are there any critical equipment issues I should know about?',
       icon: <AlertTriangle className="h-4 w-4" />,
-      category: 'Risk Assessment'
+      category: 'Critical'
     },
     {
-      id: 'cost-analysis',
-      title: 'Maintenance Cost Analysis',
-      description: 'Analyze maintenance costs and trends',
-      query: 'Show me the maintenance cost analysis for the last quarter by equipment type',
+      id: 'performance-check',
+      title: 'Equipment Performance',
+      description: 'Natural language performance query',
+      query: 'Which equipment is performing poorly this month?',
       icon: <TrendingUp className="h-4 w-4" />,
-      category: 'Financial Analysis'
-    },
-    {
-      id: 'compliance-tracking',
-      title: 'Compliance Status Check',
-      description: 'Check compliance with inspection schedules',
-      query: 'What is the current compliance status for inspection requirements?',
-      icon: <CheckCircle className="h-4 w-4" />,
-      category: 'Compliance'
+      category: 'Performance'
     }
   ]
 
@@ -175,14 +184,34 @@ export default function AIAssistantPage() {
 
     let formatted = `## ${parsedResponse.summary}\n\n`
 
-    // Add metadata section for transparency
+    // Add enhanced metadata section for transparency
     if (parsedResponse.intent || parsedResponse.confidence) {
       formatted += `### 📋 Query Analysis\n`
       formatted += `- **Intent:** ${parsedResponse.intent || 'Unknown'}\n`
       formatted += `- **Confidence:** ${Math.round((parsedResponse.confidence || 0) * 100)}%\n`
+      if (parsedResponse.source) {
+        const sourceEmoji = parsedResponse.source === 'openai' ? '🤖' : 
+                           parsedResponse.source === 'enhanced_ai' ? '🧠' : '💾'
+        formatted += `- **Source:** ${sourceEmoji} ${parsedResponse.source.replace('_', ' ').toUpperCase()}\n`
+      }
       if (parsedResponse.execution_time) {
         formatted += `- **Processing Time:** ${parsedResponse.execution_time}ms\n`
       }
+      
+      // Add context information if available
+      if (parsedResponse.context) {
+        const ctx = parsedResponse.context
+        if (ctx.urgency && ctx.urgency !== 'low') {
+          formatted += `- **Urgency:** ${ctx.urgency.toUpperCase()}\n`
+        }
+        if (ctx.hasEquipment) {
+          formatted += `- **Equipment Query:** Yes\n`
+        }
+        if (ctx.hasTimeframe) {
+          formatted += `- **Time-based Query:** Yes\n`
+        }
+      }
+      
       formatted += '\n'
     }
 

@@ -1,5 +1,5 @@
 // Enhanced AI Query Service with OpenAI integration
-// Falls back to database service if OpenAI is not available
+// Falls back to enhanced AI service and then database service if OpenAI is not available
 
 interface AIQueryResponse {
   query: string
@@ -9,32 +9,35 @@ interface AIQueryResponse {
   summary: string
   recommendations?: string[]
   execution_time: number
-  source: 'openai' | 'database'
+  source: 'openai' | 'enhanced_ai' | 'database'
 }
 
 export class AIQueryService {
   private databaseService: any
+  private enhancedAIService: any
 
   constructor() {
-    // Import database service for fallback
-    this.initializeDatabaseService()
+    // Import services for fallback
+    this.initializeServices()
   }
 
-  private async initializeDatabaseService() {
+  private async initializeServices() {
     const { AIDatabaseService } = await import('./ai-database-service')
+    const { enhancedAIService } = await import('./enhanced-ai-service')
     this.databaseService = new AIDatabaseService()
+    this.enhancedAIService = enhancedAIService
   }
 
   /**
    * Main query processing function
-   * Tries OpenAI first, falls back to database service
+   * Tries OpenAI first, falls back to enhanced AI service, then database service
    */
   async processQuery(query: string): Promise<AIQueryResponse> {
     const startTime = Date.now()
     
-    // Always ensure database service is available for fallback
-    if (!this.databaseService) {
-      await this.initializeDatabaseService()
+    // Always ensure services are available for fallback
+    if (!this.databaseService || !this.enhancedAIService) {
+      await this.initializeServices()
     }
     
     try {
@@ -52,14 +55,25 @@ export class AIQueryService {
         console.log('✅ OpenAI response successful')
         return openaiResponse
       } else {
-        console.warn('⚠️ OpenAI response incomplete or malformed, using database fallback')
+        console.warn('⚠️ OpenAI response incomplete or malformed, using enhanced AI fallback')
         throw new Error('Incomplete or malformed OpenAI response')
       }
     } catch (error) {
-      console.warn('❌ OpenAI failed, using reliable database service:', error.message)
+      console.warn('❌ OpenAI failed, trying enhanced AI service:', error.message)
     }
 
-    // Reliable fallback to database service
+    try {
+      // Try enhanced AI service with better natural language understanding
+      const enhancedResponse = await this.enhancedAIService.processQuery(query)
+      enhancedResponse.execution_time = Date.now() - startTime
+      enhancedResponse.source = 'enhanced_ai'
+      console.log('✅ Enhanced AI service response successful')
+      return enhancedResponse
+    } catch (error) {
+      console.warn('❌ Enhanced AI service failed, using basic database service:', error.message)
+    }
+
+    // Final fallback to basic database service
     const databaseResponse = await this.databaseService.processQuery(query)
     databaseResponse.execution_time = Date.now() - startTime
     databaseResponse.source = 'database'
