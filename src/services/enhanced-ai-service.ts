@@ -390,19 +390,58 @@ export class EnhancedAIService {
           console.log(`📝 Generated SQL: ${textToSQLResult.sql?.substring(0, 100)}...`);
           
           if (textToSQLResult.confidence > 0.7) {
+            // Generate appropriate summary based on execution results
+            const executionResult = textToSQLResult.execution_result
+            let summary = ''
+            
+            if (executionResult?.success && executionResult.data?.length > 0) {
+              // Generate data-focused summary
+              const dataCount = executionResult.data.length
+              const entityType = textToSQLResult.entities.find(e => e.type === 'system')?.resolved || 'query'
+              
+              if (query.toLowerCase().includes('maintenance')) {
+                summary = `Found ${dataCount} maintenance records. Here are the details:\n\n`
+                summary += executionResult.data.map((record: any, index: number) => 
+                  `${index + 1}. ${record.設備名} (${record.設備ID}) - ${record.作業内容} on ${record.実施日}`
+                ).join('\n')
+              } else if (query.toLowerCase().includes('equipment')) {
+                summary = `Found ${dataCount} equipment items for system ${entityType}:\n\n`
+                summary += executionResult.data.map((record: any, index: number) => 
+                  `${index + 1}. ${record.設備名} (${record.設備ID}) - Status: ${record.稼働状態}`
+                ).join('\n')
+              } else {
+                summary = `Found ${dataCount} records matching your query:\n\n`
+                summary += executionResult.data.slice(0, 5).map((record: any, index: number) => {
+                  const keys = Object.keys(record)
+                  const displayValues = keys.slice(0, 3).map(key => `${key}: ${record[key]}`).join(', ')
+                  return `${index + 1}. ${displayValues}`
+                }).join('\n')
+                
+                if (dataCount > 5) {
+                  summary += `\n... and ${dataCount - 5} more records.`
+                }
+              }
+            } else if (executionResult?.success && executionResult.data?.length === 0) {
+              summary = `No data found for your query. The SQL was generated successfully but returned no results. You may want to check if the specified criteria exist in the database.`
+            } else {
+              // Fallback to SQL explanation if execution failed
+              summary = textToSQLResult.explanation
+            }
+            
             return {
               query,
               intent: 'TEXT_TO_SQL',
               confidence: textToSQLResult.confidence,
               results: textToSQLResult.execution_result?.data || [],
-              summary: textToSQLResult.explanation,
+              summary,
               recommendations: textToSQLResult.alternatives || [],
               execution_time: Date.now() - startTime,
               source: 'ai',
               context: {
                 sql: textToSQLResult.sql,
                 entities: textToSQLResult.entities,
-                processing_steps: textToSQLResult.steps
+                processing_steps: textToSQLResult.steps,
+                execution_info: executionResult
               }
             }
           }
