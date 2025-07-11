@@ -57,21 +57,12 @@ export default function WorkOrdersPage() {
       const { data, error } = await supabase
         .from('work_order')
         .select(`
-          id,
-          title,
-          description,
-          equipment_id,
-          priority,
-          status,
-          assigned_to,
-          created_date,
-          due_date,
-          estimated_hours,
-          actual_hours,
-          work_type,
-          equipment!inner(設備名)
+          作業指示ID,
+          設備ID,
+          作業内容,
+          優先度
         `)
-        .order('created_date', { ascending: false })
+        .order('作業指示ID', { ascending: false })
 
       if (error) {
         console.error('Error fetching work orders:', error)
@@ -80,19 +71,19 @@ export default function WorkOrdersPage() {
       }
 
       const formattedWorkOrders: WorkOrder[] = data.map(wo => ({
-        id: wo.id,
-        title: wo.title,
-        description: wo.description,
-        equipment_id: wo.equipment_id,
-        equipment_name: wo.equipment?.設備名 || 'Unknown Equipment',
-        priority: wo.priority as 'HIGH' | 'MEDIUM' | 'LOW',
-        status: wo.status as 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED',
-        assigned_to: wo.assigned_to || 'Unassigned',
-        created_date: wo.created_date,
-        due_date: wo.due_date,
-        estimated_hours: wo.estimated_hours,
-        actual_hours: wo.actual_hours,
-        work_type: wo.work_type as 'PREVENTIVE' | 'CORRECTIVE' | 'EMERGENCY' | 'INSPECTION'
+        id: wo.作業指示ID,
+        title: wo.作業内容,
+        description: wo.作業内容,
+        equipment_id: wo.設備ID,
+        equipment_name: wo.設備ID, // Will need to join with equipment table later
+        priority: wo.優先度 === '高' ? 'HIGH' : wo.優先度 === '中' ? 'MEDIUM' : 'LOW',
+        status: 'OPEN', // Default status since not in current schema
+        assigned_to: 'Unassigned',
+        created_date: new Date().toISOString(),
+        due_date: new Date().toISOString(),
+        estimated_hours: 0,
+        actual_hours: 0,
+        work_type: 'PREVENTIVE'
       }))
 
       setWorkOrders(formattedWorkOrders)

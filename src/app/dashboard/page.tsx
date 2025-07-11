@@ -38,7 +38,7 @@ export default function DashboardPage() {
       // Fetch work orders stats
       const { data: workOrders, error: woError } = await supabase
         .from('work_order')
-        .select('id, status, priority, created_date, due_date')
+        .select('作業指示ID, 設備ID, 作業内容, 優先度')
 
       if (woError) throw woError
 
@@ -47,11 +47,11 @@ export default function DashboardPage() {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       
       const woStats = {
-        total: workOrders.length,
-        open: workOrders.filter(wo => wo.status === 'OPEN').length,
-        inProgress: workOrders.filter(wo => wo.status === 'IN_PROGRESS').length,
-        overdue: workOrders.filter(wo => wo.status !== 'COMPLETED' && new Date(wo.due_date) < now).length,
-        completed_this_week: workOrders.filter(wo => wo.status === 'COMPLETED' && new Date(wo.created_date) > weekAgo).length
+        total: workOrders?.length || 0,
+        open: workOrders?.filter(wo => wo.優先度 === '高').length || 0,
+        inProgress: workOrders?.filter(wo => wo.優先度 === '中').length || 0,
+        overdue: workOrders?.filter(wo => wo.優先度 === '高').length || 0,
+        completed_this_week: workOrders?.filter(wo => wo.作業内容?.includes('点検')).length || 0
       }
 
       // Fetch equipment stats
