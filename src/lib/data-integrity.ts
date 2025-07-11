@@ -75,13 +75,29 @@ export class DataIntegrityService {
       // This is a known field name mismatch that should be checked manually
       const mappedEquipmentIds = await this.getEquipmentWithSystemMappings()
       
-      const { data: unmappedEquipment, error } = await supabase
-        .from('equipment')
-        .select('設備ID, 設備名')
-        .not('設備ID', 'in', 
-          `(${mappedEquipmentIds})`
-        )
-        .limit(10)
+      let unmappedEquipment
+      let error
+      
+      if (mappedEquipmentIds === '') {
+        // No mappings exist, all equipment are unmapped
+        const result = await supabase
+          .from('equipment')
+          .select('設備ID, 設備名')
+          .limit(10)
+        unmappedEquipment = result.data
+        error = result.error
+      } else {
+        // Some mappings exist, check for unmapped equipment
+        const result = await supabase
+          .from('equipment')
+          .select('設備ID, 設備名')
+          .not('設備ID', 'in', 
+            `(${mappedEquipmentIds})`
+          )
+          .limit(10)
+        unmappedEquipment = result.data
+        error = result.error
+      }
       
       if (error) {
         return {
@@ -125,20 +141,29 @@ export class DataIntegrityService {
    */
   private async checkProcessParameterRanges(): Promise<DataIntegrityCheck> {
     try {
-      const { data: invalidParameters, error } = await supabase
+      // Get all process parameters first, then filter in JavaScript
+      const { data: allParameters, error } = await supabase
         .from('process_parameters')
         .select('parameter_id, parameter_name, normal_min, normal_max, critical_min, critical_max')
-        .or('normal_min.gte.normal_max,critical_min.gte.critical_max,critical_min.gt.normal_min,critical_max.lt.normal_max')
-        .limit(10)
+        .limit(100)
       
-      if (error) {
-        return {
-          check_name: 'Process Parameter Ranges',
-          status: 'FAIL',
-          description: 'Failed to check process parameter ranges',
-          details: error.message
-        }
-      }
+      if (error) throw error
+      
+      // Filter invalid parameters in JavaScript to avoid SQL syntax issues
+      const invalidParameters = (allParameters || []).filter(param => {
+        const normalMin = parseFloat(param.normal_min)
+        const normalMax = parseFloat(param.normal_max)
+        const criticalMin = parseFloat(param.critical_min)
+        const criticalMax = parseFloat(param.critical_max)
+        
+        // Check for invalid ranges
+        return (
+          (normalMin >= normalMax) ||
+          (criticalMin >= criticalMax) ||
+          (criticalMin > normalMin) ||
+          (criticalMax < normalMax)
+        )
+      }).slice(0, 10)
       
       if (invalidParameters && invalidParameters.length > 0) {
         return {
@@ -356,14 +381,22 @@ export class DataIntegrityService {
    * Helper method to get equipment with system mappings
    */
   private async getEquipmentWithSystemMappings(): Promise<string> {
-    const { data, error } = await supabase
-      .from('equipment_system_mapping')
-      .select('equipment_id')
-    
-    if (error || !data) return ''
-    
-    // Return equipment IDs in format compatible with equipment table (設備ID)
-    return data.map(item => `'${item.equipment_id}'`).join(',')
+    try {
+      const { data, error } = await supabase
+        .from('equipment_system_mapping')
+        .select('equipment_id')
+      
+      if (error || !data || data.length === 0) {
+        // Return empty string if no mappings exist
+        return ''
+      }
+      
+      // Return equipment IDs in format compatible with equipment table (設備ID)
+      return data.map(item => `'${item.equipment_id}'`).join(',')
+    } catch (error) {
+      // If table doesn't exist, return empty string
+      return ''
+    }
   }
   
   /**
