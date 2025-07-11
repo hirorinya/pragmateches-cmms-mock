@@ -6,6 +6,7 @@
 import { supabase } from '@/lib/supabase'
 import { EquipmentService } from './equipment-service'
 import { AIDatabaseService } from './ai-database-service'
+import { textToSQLService } from './text-to-sql-service'
 
 interface AIQueryResponse {
   query: string
@@ -39,6 +40,7 @@ export class EnhancedAIService {
   private intentPatterns: IntentPattern[]
   private entityPatterns: EntityPattern[]
   private synonyms: Map<string, string[]>
+  private useTextToSQL: boolean = true
 
   constructor() {
     this.equipmentService = new EquipmentService()
@@ -353,19 +355,42 @@ export class EnhancedAIService {
     const startTime = Date.now()
     
     try {
-      // Preprocess query
+      // Try text-to-SQL first for complex queries
+      if (this.useTextToSQL && this.shouldUseTextToSQL(query)) {
+        try {
+          const textToSQLResult = await textToSQLService.convertTextToSQL({
+            natural_language: query,
+            max_results: 100
+          })
+          
+          if (textToSQLResult.confidence > 0.7) {
+            return {
+              query,
+              intent: 'TEXT_TO_SQL',
+              confidence: textToSQLResult.confidence,
+              results: textToSQLResult.execution_result?.data || [],
+              summary: textToSQLResult.explanation,
+              recommendations: textToSQLResult.alternatives || [],
+              execution_time: Date.now() - startTime,
+              source: 'ai',
+              context: {
+                sql: textToSQLResult.sql,
+                entities: textToSQLResult.entities,
+                processing_steps: textToSQLResult.steps
+              }
+            }
+          }
+        } catch (textToSQLError) {
+          console.warn('Text-to-SQL failed, falling back to pattern matching:', textToSQLError)
+        }
+      }
+      
+      // Fallback to existing pattern-based processing
       const processedQuery = this.preprocessQuery(query)
-      
-      // Enhanced intent detection
       const intent = this.enhancedIntentDetection(processedQuery)
-      
-      // Enhanced entity extraction
       const entities = this.enhancedEntityExtraction(processedQuery)
-      
-      // Add contextual understanding
       const context = this.analyzeContext(processedQuery, entities)
       
-      // Route to appropriate handler
       const response = await this.routeToHandler(intent, processedQuery, entities, context)
       
       response.execution_time = Date.now() - startTime
@@ -390,6 +415,41 @@ export class EnhancedAIService {
         source: 'ai'
       }
     }
+  }
+
+  /**
+   * Determine if query should use text-to-SQL processing
+   */
+  private shouldUseTextToSQL(query: string): boolean {
+    const queryLower = query.toLowerCase()
+    
+    // Use text-to-SQL for complex queries
+    const complexPatterns = [
+      /\b(join|combine|correlate|relate|relationship|関係|結合)\b/,
+      /\b(average|mean|sum|total|count|maximum|minimum|平均|合計|最大|最小)\b/,
+      /\b(trend|pattern|analysis|compare|comparison|分析|比較|傾向)\b/,
+      /\b(between|range|from.*to|during|period|期間|範囲|〜.*間)\b/,
+      /\b(group|grouped|grouping|categorize|グループ|分類)\b/,
+      /\b(order|sorted|ranking|順序|ソート|ランキング)\b/,
+      /\b(filter|where|condition|条件|フィルタ)\b/,
+      /\b(top|bottom|highest|lowest|first|last|最初|最後|最高|最低)\b/
+    ]
+    
+    // Check for complex query patterns
+    const hasComplexPattern = complexPatterns.some(pattern => pattern.test(queryLower))
+    
+    // Check for multiple entities
+    const entityCount = (queryLower.match(/\b[A-Z]{1,3}-?\d{1,4}\b/g) || []).length
+    const hasMultipleEntities = entityCount > 1
+    
+    // Check for time-based queries
+    const hasTimeReference = /\b(last|past|recent|since|until|before|after|直近|過去|最近|以来|まで|前|後)\b/.test(queryLower)
+    
+    // Check for numerical queries
+    const hasNumericalQuery = /\b(how many|count|number of|何個|いくつ|数)\b/.test(queryLower)
+    
+    // Use text-to-SQL for complex scenarios
+    return hasComplexPattern || hasMultipleEntities || hasTimeReference || hasNumericalQuery
   }
 
   /**

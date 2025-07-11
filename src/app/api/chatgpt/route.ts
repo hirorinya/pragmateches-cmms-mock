@@ -212,6 +212,36 @@ IMPORTANT: Always structure your response with clear numbered sections:
 
 Format each section with the number, title, and content. Be specific and actionable in your recommendations.`
       userPrompt = `Analyze this inspection data: ${JSON.stringify(data)}, ${prompt}`
+    // Handle text-to-SQL requests
+    } else if (type === 'text_to_sql') {
+      systemPrompt = `You are an expert PostgreSQL SQL generator for CMMS (Computerized Maintenance Management System) databases.
+
+Your task is to convert natural language queries into valid PostgreSQL SQL statements.
+
+IMPORTANT RULES:
+1. Generate ONLY SELECT statements - no INSERT, UPDATE, DELETE, or DDL
+2. Use exact table and column names from the provided schema
+3. Include appropriate JOINs to get comprehensive results
+4. Add ORDER BY clauses for consistent results
+5. Include LIMIT clauses to prevent large result sets
+6. Handle both Japanese and English column names correctly
+7. Use parameterized queries when possible for security
+
+RESPONSE FORMAT:
+Always respond with:
+1. A valid PostgreSQL SQL statement in a code block
+2. Brief explanation of the query logic
+
+Example format:
+\`\`\`sql
+SELECT column1, column2 FROM table1 WHERE condition ORDER BY column1 LIMIT 50;
+\`\`\`
+
+**Explanation:** [Brief explanation of what the query does]
+
+Schema information and examples are provided in the user prompt.`
+      
+      userPrompt = prompt
     // No more hardcoded CMMS queries - all handled by AIService above
     }
 
