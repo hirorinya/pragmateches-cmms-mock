@@ -348,8 +348,8 @@ export class AIService {
           strategy_name: strategy.strategy_name,
           frequency_type: strategy.frequency_type,
           frequency_value: strategy.frequency_value,
-          responsible_department: strategy.responsible_department,
-          status: strategy.status
+          priority: strategy.priority,
+          status: strategy.is_active ? 'ACTIVE' : 'INACTIVE'
         })),
         summary: `Found ${equipmentIds.length} equipment with defined strategies: ${equipmentIds.join(', ')}`,
         recommendations: [

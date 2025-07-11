@@ -263,8 +263,8 @@ export default function AIAssistantPage() {
               if (strategy.frequency_type && strategy.frequency_value) {
                 formatted += `     - **Frequency:** ${strategy.frequency_value} ${strategy.frequency_type}\n`
               }
-              if (strategy.responsible_department) {
-                formatted += `     - **Department:** ${strategy.responsible_department}\n`
+              if (strategy.priority) {
+                formatted += `     - **Priority:** ${strategy.priority}\n`
               }
               if (strategy.status) {
                 formatted += `     - **Status:** ${strategy.status}\n`

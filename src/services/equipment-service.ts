@@ -376,8 +376,8 @@ export class EquipmentService {
               strategy_name,
               frequency_type,
               frequency_value,
-              responsible_department,
-              status,
+              priority,
+              is_active,
               equipment!inner(
                 設備名,
                 設備種別ID
