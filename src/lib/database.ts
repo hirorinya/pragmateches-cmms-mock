@@ -157,7 +157,22 @@ export async function getEquipmentDataForAI(categoryFilter?: string) {
 }
 
 // Get equipment with recent maintenance work
+// Simple cache for recent maintenance data
+const maintenanceCache = new Map<string, { data: any, timestamp: number }>()
+const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes
+
 export async function getEquipmentWithRecentMaintenance(daysBack: number = 365) {
+  // Check cache first
+  const cacheKey = `maintenance_${daysBack}`
+  const now = Date.now()
+  
+  if (maintenanceCache.has(cacheKey)) {
+    const cached = maintenanceCache.get(cacheKey)!
+    if (now - cached.timestamp < CACHE_DURATION) {
+      return cached.data
+    }
+  }
+  
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - daysBack)
   const cutoffDateString = cutoffDate.toISOString().split('T')[0]
@@ -225,7 +240,7 @@ export async function getEquipmentWithRecentMaintenance(daysBack: number = 365) 
     new Date(b.最新メンテナンス日).getTime() - new Date(a.最新メンテナンス日).getTime()
   )
 
-  return {
+  const finalResult = {
     equipment: result,
     summary: {
       totalEquipmentWithMaintenance: result.length,
@@ -234,4 +249,12 @@ export async function getEquipmentWithRecentMaintenance(daysBack: number = 365) 
       cutoffDate: cutoffDateString
     }
   }
+  
+  // Cache the result
+  maintenanceCache.set(cacheKey, {
+    data: finalResult,
+    timestamp: now
+  })
+  
+  return finalResult
 }

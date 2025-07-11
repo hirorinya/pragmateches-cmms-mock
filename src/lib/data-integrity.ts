@@ -26,27 +26,32 @@ export interface DataIntegrityCheck {
 }
 
 export class DataIntegrityService {
+  private static cache: { [key: string]: { data: DataIntegrityReport, timestamp: number } } = {}
+  private static CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
   
   /**
-   * Run comprehensive data integrity checks
+   * Run comprehensive data integrity checks with caching and parallel execution
    */
   async runIntegrityChecks(): Promise<DataIntegrityReport> {
-    const checks: DataIntegrityCheck[] = []
+    // Check cache first
+    const cacheKey = 'integrity_checks'
+    const now = Date.now()
     
-    // Check 1: Verify all equipment has valid system mappings
-    checks.push(await this.checkEquipmentSystemMappings())
+    if (DataIntegrityService.cache[cacheKey] && 
+        (now - DataIntegrityService.cache[cacheKey].timestamp) < DataIntegrityService.CACHE_DURATION) {
+      return DataIntegrityService.cache[cacheKey].data
+    }
     
-    // Check 2: Verify all process parameters have valid ranges
-    checks.push(await this.checkProcessParameterRanges())
+    // Run all checks in parallel for better performance
+    const checkPromises = [
+      this.checkEquipmentSystemMappings(),
+      this.checkProcessParameterRanges(),
+      this.checkOrphanedRecords(),
+      this.checkDateConsistency(),
+      this.checkMissingRequiredData()
+    ]
     
-    // Check 3: Check for orphaned records
-    checks.push(await this.checkOrphanedRecords())
-    
-    // Check 4: Verify date consistency
-    checks.push(await this.checkDateConsistency())
-    
-    // Check 5: Check for missing required data
-    checks.push(await this.checkMissingRequiredData())
+    const checks = await Promise.all(checkPromises)
     
     // Calculate summary
     const summary = {
@@ -59,11 +64,19 @@ export class DataIntegrityService {
     // Generate recommendations
     const recommendations = this.generateRecommendations(checks)
     
-    return {
+    const result = {
       checks,
       summary,
       recommendations
     }
+    
+    // Cache the result
+    DataIntegrityService.cache[cacheKey] = {
+      data: result,
+      timestamp: now
+    }
+    
+    return result
   }
   
   /**
