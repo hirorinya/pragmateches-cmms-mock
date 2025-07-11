@@ -105,6 +105,7 @@ export class AIService {
         confidence: 0.3,
         results: [],
         summary: 'Please specify an equipment ID (e.g., HX-101, PU-100, TK-101)',
+        execution_time: 0,
         source: 'database'
       }
     }
