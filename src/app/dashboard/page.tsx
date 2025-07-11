@@ -57,69 +57,75 @@ export default function DashboardPage() {
       // Fetch equipment stats
       const { data: equipment, error: eqError } = await supabase
         .from('equipment')
-        .select('設備ID, 稼働状態')
+        .select('equipment_id, operational_status')
 
       if (eqError) throw eqError
 
-      const operationalCount = equipment.filter(eq => eq.稼働状態 === '稼働中').length
+      const operationalCount = equipment.filter(eq => eq.operational_status === 'OPERATIONAL').length
       const availability = equipment.length > 0 ? (operationalCount / equipment.length) * 100 : 0
 
       // Fetch maintenance history for MTTR calculation
       const { data: maintenance, error: mError } = await supabase
         .from('maintenance_history')
-        .select('作業時間')
+        .select('work_hours')
         .limit(50)
 
       if (mError) throw mError
 
       const avgMaintTime = maintenance.length > 0 
-        ? maintenance.reduce((sum, m) => sum + (parseFloat(m.作業時間) || 0), 0) / maintenance.length 
+        ? maintenance.reduce((sum, m) => sum + (parseFloat(m.work_hours) || 0), 0) / maintenance.length 
         : 4.2
 
       // Fetch upcoming inspection tasks
       const { data: inspections, error: iError } = await supabase
         .from('inspection_plan')
         .select(`
-          設備ID,
-          次回検査日,
-          検査種別,
-          equipment!inner(設備名)
+          equipment_id,
+          next_inspection_date,
+          inspection_item,
+          equipment!inner(equipment_name)
         `)
-        .gte('次回検査日', now.toISOString().split('T')[0])
-        .order('次回検査日', { ascending: true })
+        .gte('next_inspection_date', now.toISOString().split('T')[0])
+        .order('next_inspection_date', { ascending: true })
         .limit(10)
 
       if (iError) throw iError
 
       const tasks = inspections.map(inspection => ({
-        id: inspection.設備ID,
-        equipment: inspection.設備ID,
-        equipment_name: inspection.equipment?.設備名,
-        task: inspection.検査種別 || 'Scheduled Inspection',
-        due: inspection.次回検査日,
-        priority: calculatePriority(inspection.次回検査日)
+        id: inspection.equipment_id,
+        equipment: inspection.equipment_id,
+        equipment_name: inspection.equipment?.equipment_name,
+        task: inspection.inspection_item || 'Scheduled Inspection',
+        due: inspection.next_inspection_date,
+        priority: calculatePriority(inspection.next_inspection_date)
       }))
 
-      // Fetch risk alerts
-      const { data: risks, error: rError } = await supabase
-        .from('equipment_risk_assessment')
-        .select(`
-          設備ID,
-          リスクレベル,
-          リスク要因,
-          equipment!inner(設備名)
-        `)
-        .eq('リスクレベル', 'HIGH')
-        .limit(10)
+      // Fetch risk alerts - handle table existence
+      let alerts = []
+      try {
+        const { data: risks, error: rError } = await supabase
+          .from('equipment_risk_assessment')
+          .select(`
+            equipment_id,
+            risk_level,
+            risk_factor,
+            equipment!inner(equipment_name)
+          `)
+          .eq('risk_level', 'HIGH')
+          .limit(10)
 
-      if (rError) throw rError
-
-      const alerts = risks.map(risk => ({
-        equipment: risk.設備ID,
-        equipment_name: risk.equipment?.設備名,
-        issue: risk.リスク要因,
-        severity: risk.リスクレベル
-      }))
+        if (!rError && risks) {
+          alerts = risks.map(risk => ({
+            equipment: risk.equipment_id,
+            equipment_name: risk.equipment?.equipment_name,
+            issue: risk.risk_factor,
+            severity: risk.risk_level
+          }))
+        }
+      } catch (error) {
+        console.log('Risk assessment table not available:', error)
+        alerts = []
+      }
 
       setCmmsStats({
         workOrders: woStats,
