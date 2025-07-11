@@ -188,17 +188,21 @@ export default function AIAssistantPage() {
     if (parsedResponse.results && (Array.isArray(parsedResponse.results) ? parsedResponse.results.length > 0 : Object.keys(parsedResponse.results).length > 0)) {
       formatted += `### 📊 Analysis Results\n\n`
       
-      // Remove duplicates based on equipment_id
+      // Remove duplicates based on equipment_id or 設備ID (handle both field name patterns)
       const uniqueResults = Array.isArray(parsedResponse.results) 
-        ? parsedResponse.results.filter((result: any, index: number, arr: any[]) => 
-            arr.findIndex(r => r.equipment_id === result.equipment_id) === index
-          )
+        ? parsedResponse.results.filter((result: any, index: number, arr: any[]) => {
+            const currentId = result.equipment_id || result.設備ID
+            return arr.findIndex(r => {
+              const compareId = r.equipment_id || r.設備ID
+              return compareId === currentId
+            }) === index
+          })
         : [parsedResponse.results]
       
-      if (Array.isArray(uniqueResults) && uniqueResults[0]?.equipment_id && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
+      if (Array.isArray(uniqueResults) && (uniqueResults[0]?.equipment_id || uniqueResults[0]?.設備ID) && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
         // Coverage analysis format - handles both missing and covered scenarios
         uniqueResults.forEach((result: any, index: number) => {
-          formatted += `**${index + 1}. Equipment ${result.equipment_id || 'Unknown'}**\n`
+          formatted += `**${index + 1}. Equipment ${result.equipment_id || result.設備ID || 'Unknown'}**\n`
           formatted += `- **Type:** ${result.equipment_type || 'Heat Exchanger'}\n`
           formatted += `- **System:** ${result.system || 'SYS-001'}\n`
           formatted += `- **Location:** ${result.location || 'Not specified'}\n`
@@ -212,10 +216,10 @@ export default function AIAssistantPage() {
           }
           formatted += '\n'
         })
-      } else if (uniqueResults[0]?.equipment_id && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
+      } else if ((uniqueResults[0]?.equipment_id || uniqueResults[0]?.設備ID) && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
         // Mitigation status format
         const r = uniqueResults[0]
-        formatted += `**🔧 Equipment:** ${r.equipment_id}\n`
+        formatted += `**🔧 Equipment:** ${r.equipment_id || r.設備ID}\n`
         formatted += `**🏢 Department:** ${r.department}\n`
         formatted += `**📋 Total Measures:** ${r.total_measures}\n\n`
         
@@ -237,7 +241,7 @@ export default function AIAssistantPage() {
       } else if (Array.isArray(uniqueResults) && uniqueResults[0]?.impact_level) {
         // Impact analysis format
         uniqueResults.forEach((equipment: any, index: number) => {
-          formatted += `**${index + 1}. Equipment ${equipment.equipment_id}** (${equipment.equipment_type})\n`
+          formatted += `**${index + 1}. Equipment ${equipment.equipment_id || equipment.設備ID}** (${equipment.equipment_type})\n`
           formatted += `- **Impact Level:** ${equipment.impact_level}\n`
           formatted += `- **System:** ${equipment.system || 'SYS-001'}\n`
           
@@ -264,7 +268,7 @@ export default function AIAssistantPage() {
       } else if (uniqueResults.length > 0 && uniqueResults[0]?.strategy_id) {
         // Equipment strategy format
         const groupedByEquipment = uniqueResults.reduce((acc: any, strategy: any) => {
-          const equipmentId = strategy.equipment_id
+          const equipmentId = strategy.equipment_id || strategy.設備ID
           if (!acc[equipmentId]) {
             acc[equipmentId] = []
           }

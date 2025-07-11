@@ -70,11 +70,15 @@ export class DataIntegrityService {
    */
   private async checkEquipmentSystemMappings(): Promise<DataIntegrityCheck> {
     try {
+      // Note: equipment_system_mapping uses equipment_id, equipment table uses 設備ID
+      // This is a known field name mismatch that should be checked manually
+      const mappedEquipmentIds = await this.getEquipmentWithSystemMappings()
+      
       const { data: unmappedEquipment, error } = await supabase
         .from('equipment')
         .select('設備ID, 設備名')
         .not('設備ID', 'in', 
-          `(${await this.getEquipmentWithSystemMappings()})`
+          `(${mappedEquipmentIds})`
         )
         .limit(10)
       
@@ -185,11 +189,12 @@ export class DataIntegrityService {
       }
       
       // Check for process parameters without equipment
+      // Note: process_parameters uses equipment_id, equipment table uses 設備ID
       const { data: orphanedParameters, error: parameterError } = await supabase
         .from('process_parameters')
         .select('equipment_id')
         .not('equipment_id', 'in', 
-          `(${await this.getValidEquipmentIds()})`
+          `(${await this.getValidEquipmentIdsEnglish()})`
         )
         .limit(5)
       
@@ -356,6 +361,7 @@ export class DataIntegrityService {
     
     if (error || !data) return ''
     
+    // Return equipment IDs in format compatible with equipment table (設備ID)
     return data.map(item => `'${item.equipment_id}'`).join(',')
   }
   
@@ -369,6 +375,20 @@ export class DataIntegrityService {
     
     if (error || !data) return ''
     
+    return data.map(item => `'${item.設備ID}'`).join(',')
+  }
+  
+  /**
+   * Helper method to get valid equipment IDs in English format for process_parameters table
+   */
+  private async getValidEquipmentIdsEnglish(): Promise<string> {
+    const { data, error } = await supabase
+      .from('equipment')
+      .select('設備ID')
+    
+    if (error || !data) return ''
+    
+    // Return equipment IDs formatted for tables that use equipment_id (English field name)
     return data.map(item => `'${item.設備ID}'`).join(',')
   }
   

@@ -244,7 +244,7 @@ export class AIDatabaseService {
       ...(equipmentData || []),
       // Add legacy equipment if not already included
       ...(legacyEquipment || []).filter(legacy => 
-        !(equipmentData || []).some(eq => eq.equipment_id === legacy.機器ID)
+        !(equipmentData || []).some(eq => (eq.equipment_id || eq.設備ID) === legacy.機器ID)
       ).map(legacy => ({
         equipment_id: legacy.機器ID,
         role_in_system: 'PRIMARY',
@@ -264,7 +264,7 @@ export class AIDatabaseService {
       targetEquipment = allEquipment.filter(eq => 
         eq.equipment?.equipment_type_master?.設備種別名?.toLowerCase().includes('heat') ||
         eq.equipment?.設備名?.toLowerCase().includes('heat') ||
-        eq.equipment_id?.includes('HX-')
+        (eq.equipment_id || eq.設備ID)?.includes('HX-')
       )
     }
 
@@ -272,13 +272,13 @@ export class AIDatabaseService {
     const equipmentWithRisk = targetEquipment.filter(eq => {
       // Check failure modes
       const hasFailureMode = (failureModes || []).some(fm => 
-        fm.equipment_id === eq.equipment_id && 
+        fm.equipment_id === (eq.equipment_id || eq.設備ID) && 
         fm.failure_mode.toLowerCase().includes(riskType.toLowerCase())
       )
       
       // Check legacy risk assessment
       const hasLegacyRisk = (legacyEquipment || []).some(legacy => 
-        legacy.機器ID === eq.equipment_id &&
+        legacy.機器ID === (eq.equipment_id || eq.設備ID) &&
         legacy.リスクシナリオ?.toLowerCase().includes(riskType.toLowerCase())
       )
       
@@ -287,12 +287,12 @@ export class AIDatabaseService {
 
     const equipmentWithoutRisk = targetEquipment.filter(eq => {
       const hasFailureMode = (failureModes || []).some(fm => 
-        fm.equipment_id === eq.equipment_id && 
+        fm.equipment_id === (eq.equipment_id || eq.設備ID) && 
         fm.failure_mode.toLowerCase().includes(riskType.toLowerCase())
       )
       
       const hasLegacyRisk = (legacyEquipment || []).some(legacy => 
-        legacy.機器ID === eq.equipment_id &&
+        legacy.機器ID === (eq.equipment_id || eq.設備ID) &&
         legacy.リスクシナリオ?.toLowerCase().includes(riskType.toLowerCase())
       )
       
@@ -308,7 +308,7 @@ export class AIDatabaseService {
       intent: 'COVERAGE_ANALYSIS',
       confidence: 0.95,
       results: targetList.map(eq => ({
-        equipment_id: eq.equipment_id,
+        equipment_id: eq.equipment_id || eq.設備ID,
         equipment_name: eq.equipment?.設備名 || eq.equipment_id,
         equipment_type: eq.equipment?.equipment_type_master?.設備種別名 || 'Unknown',
         system: systemId,
@@ -317,12 +317,12 @@ export class AIDatabaseService {
         risk_status: isAskingForMissing ? 'MISSING_COVERAGE' : 'HAS_COVERAGE',
         risk_type: riskType,
         // Add additional analysis data
-        failure_mode_count: (failureModes || []).filter(fm => fm.equipment_id === eq.equipment_id).length,
-        highest_rpn: Math.max(...(failureModes || []).filter(fm => fm.equipment_id === eq.equipment_id).map(fm => fm.rpn_score || 0), 0)
+        failure_mode_count: (failureModes || []).filter(fm => fm.equipment_id === (eq.equipment_id || eq.設備ID)).length,
+        highest_rpn: Math.max(...(failureModes || []).filter(fm => fm.equipment_id === (eq.equipment_id || eq.設備ID)).map(fm => fm.rpn_score || 0), 0)
       })),
       summary: `Found ${targetList.length} equipment in ${systemName} (${systemId}) that are ${resultType} in ES for ${riskType} risk. Total equipment in system: ${targetEquipment.length}.`,
       recommendations: isAskingForMissing ? [
-        `Add ${riskType} risk scenarios for: ${targetList.map(eq => eq.equipment_id).join(', ')}`,
+        `Add ${riskType} risk scenarios for: ${targetList.map(eq => eq.equipment_id || eq.設備ID).join(', ')}`,
         'Conduct FMEA review for identified equipment',
         'Update risk assessment database with missing failure modes',
         'Consider if these equipment items should have ES maintenance strategies'
@@ -639,7 +639,7 @@ export class AIDatabaseService {
       intent: 'IMPACT_ANALYSIS',
       confidence: 0.85,
       results: affectedEquipment.map(eq => ({
-        equipment_id: eq.equipment_id,
+        equipment_id: eq.equipment_id || eq.設備ID,
         equipment_name: eq.equipment_name,
         impact_level: eq.impact_level,
         immediate_actions: eq.immediate_actions
@@ -690,7 +690,7 @@ export class AIDatabaseService {
         .reduce((sum, r) => sum + (r.rpn_score || 0), 0) / Math.max(riskCount, 1)
 
       return {
-        equipment_id: eq.equipment_id,
+        equipment_id: eq.equipment_id || eq.設備ID,
         equipment_name: eq.equipment?.設備名 || eq.equipment_id,
         equipment_type: eq.equipment?.equipment_type_master?.設備種別名 || 'Unknown',
         role_in_system: eq.role_in_system,
