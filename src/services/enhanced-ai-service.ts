@@ -1486,42 +1486,46 @@ export class EnhancedAIService {
       const equipment = await this.equipmentService.getEquipmentBySystem(systemId)
       
       if (equipment.length === 0) {
-        // Fallback: Try to find equipment with hardcoded mapping
-        const systemEquipmentMap: Record<string, string[]> = {
-          'SYS-001': ['HX-101', 'HX-102', 'PU-101', 'PU-102'], // プロセス冷却系統
-          'SYS-002': ['TK-101', 'TK-102', 'PU-201', 'PU-202'], // 原料供給系統
-          'SYS-003': ['HX-201', 'HX-202', 'TK-201', 'TK-202'], // ユーティリティ系統
-          'SYS-004': ['PU-301', 'PU-302', 'TK-301', 'TK-302'], // 製品移送系統
-          'SYS-005': ['HX-301', 'HX-302', 'PU-401', 'PU-402']  // 廃棄物処理系統
-        }
-        
-        const equipmentIds = systemEquipmentMap[systemId] || []
-        
-        if (equipmentIds.length > 0) {
-          // Create mock response with equipment IDs
-          const mockEquipment = equipmentIds.map(id => ({
-            equipment_id: id,
-            設備ID: id,
-            name: `Equipment ${id}`,
-            設備名: `Equipment ${id}`,
-            type: id.startsWith('HX') ? 'Heat Exchanger' : id.startsWith('PU') ? 'Pump' : 'Tank',
-            status: '稼働中',
-            稼働状態: '稼働中'
+        // Try alternative query by system ID pattern in equipment ID
+        const { data: altEquipment, error: altError } = await supabase
+          .from('equipment')
+          .select(`
+            設備ID,
+            設備名,
+            設置場所,
+            稼働状態,
+            設備種別ID,
+            equipment_type_master!inner(設備種別名)
+          `)
+          .like('設備ID', `${systemId.replace('SYS-', '')}%`)
+          .order('設備ID')
+          .limit(50)
+
+        if (!altError && altEquipment && altEquipment.length > 0) {
+          const formattedEquipment = altEquipment.map(eq => ({
+            equipment_id: eq.設備ID,
+            設備ID: eq.設備ID,
+            name: eq.設備名,
+            設備名: eq.設備名,
+            type: eq.equipment_type_master?.設備種別名 || 'Unknown',
+            status: eq.稼働状態,
+            稼働状態: eq.稼働状態,
+            location: eq.設置場所
           }))
           
           return {
             query,
             intent: 'EQUIPMENT_BY_SYSTEM',
             confidence: 0.85,
-            results: mockEquipment,
-            summary: `Found ${mockEquipment.length} equipment items in system ${systemId}`,
+            results: formattedEquipment,
+            summary: `Found ${formattedEquipment.length} equipment items related to system ${systemId}`,
             recommendations: [
-              `System ${systemId} contains ${mockEquipment.length} pieces of equipment`,
+              `System ${systemId} contains ${formattedEquipment.length} pieces of equipment`,
               'Review equipment status for maintenance planning',
               'Check critical equipment in this system'
             ],
             execution_time: 0,
-            source: 'ai',
+            source: 'database',
             context
           }
         }

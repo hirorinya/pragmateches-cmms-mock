@@ -356,28 +356,15 @@ LIMIT 20`
   }
 
   /**
-   * Execute query with safety checks
+   * Execute query with safety checks - DEPRECATED
+   * Use executeQueryWithActualData instead
    */
   private async executeQuery(sql: string, maxResults?: number): Promise<any> {
-    try {
-      // Apply result limit
-      const limitedSQL = this.applyResultLimit(sql, maxResults || 100)
-      
-      // For now, return a simulated result
-      // In production, this would execute against the actual database
-      return {
-        success: true,
-        data: [],
-        row_count: 0,
-        message: 'Query execution simulated - connect to database for real results'
-      }
-      
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        row_count: 0
-      }
+    console.warn('executeQuery is deprecated - use executeQueryWithActualData for production')
+    return {
+      success: false,
+      error: 'This method is deprecated - use structured queries instead',
+      row_count: 0
     }
   }
 
@@ -386,150 +373,331 @@ LIMIT 20`
    */
   private async executeQueryWithActualData(sql: string, maxResults?: number, context?: SQLGenerationContext): Promise<any> {
     try {
-      console.log('🔍 Executing SQL query for actual data...')
-      console.log(`📝 SQL: ${sql}`)
+      console.log('🔍 Executing query based on context and intent...')
+      console.log(`🎯 Intent: ${context?.user_intent}`)
       
-      // Apply result limit for safety
-      const limitedSQL = this.applyResultLimit(sql, maxResults || 100)
+      // Instead of executing raw SQL, use structured queries based on intent
+      const result = await this.executeStructuredQuery(context, maxResults || 100)
       
-      // Execute the SQL query against Supabase
-      const { data, error, count } = await supabase.rpc('execute_safe_query', {
-        query_sql: limitedSQL
-      })
-
-      if (error) {
-        console.error('❌ SQL execution failed:', error)
-        
-        // Fallback to mock data based on context
-        return this.generateMockDataBasedOnContext(context, sql)
-      }
-
-      console.log(`✅ SQL executed successfully: ${data?.length || 0} rows returned`)
-      
-      return {
-        success: true,
-        data: data || [],
-        row_count: data?.length || 0,
-        message: `Query executed successfully. Found ${data?.length || 0} records.`,
-        sql_executed: limitedSQL
+      if (result.success) {
+        console.log(`✅ Query executed successfully: ${result.data?.length || 0} rows returned`)
+        return result
+      } else {
+        console.error('❌ Structured query failed:', result.error)
+        return {
+          success: false,
+          data: [],
+          row_count: 0,
+          message: result.error || 'Failed to execute query',
+          sql_attempted: sql
+        }
       }
       
     } catch (error) {
       console.error('❌ Query execution error:', error)
       
-      // Fallback to mock data based on context  
-      return this.generateMockDataBasedOnContext(context, sql)
+      return {
+        success: false,
+        data: [],
+        row_count: 0,
+        message: `Query execution failed: ${error.message}`,
+        sql_attempted: sql
+      }
     }
   }
 
   /**
-   * Generate appropriate mock data based on query context and SQL
+   * Execute structured queries based on user intent and entities
    */
-  private generateMockDataBasedOnContext(context?: SQLGenerationContext, sql?: string): any {
-    console.log('🔄 Generating mock data based on context...')
-    
+  private async executeStructuredQuery(context?: SQLGenerationContext, maxResults: number = 100): Promise<any> {
     if (!context) {
       return {
-        success: true,
+        success: false,
+        error: 'No context provided for query execution',
         data: [],
-        row_count: 0,
-        message: 'No data found for this query.',
-        fallback: true
+        row_count: 0
       }
     }
 
-    // Generate mock data based on intent and entities
-    let mockData = []
+    console.log(`🔍 Executing structured query for intent: ${context.user_intent}`)
     
-    if (context.user_intent === 'maintenance_history' || sql?.toLowerCase().includes('maintenance')) {
-      // Mock maintenance logs data
-      const systemEntity = context.entities.find(e => e.type === 'system')
-      const systemId = systemEntity?.resolved || 'SYS-001'
-      
-      mockData = [
-        {
-          設備ID: 'HX-101',
-          設備名: 'Heat Exchanger 101',
-          実施日: '2024-01-15',
-          作業内容: '定期点検・清掃作業',
-          作業者: '保全チーム A',
-          作業時間: '4時間',
-          system_id: systemId
-        },
-        {
-          設備ID: 'HX-102', 
-          設備名: 'Heat Exchanger 102',
-          実施日: '2024-01-10',
-          作業内容: 'パッキン交換',
-          作業者: '保全チーム B',
-          作業時間: '2時間',
-          system_id: systemId
-        },
-        {
-          設備ID: 'PU-101',
-          設備名: 'Pump 101', 
-          実施日: '2024-01-08',
-          作業内容: 'オイル交換・点検',
-          作業者: '保全チーム A',
-          作業時間: '1.5時間',
-          system_id: systemId
-        },
-        {
-          設備ID: 'PU-102',
-          設備名: 'Pump 102',
-          実施日: '2024-01-05',
-          作業内容: 'ベアリング交換',
-          作業者: '保全チーム C',
-          作業時間: '3時間',
-          system_id: systemId
-        }
-      ]
-    } else if (context.user_intent === 'equipment_by_system' || sql?.toLowerCase().includes('equipment')) {
-      // Mock equipment by system data
-      const systemEntity = context.entities.find(e => e.type === 'system')
-      const systemId = systemEntity?.resolved || 'SYS-001'
-      
-      mockData = [
-        {
-          設備ID: 'HX-101',
-          設備名: 'Heat Exchanger 101', 
-          稼働状態: '稼働中',
-          設備種別名: '熱交換器',
-          system_id: systemId
-        },
-        {
-          設備ID: 'HX-102',
-          設備名: 'Heat Exchanger 102',
-          稼働状態: '稼働中', 
-          設備種別名: '熱交換器',
-          system_id: systemId
-        },
-        {
-          設備ID: 'PU-101',
-          設備名: 'Pump 101',
-          稼働状態: '稼働中',
-          設備種別名: 'ポンプ',
-          system_id: systemId
-        },
-        {
-          設備ID: 'PU-102', 
-          設備名: 'Pump 102',
-          稼働状態: '停止中',
-          設備種別名: 'ポンプ',
-          system_id: systemId
-        }
-      ]
+    try {
+      switch (context.user_intent) {
+        case 'maintenance_history':
+          return await this.queryMaintenanceHistory(context, maxResults)
+        
+        case 'equipment_list':
+        case 'equipment_by_system':
+        case 'equipment_info':
+          return await this.queryEquipmentData(context, maxResults)
+        
+        case 'risk_analysis':
+          return await this.queryRiskAssessment(context, maxResults)
+        
+        case 'maintenance_schedule':
+          return await this.queryMaintenanceSchedule(context, maxResults)
+        
+        default:
+          return await this.queryGeneralEquipment(context, maxResults)
+      }
+    } catch (error) {
+      console.error('❌ Structured query execution failed:', error)
+      return {
+        success: false,
+        error: error.message,
+        data: [],
+        row_count: 0
+      }
     }
+  }
 
-    console.log(`🎭 Generated ${mockData.length} mock records for intent: ${context.user_intent}`)
-    
-    return {
-      success: true,
-      data: mockData,
-      row_count: mockData.length,
-      message: `Found ${mockData.length} ${context.user_intent === 'maintenance_history' ? 'maintenance records' : 'equipment records'} for the specified criteria.`,
-      fallback: true,
-      sql_attempted: sql
+  /**
+   * Query maintenance history from database
+   */
+  private async queryMaintenanceHistory(context: SQLGenerationContext, maxResults: number): Promise<any> {
+    try {
+      const systemEntity = context.entities.find(e => e.type === 'system')
+      const equipmentEntity = context.entities.find(e => e.type === 'equipment')
+      
+      let query = supabase
+        .from('maintenance_history')
+        .select(`
+          設備ID,
+          実施日,
+          作業内容,
+          作業者,
+          作業時間,
+          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        `)
+        .order('実施日', { ascending: false })
+        .limit(maxResults)
+
+      // Filter by specific equipment if mentioned
+      if (equipmentEntity) {
+        query = query.eq('設備ID', equipmentEntity.resolved)
+      }
+
+      // Filter by system if mentioned (assuming system relates to equipment)
+      if (systemEntity && !equipmentEntity) {
+        // First get equipment IDs for the system, then filter maintenance history
+        const { data: equipmentList } = await supabase
+          .from('equipment')
+          .select('設備ID')
+          .like('設備ID', `${systemEntity.resolved}%`)
+          .limit(20)
+        
+        if (equipmentList && equipmentList.length > 0) {
+          const equipmentIds = equipmentList.map(eq => eq.設備ID)
+          query = query.in('設備ID', equipmentIds)
+        }
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new Error(`Database query failed: ${error.message}`)
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        row_count: data?.length || 0,
+        message: `Found ${data?.length || 0} maintenance records.`
+      }
+    } catch (error) {
+      throw new Error(`Maintenance history query failed: ${error.message}`)
+    }
+  }
+
+  /**
+   * Query equipment data from database
+   */
+  private async queryEquipmentData(context: SQLGenerationContext, maxResults: number): Promise<any> {
+    try {
+      const systemEntity = context.entities.find(e => e.type === 'system')
+      const equipmentEntity = context.entities.find(e => e.type === 'equipment')
+      const typeEntity = context.entities.find(e => e.type === 'equipment_type')
+      
+      let query = supabase
+        .from('equipment')
+        .select(`
+          設備ID,
+          設備名,
+          設置場所,
+          稼働状態,
+          設備種別ID,
+          equipment_type_master!inner(設備種別名)
+        `)
+        .order('設備ID')
+        .limit(maxResults)
+
+      // Filter by specific equipment
+      if (equipmentEntity) {
+        query = query.eq('設備ID', equipmentEntity.resolved)
+      }
+      
+      // Filter by system
+      if (systemEntity && !equipmentEntity) {
+        query = query.like('設備ID', `${systemEntity.resolved}%`)
+      }
+      
+      // Filter by equipment type
+      if (typeEntity) {
+        const { data: typeData } = await supabase
+          .from('equipment_type_master')
+          .select('id')
+          .ilike('設備種別名', `%${typeEntity.resolved}%`)
+          .limit(5)
+        
+        if (typeData && typeData.length > 0) {
+          const typeIds = typeData.map(t => t.id)
+          query = query.in('設備種別ID', typeIds)
+        }
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new Error(`Database query failed: ${error.message}`)
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        row_count: data?.length || 0,
+        message: `Found ${data?.length || 0} equipment records.`
+      }
+    } catch (error) {
+      throw new Error(`Equipment query failed: ${error.message}`)
+    }
+  }
+
+  /**
+   * Query risk assessment data from database
+   */
+  private async queryRiskAssessment(context: SQLGenerationContext, maxResults: number): Promise<any> {
+    try {
+      const equipmentEntity = context.entities.find(e => e.type === 'equipment')
+      const systemEntity = context.entities.find(e => e.type === 'system')
+      
+      let query = supabase
+        .from('equipment_risk_assessment')
+        .select(`
+          設備ID,
+          リスクレベル,
+          リスクスコア,
+          リスク要因,
+          影響度,
+          発生確率,
+          リスク対策,
+          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        `)
+        .order('リスクスコア', { ascending: false })
+        .limit(maxResults)
+
+      // Filter by equipment
+      if (equipmentEntity) {
+        query = query.eq('設備ID', equipmentEntity.resolved)
+      }
+      
+      // Filter by system
+      if (systemEntity && !equipmentEntity) {
+        query = query.like('設備ID', `${systemEntity.resolved}%`)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new Error(`Database query failed: ${error.message}`)
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        row_count: data?.length || 0,
+        message: `Found ${data?.length || 0} risk assessment records.`
+      }
+    } catch (error) {
+      throw new Error(`Risk assessment query failed: ${error.message}`)
+    }
+  }
+
+  /**
+   * Query maintenance schedule from database
+   */
+  private async queryMaintenanceSchedule(context: SQLGenerationContext, maxResults: number): Promise<any> {
+    try {
+      const equipmentEntity = context.entities.find(e => e.type === 'equipment')
+      const systemEntity = context.entities.find(e => e.type === 'system')
+      
+      let query = supabase
+        .from('inspection_plan')
+        .select(`
+          設備ID,
+          次回検査日,
+          検査種別,
+          検査間隔,
+          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        `)
+        .order('次回検査日')
+        .limit(maxResults)
+
+      // Filter by equipment
+      if (equipmentEntity) {
+        query = query.eq('設備ID', equipmentEntity.resolved)
+      }
+      
+      // Filter by system
+      if (systemEntity && !equipmentEntity) {
+        query = query.like('設備ID', `${systemEntity.resolved}%`)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new Error(`Database query failed: ${error.message}`)
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        row_count: data?.length || 0,
+        message: `Found ${data?.length || 0} maintenance schedule records.`
+      }
+    } catch (error) {
+      throw new Error(`Maintenance schedule query failed: ${error.message}`)
+    }
+  }
+
+  /**
+   * Query general equipment information
+   */
+  private async queryGeneralEquipment(context: SQLGenerationContext, maxResults: number): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('equipment')
+        .select(`
+          設備ID,
+          設備名,
+          設置場所,
+          稼働状態,
+          equipment_type_master!inner(設備種別名)
+        `)
+        .order('設備ID')
+        .limit(maxResults)
+
+      if (error) {
+        throw new Error(`Database query failed: ${error.message}`)
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        row_count: data?.length || 0,
+        message: `Found ${data?.length || 0} equipment records.`
+      }
+    } catch (error) {
+      throw new Error(`General equipment query failed: ${error.message}`)
     }
   }
 

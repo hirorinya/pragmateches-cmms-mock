@@ -178,9 +178,18 @@ export class AIQueryService {
         }
       }
     } catch (error) {
-      console.warn('OpenAI JSON parsing failed, falling back to mock service:', error.message)
-      // Return null to trigger fallback to mock service
-      return null as any
+      console.error('OpenAI JSON parsing failed:', error.message)
+      // Return error response instead of null
+      return {
+        query,
+        intent: 'ERROR',
+        confidence: 0,
+        results: [],
+        summary: 'Failed to parse AI response. Please try rephrasing your query.',
+        recommendations: ['Try using more specific equipment names or IDs', 'Check if your query contains valid database entities'],
+        execution_time: 0,
+        source: 'ai'
+      }
     }
     
     // Fallback to text parsing for older format responses

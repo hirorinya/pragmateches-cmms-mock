@@ -871,23 +871,36 @@ export class AIDatabaseService {
    * Get equipment affected by instrument parameter changes
    */
   private async getAffectedEquipment(instrumentId: string): Promise<any[]> {
-    // This is a simplified version - in practice, you'd have more complex relationships
-    const mockAffectedEquipment = [
-      {
-        equipment_id: 'EQ013',
-        equipment_name: '流量計1号機',
-        impact_level: 'HIGH',
-        immediate_actions: ['Check equipment readings', 'Verify operational parameters']
-      },
-      {
-        equipment_id: 'EQ014', 
-        equipment_name: '圧力計1号機',
-        impact_level: 'MEDIUM',
-        immediate_actions: ['Monitor pressure trends', 'Check for anomalies']
+    try {
+      // Query equipment that could be affected by this instrument
+      // This would typically involve looking up instrument-equipment relationships
+      const { data: equipmentData, error } = await supabase
+        .from('equipment')
+        .select(`
+          設備ID,
+          設備名,
+          稼働状態,
+          equipment_type_master!inner(設備種別名)
+        `)
+        .eq('稼働状態', '稼働中')
+        .limit(10)
+
+      if (error) {
+        console.error('Error fetching affected equipment:', error)
+        return []
       }
-    ]
-    
-    return mockAffectedEquipment
+
+      return equipmentData?.map(eq => ({
+        equipment_id: eq.設備ID,
+        equipment_name: eq.設備名,
+        impact_level: 'MEDIUM', // Would be determined by actual relationships
+        immediate_actions: ['Check equipment readings', 'Verify operational parameters']
+      })) || []
+      
+    } catch (error) {
+      console.error('Error in getAffectedEquipment:', error)
+      return []
+    }
   }
 
   /**

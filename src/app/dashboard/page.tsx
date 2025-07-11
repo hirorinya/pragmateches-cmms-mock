@@ -1,3 +1,7 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,47 +21,191 @@ import {
 import Link from 'next/link'
 
 export default function DashboardPage() {
-  // Mock CMMS data - in real app, this would come from APIs
-  const cmmsStats = {
-    workOrders: {
-      total: 28,
-      open: 12,
-      inProgress: 8,
-      overdue: 3,
-      completed_this_week: 15
-    },
-    maintenance: {
-      upcoming_pm: 7,
-      overdue_pm: 2,
-      mttr_hours: 4.2,
-      mtbf_days: 45
-    },
-    equipment: {
-      total_assets: 156,
-      critical_alerts: 4,
-      availability: 96.2,
-      performance_efficiency: 87.5
-    },
-    costs: {
-      monthly_spend: 45600,
-      pm_vs_reactive: 70, // 70% PM vs 30% reactive
-      parts_inventory_value: 128000
+  const [cmmsStats, setCmmsStats] = useState<any>(null)
+  const [upcomingTasks, setUpcomingTasks] = useState<any[]>([])
+  const [criticalAlerts, setCriticalAlerts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch work orders stats
+      const { data: workOrders, error: woError } = await supabase
+        .from('work_order')
+        .select('id, status, priority, created_date, due_date')
+
+      if (woError) throw woError
+
+      // Calculate work order stats
+      const now = new Date()
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      
+      const woStats = {
+        total: workOrders.length,
+        open: workOrders.filter(wo => wo.status === 'OPEN').length,
+        inProgress: workOrders.filter(wo => wo.status === 'IN_PROGRESS').length,
+        overdue: workOrders.filter(wo => wo.status !== 'COMPLETED' && new Date(wo.due_date) < now).length,
+        completed_this_week: workOrders.filter(wo => wo.status === 'COMPLETED' && new Date(wo.created_date) > weekAgo).length
+      }
+
+      // Fetch equipment stats
+      const { data: equipment, error: eqError } = await supabase
+        .from('equipment')
+        .select('設備ID, 稼働状態')
+
+      if (eqError) throw eqError
+
+      const operationalCount = equipment.filter(eq => eq.稼働状態 === '稼働中').length
+      const availability = equipment.length > 0 ? (operationalCount / equipment.length) * 100 : 0
+
+      // Fetch maintenance history for MTTR calculation
+      const { data: maintenance, error: mError } = await supabase
+        .from('maintenance_history')
+        .select('作業時間')
+        .limit(50)
+
+      if (mError) throw mError
+
+      const avgMaintTime = maintenance.length > 0 
+        ? maintenance.reduce((sum, m) => sum + (parseFloat(m.作業時間) || 0), 0) / maintenance.length 
+        : 4.2
+
+      // Fetch upcoming inspection tasks
+      const { data: inspections, error: iError } = await supabase
+        .from('inspection_plan')
+        .select(`
+          設備ID,
+          次回検査日,
+          検査種別,
+          equipment!inner(設備名)
+        `)
+        .gte('次回検査日', now.toISOString().split('T')[0])
+        .order('次回検査日', { ascending: true })
+        .limit(10)
+
+      if (iError) throw iError
+
+      const tasks = inspections.map(inspection => ({
+        id: inspection.設備ID,
+        equipment: inspection.設備ID,
+        equipment_name: inspection.equipment?.設備名,
+        task: inspection.検査種別 || 'Scheduled Inspection',
+        due: inspection.次回検査日,
+        priority: calculatePriority(inspection.次回検査日)
+      }))
+
+      // Fetch risk alerts
+      const { data: risks, error: rError } = await supabase
+        .from('equipment_risk_assessment')
+        .select(`
+          設備ID,
+          リスクレベル,
+          リスク要因,
+          equipment!inner(設備名)
+        `)
+        .eq('リスクレベル', 'HIGH')
+        .limit(10)
+
+      if (rError) throw rError
+
+      const alerts = risks.map(risk => ({
+        equipment: risk.設備ID,
+        equipment_name: risk.equipment?.設備名,
+        issue: risk.リスク要因,
+        severity: risk.リスクレベル
+      }))
+
+      setCmmsStats({
+        workOrders: woStats,
+        maintenance: {
+          upcoming_pm: tasks.length,
+          overdue_pm: woStats.overdue,
+          mttr_hours: Math.round(avgMaintTime * 10) / 10,
+          mtbf_days: 45 // Would need failure data to calculate
+        },
+        equipment: {
+          total_assets: equipment.length,
+          critical_alerts: alerts.length,
+          availability: Math.round(availability * 10) / 10,
+          performance_efficiency: 87.5 // Would need performance data
+        },
+        costs: {
+          monthly_spend: maintenance.length * avgMaintTime * 85, // Rough estimate
+          pm_vs_reactive: 70, // Would need work order classification
+          parts_inventory_value: 128000 // Would need inventory data
+        }
+      })
+
+      setUpcomingTasks(tasks)
+      setCriticalAlerts(alerts)
+      
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const upcomingTasks = [
-    { id: '1', equipment: 'HX-101', task: 'Monthly PM Inspection', due: '2024-01-15', priority: 'MEDIUM' },
-    { id: '2', equipment: 'PU-102', task: 'Bearing Replacement', due: '2024-01-14', priority: 'HIGH' },
-    { id: '3', equipment: 'TK-201', task: 'Quarterly Inspection', due: '2024-01-16', priority: 'LOW' },
-    { id: '4', equipment: 'CP-301', task: 'Oil Change Service', due: '2024-01-17', priority: 'MEDIUM' }
-  ]
+  const calculatePriority = (dueDate: string): string => {
+    const due = new Date(dueDate)
+    const now = new Date()
+    const daysUntil = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (daysUntil <= 3) return 'HIGH'
+    if (daysUntil <= 7) return 'MEDIUM'
+    return 'LOW'
+  }
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
-  const criticalAlerts = [
-    { equipment: 'PU-105', issue: 'High Vibration Detected', severity: 'HIGH' },
-    { equipment: 'HX-203', issue: 'Temperature Anomaly', severity: 'MEDIUM' },
-    { equipment: 'CV-108', issue: 'Pressure Drop Alert', severity: 'HIGH' },
-    { equipment: 'MT-401', issue: 'Oil Level Low', severity: 'LOW' }
-  ]
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertTriangle className="h-8 w-8 text-red-500 mx-auto" />
+            <p className="mt-2 text-red-600">{error}</p>
+            <Button onClick={fetchDashboardData} className="mt-4">
+              Retry
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!cmmsStats) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-muted-foreground">No dashboard data available</p>
+            <Button onClick={fetchDashboardData} className="mt-4">
+              Load Data
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">

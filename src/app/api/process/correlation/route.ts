@@ -89,10 +89,15 @@ export async function GET(request: NextRequest) {
       console.warn('Error fetching historical data, generating sample data')
     }
 
-    // If no real data, generate sample correlation data
+    // Only use real data - no sample data generation
     let correlationData = []
     if (!historyX?.length || !historyY?.length) {
-      correlationData = generateSampleCorrelationData(startDate, endDate, timeRange)
+      return NextResponse.json({
+        error: 'No historical data available for the specified parameters and time range',
+        parameter_x_id: parameterX,
+        parameter_y_id: parameterY,
+        message: 'Please check if data exists for these parameters in the specified time period'
+      }, { status: 404 })
     } else {
       // Match timestamps and create correlation pairs
       correlationData = matchParameterData(historyX, historyY)
@@ -156,34 +161,7 @@ function matchParameterData(historyX: any[], historyY: any[]) {
   return correlationData
 }
 
-function generateSampleCorrelationData(startDate: Date, endDate: Date, timeRange: string) {
-  const dataPoints = []
-  const intervalMs = getIntervalMs(timeRange)
-  const current = new Date(startDate)
-  
-  // Generate correlated data with some noise
-  const baseCorrelation = (Math.random() - 0.5) * 1.6 // -0.8 to 0.8
-  
-  while (current <= endDate) {
-    const x = 50 + (Math.random() - 0.5) * 40 // X values around 50 ± 20
-    const y = 100 + baseCorrelation * (x - 50) + (Math.random() - 0.5) * 20 // Correlated Y with noise
-    
-    let status = 'NORMAL'
-    if (Math.random() < 0.05) status = 'CRITICAL'
-    else if (Math.random() < 0.15) status = 'WARNING'
-    
-    dataPoints.push({
-      x_value: parseFloat(x.toFixed(2)),
-      y_value: parseFloat(y.toFixed(2)),
-      timestamp: current.toISOString(),
-      status
-    })
-    
-    current.setTime(current.getTime() + intervalMs)
-  }
-  
-  return dataPoints
-}
+// Function removed - production system only uses real database data
 
 function calculateCorrelation(data: any[]) {
   if (data.length < 2) return 0

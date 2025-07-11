@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,83 +41,68 @@ interface WorkOrder {
   work_type: 'PREVENTIVE' | 'CORRECTIVE' | 'EMERGENCY' | 'INSPECTION'
 }
 
-const mockWorkOrders: WorkOrder[] = [
-  {
-    id: 'WO-2024-001',
-    title: 'Monthly PM - Heat Exchanger HX-101',
-    description: 'Perform monthly preventive maintenance including inspection, cleaning, and lubrication.',
-    equipment_id: 'HX-101',
-    equipment_name: 'Heat Exchanger 101',
-    priority: 'MEDIUM',
-    status: 'OPEN',
-    assigned_to: '保全チーム A',
-    created_date: '2024-01-10',
-    due_date: '2024-01-15',
-    estimated_hours: 4,
-    work_type: 'PREVENTIVE'
-  },
-  {
-    id: 'WO-2024-002',
-    title: 'Emergency Repair - Pump PU-102',
-    description: 'Urgent repair required for abnormal vibration. Replace bearing assembly.',
-    equipment_id: 'PU-102',
-    equipment_name: 'Pump 102',
-    priority: 'HIGH',
-    status: 'IN_PROGRESS',
-    assigned_to: '保全チーム B',
-    created_date: '2024-01-08',
-    due_date: '2024-01-09',
-    estimated_hours: 6,
-    actual_hours: 4.5,
-    work_type: 'EMERGENCY'
-  },
-  {
-    id: 'WO-2024-003',
-    title: 'Quarterly Inspection - Tank TK-201',
-    description: 'Quarterly visual inspection and thickness measurement.',
-    equipment_id: 'TK-201',
-    equipment_name: 'Storage Tank 201',
-    priority: 'LOW',
-    status: 'COMPLETED',
-    assigned_to: '保全チーム C',
-    created_date: '2024-01-05',
-    due_date: '2024-01-12',
-    estimated_hours: 2,
-    actual_hours: 2.5,
-    work_type: 'INSPECTION'
-  },
-  {
-    id: 'WO-2024-004',
-    title: 'Oil Change - Compressor CP-301',
-    description: 'Replace compressor oil and oil filter as per maintenance schedule.',
-    equipment_id: 'CP-301',
-    equipment_name: 'Air Compressor 301',
-    priority: 'MEDIUM',
-    status: 'OPEN',
-    assigned_to: '保全チーム A',
-    created_date: '2024-01-11',
-    due_date: '2024-01-18',
-    estimated_hours: 3,
-    work_type: 'PREVENTIVE'
-  },
-  {
-    id: 'WO-2024-005',
-    title: 'Valve Replacement - Control Valve CV-105',
-    description: 'Replace faulty control valve that is not maintaining proper pressure.',
-    equipment_id: 'CV-105',
-    equipment_name: 'Control Valve 105',
-    priority: 'HIGH',
-    status: 'OPEN',
-    assigned_to: 'Unassigned',
-    created_date: '2024-01-12',
-    due_date: '2024-01-14',
-    estimated_hours: 8,
-    work_type: 'CORRECTIVE'
-  }
-]
-
 export default function WorkOrdersPage() {
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(mockWorkOrders)
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch work orders from database
+  useEffect(() => {
+    fetchWorkOrders()
+  }, [])
+
+  const fetchWorkOrders = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('work_order')
+        .select(`
+          id,
+          title,
+          description,
+          equipment_id,
+          priority,
+          status,
+          assigned_to,
+          created_date,
+          due_date,
+          estimated_hours,
+          actual_hours,
+          work_type,
+          equipment!inner(設備名)
+        `)
+        .order('created_date', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching work orders:', error)
+        setError('Failed to load work orders from database')
+        return
+      }
+
+      const formattedWorkOrders: WorkOrder[] = data.map(wo => ({
+        id: wo.id,
+        title: wo.title,
+        description: wo.description,
+        equipment_id: wo.equipment_id,
+        equipment_name: wo.equipment?.設備名 || 'Unknown Equipment',
+        priority: wo.priority as 'HIGH' | 'MEDIUM' | 'LOW',
+        status: wo.status as 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED',
+        assigned_to: wo.assigned_to || 'Unassigned',
+        created_date: wo.created_date,
+        due_date: wo.due_date,
+        estimated_hours: wo.estimated_hours,
+        actual_hours: wo.actual_hours,
+        work_type: wo.work_type as 'PREVENTIVE' | 'CORRECTIVE' | 'EMERGENCY' | 'INSPECTION'
+      }))
+
+      setWorkOrders(formattedWorkOrders)
+    } catch (err) {
+      console.error('Error in fetchWorkOrders:', err)
+      setError('Failed to connect to database')
+    } finally {
+      setLoading(false)
+    }
+  }
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
@@ -189,6 +175,35 @@ export default function WorkOrdersPage() {
     high_priority: workOrders.filter(wo => wo.priority === 'HIGH' && wo.status !== 'COMPLETED').length
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading work orders...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
+            <p className="mt-2 text-red-600">{error}</p>
+            <Button onClick={fetchWorkOrders} className="mt-4">
+              Retry
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -197,7 +212,7 @@ export default function WorkOrdersPage() {
           <div>
             <h1 className="text-3xl font-bold">Work Orders</h1>
             <p className="text-muted-foreground">
-              Manage and track maintenance work orders
+              Manage and track maintenance work orders ({workOrders.length} total)
             </p>
           </div>
           <Button onClick={() => setIsCreateModalOpen(true)}>
