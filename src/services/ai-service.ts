@@ -400,11 +400,24 @@ export class AIService {
   private detectIntent(query: string): string {
     const q = query.toLowerCase()
     
-    // Maintenance history queries (Japanese and English)
-    if (q.includes('保全') || q.includes('メンテナンス') || q.includes('maintenance') ||
-        q.includes('直近') || q.includes('recent') || q.includes('last') ||
+    // Equipment strategy queries (check BEFORE maintenance history to avoid conflicts)
+    if ((q.includes('equipment') && q.includes('strategy')) || 
+        q.includes('equipment strategy') || q.includes('maintenance strategies') ||
+        q.includes('equipment ids') || q.includes('equipment id') ||
+        (q.includes('show') && q.includes('equipment') && q.includes('strategy')) ||
+        (q.includes('list') && q.includes('equipment') && q.includes('strategy')) ||
+        (q.includes('list') && q.includes('maintenance') && q.includes('strategies'))) {
+      return 'EQUIPMENT_STRATEGY_LIST'
+    }
+    
+    // Maintenance history queries (Japanese and English) - more specific now
+    if ((q.includes('保全') && (q.includes('履歴') || q.includes('直近'))) || 
+        (q.includes('メンテナンス') && (q.includes('履歴') || q.includes('直近'))) ||
+        q.includes('maintenance history') ||
+        (q.includes('直近') && (q.includes('保全') || q.includes('メンテナンス') || q.includes('maintenance'))) ||
+        q.includes('recent') && (q.includes('保全') || q.includes('メンテナンス') || q.includes('maintenance')) ||
         (q.includes('年') && (q.includes('保全') || q.includes('メンテナンス'))) ||
-        q.includes('maintenance history')) {
+        q.includes('last maintenance')) {
       return 'MAINTENANCE_HISTORY'
     }
     
@@ -442,15 +455,6 @@ export class AIService {
     if (q.includes('mitigation') || q.includes('implementation') || 
         q.includes('responsible') || q.includes('緩和策') || q.includes('実施状況')) {
       return 'MITIGATION_STATUS'
-    }
-    
-    // Equipment strategy queries
-    if ((q.includes('equipment') && q.includes('strategy')) || 
-        q.includes('equipment strategy') || q.includes('maintenance strategies') ||
-        q.includes('equipment ids') || q.includes('equipment id') ||
-        (q.includes('show') && q.includes('equipment') && q.includes('strategy')) ||
-        (q.includes('list') && q.includes('equipment') && q.includes('strategy'))) {
-      return 'EQUIPMENT_STRATEGY_LIST'
     }
     
     return 'UNKNOWN'
