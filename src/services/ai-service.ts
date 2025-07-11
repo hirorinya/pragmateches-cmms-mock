@@ -6,6 +6,7 @@
 import { EquipmentService } from './equipment-service'
 import { AIDatabaseService } from './ai-database-service'
 import { withPerformanceTracking, recordError } from '@/lib/monitoring-service'
+import { supabase } from '@/lib/supabase'
 
 interface AIQueryResponse {
   query: string
@@ -161,8 +162,11 @@ export class AIService {
     }
 
     try {
-      // Use the existing maintenance API (relative path for production compatibility)
-      const response = await fetch(`/api/maintenance/recent-equipment?days=${days}`)
+      // Use the existing maintenance API (with proper base URL for server-side calls)
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      const response = await fetch(`${baseUrl}/api/maintenance/recent-equipment?days=${days}`)
       const maintenanceData = await response.json()
 
       if (!maintenanceData.success) {
@@ -371,6 +375,89 @@ export class AIService {
           'Verify equipment strategy table exists'
         ],
         source: 'database'
+      }
+    }
+  }
+
+  /**
+   * Get maintenance history directly from database
+   */
+  private async getMaintenanceHistory(days: number = 999): Promise<any> {
+    try {
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - days)
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0]
+
+      const { data: maintenanceData, error } = await supabase
+        .from('maintenance_history')
+        .select(`
+          設備ID,
+          実施日,
+          作業内容,
+          作業結果,
+          equipment!inner(
+            設備名,
+            設備タグ,
+            設置場所,
+            稼働状態,
+            equipment_type_master(設備種別名)
+          )
+        `)
+        .gte('実施日', cutoffDateString)
+        .order('実施日', { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      // Group by equipment
+      const equipmentMap = new Map()
+      maintenanceData?.forEach((record: any) => {
+        const equipmentId = record.設備ID
+        if (!equipmentMap.has(equipmentId)) {
+          equipmentMap.set(equipmentId, {
+            設備ID: equipmentId,
+            設備名: record.equipment.設備名,
+            設備タグ: record.equipment.設備タグ,
+            設置場所: record.equipment.設置場所,
+            稼働状態: record.equipment.稼働状態,
+            設備種別名: record.equipment.equipment_type_master?.設備種別名 || 'Unknown',
+            最新メンテナンス日: record.実施日,
+            メンテナンス回数: 0,
+            メンテナンス履歴: []
+          })
+        }
+
+        const equipment = equipmentMap.get(equipmentId)
+        if (new Date(record.実施日) > new Date(equipment.最新メンテナンス日)) {
+          equipment.最新メンテナンス日 = record.実施日
+        }
+        equipment.メンテナンス回数++
+        equipment.メンテナンス履歴.push({
+          実施日: record.実施日,
+          作業内容: record.作業内容,
+          作業結果: record.作業結果
+        })
+      })
+
+      const equipment = Array.from(equipmentMap.values())
+        .sort((a, b) => new Date(b.最新メンテナンス日).getTime() - new Date(a.最新メンテナンス日).getTime())
+
+      return {
+        success: true,
+        data: equipment,
+        summary: {
+          totalEquipmentWithMaintenance: equipment.length,
+          totalMaintenanceRecords: maintenanceData?.length || 0,
+          periodDays: days,
+          cutoffDate: cutoffDateString
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching maintenance history:', error)
+      return {
+        success: false,
+        error: error.message
       }
     }
   }

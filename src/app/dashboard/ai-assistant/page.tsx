@@ -76,7 +76,7 @@ export default function AIAssistantPage() {
       id: 'equipment-health',
       title: 'Equipment Health Summary',
       description: 'Get overall equipment status',
-      query: 'Show me the current health status of all equipment in SYS-001',
+      query: 'Show me all equipment IDs that are in the equipment strategy table',
       icon: <Database className="h-4 w-4" />,
       category: 'System Overview'
     },
