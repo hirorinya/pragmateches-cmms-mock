@@ -15,23 +15,23 @@ export default function RotatingEquipmentPage() {
         .from('inspection_plan')
         .select(`
           *,
-          equipment!inner(設備名, 設備タグ, 設備種別ID),
-          inspection_cycle_master(周期名),
-          staff_master(氏名)
+          equipment!inner(equipment_name, equipment_tag, equipment_type_id),
+          inspection_cycle_master(cycle_name),
+          staff_master(staff_name)
         `)
-        .eq('equipment.設備種別ID', 2) // 2 = 回転機
-        .order('次回点検日', { ascending: true })
+        .eq('equipment.equipment_type_id', 2) // 2 = 回転機
+        .order('next_inspection_date', { ascending: true })
 
       if (error) {
         console.error('Error fetching data:', error)
       } else {
         // Transform data to match the expected format
         const transformedData = inspectionData?.map(item => ({
-          equipmentNo: item.equipment?.設備タグ || '',
-          component: item.equipment?.設備名 || '',
-          measurementPoint: item.点検項目 || '',
-          inspectionDate: item.次回点検日 || '',
-          status: item.状態 === '完了' ? '合格' : item.状態 === '計画済' ? '要確認' : '不合格'
+          equipmentNo: item.equipment?.equipment_tag || '',
+          component: item.equipment?.equipment_name || '',
+          measurementPoint: item.inspection_item || '',
+          inspectionDate: item.next_inspection_date || '',
+          status: item.status === '完了' ? '合格' : item.status === '計画済' ? '要確認' : '不合格'
         })) || []
         
         setData(transformedData)
