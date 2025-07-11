@@ -187,8 +187,13 @@ export class TextToSQLService {
     // Build comprehensive prompt
     const prompt = this.buildLLMPrompt(context)
     
+    console.log('🤖 Calling OpenAI API for SQL generation...');
+    console.log(`📄 Prompt length: ${prompt.length} characters`);
+    console.log(`🎯 User intent: ${context.user_intent}`);
+    
     try {
       // Call OpenAI API for SQL generation
+      const startTime = Date.now();
       const response = await fetch('/api/chatgpt', {
         method: 'POST',
         headers: {
@@ -205,14 +210,19 @@ export class TextToSQLService {
         })
       })
 
+      const apiTime = Date.now() - startTime;
+      console.log(`⏱️ OpenAI API response time: ${apiTime}ms`);
+
       if (!response.ok) {
         throw new Error(`LLM API failed: ${response.status}`)
       }
 
       const result = await response.json()
+      console.log('✅ OpenAI API response received');
       
       // Parse the response to extract SQL and reasoning
       const parsed = this.parseLLMResponse(result.result)
+      console.log(`📝 Generated SQL: ${parsed.sql?.substring(0, 100)}...`);
       
       return {
         sql: parsed.sql,
@@ -220,7 +230,8 @@ export class TextToSQLService {
       }
       
     } catch (error) {
-      console.error('LLM SQL generation failed:', error)
+      console.error('❌ LLM SQL generation failed:', error)
+      console.log('⚠️ Falling back to template-based generation');
       
       // Fallback to template-based generation
       return this.generateSQLWithTemplate(context)

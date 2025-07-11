@@ -371,13 +371,23 @@ export class EnhancedAIService {
     const startTime = Date.now()
     
     try {
+      // Log processing decision
+      const shouldUseSQL = this.shouldUseTextToSQL(query)
+      console.log(`🔍 Query: "${query}"`);
+      console.log(`📊 Should use Text-to-SQL: ${shouldUseSQL}`);
+      console.log(`🔧 Text-to-SQL enabled: ${this.useTextToSQL}`);
+      
       // Try text-to-SQL first for complex queries
-      if (this.useTextToSQL && this.shouldUseTextToSQL(query)) {
+      if (this.useTextToSQL && shouldUseSQL) {
+        console.log('🚀 Attempting Text-to-SQL conversion...');
         try {
           const textToSQLResult = await textToSQLService.convertTextToSQL({
             natural_language: query,
             max_results: 100
           })
+          
+          console.log(`✅ Text-to-SQL result - Confidence: ${textToSQLResult.confidence}`);
+          console.log(`📝 Generated SQL: ${textToSQLResult.sql?.substring(0, 100)}...`);
           
           if (textToSQLResult.confidence > 0.7) {
             return {
@@ -397,8 +407,10 @@ export class EnhancedAIService {
             }
           }
         } catch (textToSQLError) {
-          console.warn('Text-to-SQL failed, falling back to pattern matching:', textToSQLError)
+          console.warn('❌ Text-to-SQL failed, falling back to pattern matching:', textToSQLError)
         }
+      } else {
+        console.log('⏭️ Skipping Text-to-SQL, using pattern matching');
       }
       
       // Fallback to existing pattern-based processing
@@ -439,6 +451,18 @@ export class EnhancedAIService {
   private shouldUseTextToSQL(query: string): boolean {
     const queryLower = query.toLowerCase()
     
+    // Force text-to-SQL for certain queries to ensure OpenAI is used
+    const forceTextToSQLPatterns = [
+      /\b(list|show|display|find)\s+(equipment|machines?|assets?)\s+(belongs?|in|for|of)\s+(sys|system)/i,
+      /\bbelongs?\s+to\s+sys/i,
+      /\bsys-\d{3}\b/i  // Any query with system ID
+    ]
+    
+    if (forceTextToSQLPatterns.some(pattern => pattern.test(query))) {
+      console.log('🎯 Forced Text-to-SQL: Query matches forced pattern');
+      return true
+    }
+    
     // Use text-to-SQL for complex queries
     const complexPatterns = [
       /\b(join|combine|correlate|relate|relationship|関係|結合)\b/,
@@ -455,7 +479,7 @@ export class EnhancedAIService {
     const hasComplexPattern = complexPatterns.some(pattern => pattern.test(queryLower))
     
     // Check for multiple entities
-    const entityCount = (queryLower.match(/\b[A-Z]{1,3}-?\d{1,4}\b/g) || []).length
+    const entityCount = (query.match(/\b[A-Z]{1,3}-?\d{1,4}\b/gi) || []).length
     const hasMultipleEntities = entityCount > 1
     
     // Check for time-based queries
