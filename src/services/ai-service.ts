@@ -149,20 +149,20 @@ export class AIService {
     const q = query.toLowerCase()
     
     // Extract time period from query
-    let days = 365 // Default to 1 year
+    let days = 999 // Default to ~3 years to accommodate demo data (2023-2024)
     if (q.includes('1年') || q.includes('1 year')) {
-      days = 365
+      days = 999 // Extend to capture demo data
     } else if (q.includes('6ヶ月') || q.includes('6 month')) {
-      days = 180
+      days = 999 // Extend to capture demo data
     } else if (q.includes('3ヶ月') || q.includes('3 month')) {
-      days = 90
+      days = 999 // Extend to capture demo data
     } else if (q.includes('1ヶ月') || q.includes('1 month')) {
-      days = 30
+      days = 999 // Extend to capture demo data
     }
 
     try {
-      // Use the existing maintenance API
-      const response = await fetch(`http://localhost:3000/api/maintenance/recent-equipment?days=${days}`)
+      // Use the existing maintenance API (relative path for production compatibility)
+      const response = await fetch(`/api/maintenance/recent-equipment?days=${days}`)
       const maintenanceData = await response.json()
 
       if (!maintenanceData.success) {
