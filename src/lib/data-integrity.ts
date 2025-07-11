@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { DatabaseBridge } from '@/lib/database-bridge'
 
 export interface DataIntegrityReport {
   checks: DataIntegrityCheck[]
@@ -189,7 +190,7 @@ export class DataIntegrityService {
       }
       
       // Check for process parameters without equipment
-      // Note: process_parameters uses equipment_id, equipment table uses 設備ID
+      // Note: Using bridge logic to handle field name compatibility
       const { data: orphanedParameters, error: parameterError } = await supabase
         .from('process_parameters')
         .select('equipment_id')

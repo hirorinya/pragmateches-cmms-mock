@@ -20,6 +20,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { aiQueryService } from '@/services/ai-query-service'
+import { DatabaseBridge } from '@/lib/database-bridge'
 
 interface ChatMessage {
   id: string
@@ -188,21 +189,15 @@ export default function AIAssistantPage() {
     if (parsedResponse.results && (Array.isArray(parsedResponse.results) ? parsedResponse.results.length > 0 : Object.keys(parsedResponse.results).length > 0)) {
       formatted += `### 📊 Analysis Results\n\n`
       
-      // Remove duplicates based on equipment_id or 設備ID (handle both field name patterns)
-      const uniqueResults = Array.isArray(parsedResponse.results) 
-        ? parsedResponse.results.filter((result: any, index: number, arr: any[]) => {
-            const currentId = result.equipment_id || result.設備ID
-            return arr.findIndex(r => {
-              const compareId = r.equipment_id || r.設備ID
-              return compareId === currentId
-            }) === index
-          })
-        : [parsedResponse.results]
+      // Remove duplicates using clean bridge logic (eliminates field name mapping complexity)
+      const uniqueResults = DatabaseBridge.removeDuplicateEquipment(
+        Array.isArray(parsedResponse.results) ? parsedResponse.results : [parsedResponse.results]
+      )
       
-      if (Array.isArray(uniqueResults) && (uniqueResults[0]?.equipment_id || uniqueResults[0]?.設備ID) && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
+      if (Array.isArray(uniqueResults) && DatabaseBridge.getEquipmentId(uniqueResults[0]) && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
         // Coverage analysis format - handles both missing and covered scenarios
         uniqueResults.forEach((result: any, index: number) => {
-          formatted += `**${index + 1}. Equipment ${result.equipment_id || result.設備ID || 'Unknown'}**\n`
+          formatted += `**${index + 1}. Equipment ${DatabaseBridge.getEquipmentId(result) || 'Unknown'}**\n`
           formatted += `- **Type:** ${result.equipment_type || 'Heat Exchanger'}\n`
           formatted += `- **System:** ${result.system || 'SYS-001'}\n`
           formatted += `- **Location:** ${result.location || 'Not specified'}\n`
@@ -216,10 +211,10 @@ export default function AIAssistantPage() {
           }
           formatted += '\n'
         })
-      } else if ((uniqueResults[0]?.equipment_id || uniqueResults[0]?.設備ID) && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
+      } else if (DatabaseBridge.getEquipmentId(uniqueResults[0]) && (uniqueResults[0]?.total_measures !== undefined || uniqueResults[0]?.implemented || uniqueResults[0]?.planned)) {
         // Mitigation status format
         const r = uniqueResults[0]
-        formatted += `**🔧 Equipment:** ${r.equipment_id || r.設備ID}\n`
+        formatted += `**🔧 Equipment:** ${DatabaseBridge.getEquipmentId(r)}\n`
         formatted += `**🏢 Department:** ${r.department}\n`
         formatted += `**📋 Total Measures:** ${r.total_measures}\n\n`
         
@@ -241,7 +236,7 @@ export default function AIAssistantPage() {
       } else if (Array.isArray(uniqueResults) && uniqueResults[0]?.impact_level) {
         // Impact analysis format
         uniqueResults.forEach((equipment: any, index: number) => {
-          formatted += `**${index + 1}. Equipment ${equipment.equipment_id || equipment.設備ID}** (${equipment.equipment_type})\n`
+          formatted += `**${index + 1}. Equipment ${DatabaseBridge.getEquipmentId(equipment)}** (${equipment.equipment_type})\n`
           formatted += `- **Impact Level:** ${equipment.impact_level}\n`
           formatted += `- **System:** ${equipment.system || 'SYS-001'}\n`
           
@@ -253,22 +248,22 @@ export default function AIAssistantPage() {
           }
           formatted += '\n'
         })
-      } else if (uniqueResults.length > 0 && uniqueResults[0]?.設備ID) {
-        // Equipment info format (Japanese fields)
+      } else if (uniqueResults.length > 0 && DatabaseBridge.getEquipmentId(uniqueResults[0])) {
+        // Equipment info format (using bridge functions)
         uniqueResults.forEach((equipment: any, index: number) => {
-          formatted += `**${index + 1}. Equipment ${equipment.設備ID}**\n`
-          if (equipment.設備名) formatted += `- **Name:** ${equipment.設備名}\n`
-          if (equipment.製造者) formatted += `- **Manufacturer:** ${equipment.製造者}\n`
-          if (equipment.型式) formatted += `- **Model:** ${equipment.型式}\n`
-          if (equipment.設置場所) formatted += `- **Location:** ${equipment.設置場所}\n`
-          if (equipment.稼働状態) formatted += `- **Status:** ${equipment.稼働状態}\n`
-          if (equipment.設備種別名) formatted += `- **Type:** ${equipment.設備種別名}\n`
+          formatted += `**${index + 1}. Equipment ${DatabaseBridge.getEquipmentId(equipment)}**\n`
+          if (DatabaseBridge.getEquipmentName(equipment)) formatted += `- **Name:** ${DatabaseBridge.getEquipmentName(equipment)}\n`
+          if (equipment.製造者 || equipment.manufacturer) formatted += `- **Manufacturer:** ${equipment.製造者 || equipment.manufacturer}\n`
+          if (equipment.型式 || equipment.model) formatted += `- **Model:** ${equipment.型式 || equipment.model}\n`
+          if (DatabaseBridge.getEquipmentLocation(equipment)) formatted += `- **Location:** ${DatabaseBridge.getEquipmentLocation(equipment)}\n`
+          if (equipment.稼働状態 || equipment.operating_status) formatted += `- **Status:** ${equipment.稼働状態 || equipment.operating_status}\n`
+          if (equipment.設備種別名 || equipment.equipment_type_name) formatted += `- **Type:** ${equipment.設備種別名 || equipment.equipment_type_name}\n`
           formatted += '\n'
         })
       } else if (uniqueResults.length > 0 && uniqueResults[0]?.strategy_id) {
         // Equipment strategy format
         const groupedByEquipment = uniqueResults.reduce((acc: any, strategy: any) => {
-          const equipmentId = strategy.equipment_id || strategy.設備ID
+          const equipmentId = DatabaseBridge.getEquipmentId(strategy)
           if (!acc[equipmentId]) {
             acc[equipmentId] = []
           }
