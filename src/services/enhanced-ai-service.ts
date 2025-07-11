@@ -921,49 +921,35 @@ export class EnhancedAIService {
   // Placeholder methods for additional handlers
   private async handleMaintenanceSchedule(query: string, entities: any, context: any): Promise<AIQueryResponse> {
     try {
-      // Mock maintenance schedule data
-      const upcomingMaintenance = [
-        {
-          equipment_id: 'HX-101',
-          equipment_name: 'Heat Exchanger 101',
-          task: 'Monthly PM Inspection',
-          due_date: '2024-01-15',
-          frequency: 'Monthly',
-          priority: 'MEDIUM',
-          estimated_hours: 4,
-          assigned_to: '保全チーム A'
-        },
-        {
-          equipment_id: 'PU-102',
-          equipment_name: 'Pump 102',
-          task: 'Bearing Replacement',
-          due_date: '2024-01-14',
-          frequency: 'Quarterly',
-          priority: 'HIGH',
-          estimated_hours: 6,
-          assigned_to: '保全チーム B'
-        },
-        {
-          equipment_id: 'TK-201',
-          equipment_name: 'Storage Tank 201',
-          task: 'Quarterly Inspection',
-          due_date: '2024-01-16',
-          frequency: 'Quarterly',
-          priority: 'LOW',
-          estimated_hours: 2,
-          assigned_to: '保全チーム C'
-        },
-        {
-          equipment_id: 'CP-301',
-          equipment_name: 'Air Compressor 301',
-          task: 'Oil Change Service',
-          due_date: '2024-01-17',
-          frequency: 'Semi-Annual',
-          priority: 'MEDIUM',
-          estimated_hours: 3,
-          assigned_to: '保全チーム A'
-        }
-      ]
+      // Query real maintenance schedule data from database
+      const { data: scheduleData, error } = await supabase
+        .from('inspection_plan')
+        .select(`
+          設備ID,
+          次回検査日,
+          検査種別,
+          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        `)
+        .gte('次回検査日', new Date().toISOString().split('T')[0])
+        .order('次回検査日', { ascending: true })
+        .limit(20)
+
+      if (error) {
+        console.error('Error fetching schedule data:', error)
+        throw error
+      }
+
+      // Transform database data to expected format
+      let upcomingMaintenance = scheduleData.map(schedule => ({
+        equipment_id: schedule.設備ID,
+        equipment_name: schedule.equipment?.設備名 || 'Unknown Equipment',
+        equipment_type: schedule.equipment?.equipment_type_master?.設備種別名 || 'Unknown Type',
+        task: schedule.検査種別 || 'Scheduled Inspection',
+        due_date: schedule.次回検査日,
+        priority: this.calculateMaintenancePriority(schedule.次回検査日),
+        estimated_hours: this.estimateMaintenanceHours(schedule.検査種別),
+        assigned_to: 'To be assigned'
+      }))
 
       // Filter by system if specified
       const systemMatch = query.match(/SYS-\d{3}/i)
@@ -971,23 +957,25 @@ export class EnhancedAIService {
       
       if (systemMatch) {
         const systemId = systemMatch[0].toUpperCase()
-        const systemEquipment = {
-          'SYS-001': ['HX-101', 'HX-102', 'PU-101', 'PU-102'],
-          'SYS-002': ['TK-101', 'TK-102', 'PU-201', 'PU-202'],
-          'SYS-003': ['HX-201', 'HX-202', 'TK-201', 'TK-202']
+        // Filter by equipment ID patterns that typically belong to systems
+        if (systemId === 'SYS-001') {
+          filteredMaintenance = upcomingMaintenance.filter(m => 
+            m.equipment_id.startsWith('HX-') || m.equipment_id.startsWith('PU-'))
+        } else if (systemId === 'SYS-002') {
+          filteredMaintenance = upcomingMaintenance.filter(m => 
+            m.equipment_id.startsWith('TK-') || m.equipment_id.startsWith('V-'))
         }
-        
-        const equipmentIds = systemEquipment[systemId] || []
-        filteredMaintenance = upcomingMaintenance.filter(m => equipmentIds.includes(m.equipment_id))
       }
 
-      const summary = `Found ${filteredMaintenance.length} upcoming maintenance tasks:\n\n` +
+      const summary = `Maintenance Schedule (Real Database Data):\n\n` +
+        `Found ${filteredMaintenance.length} upcoming maintenance tasks:\n\n` +
         filteredMaintenance.map((task, index) => 
           `${index + 1}. ${task.equipment_name} (${task.equipment_id})\n` +
+          `   Equipment Type: ${task.equipment_type}\n` +
           `   Task: ${task.task}\n` +
           `   Due: ${new Date(task.due_date).toLocaleDateString()}\n` +
           `   Priority: ${task.priority}\n` +
-          `   Assigned to: ${task.assigned_to}\n`
+          `   Estimated: ${task.estimated_hours} hours\n`
         ).join('\n')
 
       return {
@@ -1054,123 +1042,243 @@ export class EnhancedAIService {
   }
 
   private async handleCostAnalysis(query: string, entities: any, context: any): Promise<AIQueryResponse> {
-    return this.createPlaceholderResponse(query, 'COST_ANALYSIS', 'Cost analysis functionality coming soon!')
+    try {
+      // Query real cost data from database
+      const { data: costData, error } = await supabase
+        .from('maintenance_history')
+        .select(`
+          設備ID,
+          実施日,
+          作業内容,
+          作業時間,
+          equipment!inner(設備名, 設備種別ID)
+        `)
+        .order('実施日', { ascending: false })
+        .limit(50)
+
+      if (error) {
+        console.error('Error fetching cost data:', error)
+        throw error
+      }
+
+      // Calculate cost metrics from real data
+      const totalHours = costData.reduce((sum, record) => sum + (parseFloat(record.作業時間) || 0), 0)
+      const avgCostPerHour = 85 // USD per hour labor cost
+      const totalCost = totalHours * avgCostPerHour
+
+      const costByEquipment = costData.reduce((acc, record) => {
+        const equipmentId = record.設備ID
+        if (!acc[equipmentId]) {
+          acc[equipmentId] = {
+            equipment_id: equipmentId,
+            equipment_name: record.equipment?.設備名 || 'Unknown',
+            total_hours: 0,
+            total_cost: 0,
+            work_count: 0
+          }
+        }
+        acc[equipmentId].total_hours += parseFloat(record.作業時間) || 0
+        acc[equipmentId].total_cost = acc[equipmentId].total_hours * avgCostPerHour
+        acc[equipmentId].work_count += 1
+        return acc
+      }, {})
+
+      const results = Object.values(costByEquipment).sort((a: any, b: any) => b.total_cost - a.total_cost)
+
+      const summary = `Maintenance Cost Analysis (Based on Real Data):\n\n` +
+        `Total Maintenance Hours: ${totalHours.toFixed(1)} hours\n` +
+        `Total Maintenance Cost: $${totalCost.toFixed(0)}\n` +
+        `Average Cost per Hour: $${avgCostPerHour}\n\n` +
+        `Top Cost Equipment:\n` +
+        results.slice(0, 5).map((item: any, index) => 
+          `${index + 1}. ${item.equipment_name} (${item.equipment_id}): $${item.total_cost.toFixed(0)} (${item.total_hours}h, ${item.work_count} jobs)`
+        ).join('\n')
+
+      return {
+        query,
+        intent: 'COST_ANALYSIS',
+        confidence: 0.9,
+        results,
+        summary,
+        recommendations: [
+          'Focus cost reduction efforts on highest-cost equipment',
+          'Consider predictive maintenance for expensive repairs',
+          'Review labor efficiency for high-hour equipment'
+        ],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    } catch (error) {
+      console.error('Error in cost analysis:', error)
+      return {
+        query,
+        intent: 'COST_ANALYSIS',
+        confidence: 0.3,
+        results: [],
+        summary: 'Unable to retrieve cost analysis data from database.',
+        recommendations: ['Check database connection', 'Verify maintenance history data'],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    }
   }
 
   private async handleProcessMonitoring(query: string, entities: any, context: any): Promise<AIQueryResponse> {
-    return this.createPlaceholderResponse(query, 'PROCESS_MONITORING', 'Process monitoring functionality coming soon!')
+    try {
+      // Query real equipment status from database
+      const { data: equipmentData, error } = await supabase
+        .from('equipment')
+        .select(`
+          設備ID,
+          設備名,
+          稼働状態,
+          設置場所,
+          equipment_type_master(設備種別名)
+        `)
+        .limit(20)
+
+      if (error) {
+        console.error('Error fetching equipment data:', error)
+        throw error
+      }
+
+      // Analyze operational status
+      const statusCounts = equipmentData.reduce((acc, eq) => {
+        const status = eq.稼働状態 || 'Unknown'
+        acc[status] = (acc[status] || 0) + 1
+        return acc
+      }, {})
+
+      const summary = `Process Monitoring Status (Real Equipment Data):\n\n` +
+        `Total Equipment Monitored: ${equipmentData.length}\n\n` +
+        `Status Distribution:\n` +
+        Object.entries(statusCounts).map(([status, count]) => 
+          `- ${status}: ${count} units`
+        ).join('\n') + '\n\n' +
+        `Equipment List:\n` +
+        equipmentData.slice(0, 10).map((eq, index) => 
+          `${index + 1}. ${eq.設備名} (${eq.設備ID}) - Status: ${eq.稼働状態}`
+        ).join('\n')
+
+      return {
+        query,
+        intent: 'PROCESS_MONITORING',
+        confidence: 0.9,
+        results: equipmentData,
+        summary,
+        recommendations: [
+          'Monitor non-operational equipment for maintenance needs',
+          'Schedule inspections for critical equipment',
+          'Update equipment status regularly'
+        ],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    } catch (error) {
+      console.error('Error in process monitoring:', error)
+      return {
+        query,
+        intent: 'PROCESS_MONITORING',
+        confidence: 0.3,
+        results: [],
+        summary: 'Unable to retrieve process monitoring data from database.',
+        recommendations: ['Check database connection', 'Verify equipment data'],
+        execution_time: 0,
+        source: 'ai',
+        context
+      }
+    }
   }
 
   private async handleRiskAssessment(query: string, entities: any, context: any): Promise<AIQueryResponse> {
     try {
-      // Mock risk assessment data with fouling risk focus
-      const riskData = [
-        {
-          equipment_id: 'HX-101',
-          equipment_name: 'Heat Exchanger 101',
-          system_id: 'SYS-001',
-          risk_type: 'Fouling',
-          risk_level: 'HIGH',
-          risk_score: 8.5,
-          description: 'High risk of tube blockage due to fouling from process fluids',
-          impact: 'Production shutdown, reduced heat transfer efficiency',
-          likelihood: 'High - observed fouling patterns in similar equipment',
-          mitigation: 'Increase cleaning frequency, install online monitoring'
-        },
-        {
-          equipment_id: 'HX-102',
-          equipment_name: 'Heat Exchanger 102',
-          system_id: 'SYS-001',
-          risk_type: 'Fouling',
-          risk_level: 'HIGH',
-          risk_score: 8.2,
-          description: 'Very high risk of tube blockage due to fouling',
-          impact: 'Backup heat exchanger for HX-101, critical for system reliability',
-          likelihood: 'High - same process conditions as HX-101',
-          mitigation: 'Implement predictive fouling monitoring, schedule proactive cleaning'
-        },
-        {
-          equipment_id: 'PU-101',
-          equipment_name: 'Pump 101',
-          system_id: 'SYS-001',
-          risk_type: 'Mechanical',
-          risk_level: 'MEDIUM',
-          risk_score: 6.2,
-          description: 'Bearing wear risk due to continuous operation',
-          impact: 'Reduced flow rate, potential seal failure',
-          likelihood: 'Medium - normal wear patterns observed',
-          mitigation: 'Vibration monitoring, scheduled bearing replacement'
-        },
-        {
-          equipment_id: 'TK-201',
-          equipment_name: 'Storage Tank 201',
-          system_id: 'SYS-003',
-          risk_type: 'Corrosion',
-          risk_level: 'MEDIUM',
-          risk_score: 5.8,
-          description: 'Internal corrosion risk from stored chemicals',
-          impact: 'Tank integrity compromise, environmental release',
-          likelihood: 'Medium - based on material compatibility',
-          mitigation: 'Regular thickness monitoring, coating inspection'
-        },
-        {
-          equipment_id: 'CV-105',
-          equipment_name: 'Control Valve 105',
-          system_id: 'SYS-001',
-          risk_type: 'Fouling',
-          risk_level: 'MEDIUM',
-          risk_score: 6.8,
-          description: 'Valve seat fouling affecting control accuracy',
-          impact: 'Poor process control, potential safety issues',
-          likelihood: 'Medium - particulates in process stream',
-          mitigation: 'Install upstream filtration, regular valve maintenance'
-        }
-      ]
+      // Query real risk assessment data from database
+      const { data: riskData, error } = await supabase
+        .from('equipment_risk_assessment')
+        .select(`
+          設備ID,
+          リスクレベル,
+          リスクスコア,
+          リスク要因,
+          影響度,
+          発生確率,
+          リスク対策,
+          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        `)
+        .order('リスクスコア', { ascending: false })
+        .limit(20)
+
+      if (error) {
+        console.error('Error fetching risk assessment data:', error)
+        throw error
+      }
+
+      // Transform database data to match expected format
+      let transformedRisks = riskData.map(risk => ({
+        equipment_id: risk.設備ID,
+        equipment_name: risk.equipment?.設備名 || 'Unknown Equipment',
+        equipment_type: risk.equipment?.equipment_type_master?.設備種別名 || 'Unknown Type',
+        risk_level: risk.リスクレベル,
+        risk_score: risk.リスクスコア,
+        risk_factors: risk.リスク要因,
+        impact: risk.影響度,
+        likelihood: risk.発生確率,
+        mitigation: risk.リスク対策
+      }))
 
       // Filter based on query
-      let filteredRisks = riskData
+      let filteredRisks = transformedRisks
       
       // Filter by fouling if mentioned
       if (query.toLowerCase().includes('fouling')) {
-        filteredRisks = riskData.filter(r => r.risk_type.toLowerCase() === 'fouling')
+        filteredRisks = filteredRisks.filter(r => r.risk_factors?.toLowerCase().includes('fouling') || 
+                                               r.risk_factors?.toLowerCase().includes('ファウリング'))
       }
       
       // Filter by high risk if mentioned
       if (query.toLowerCase().includes('high risk')) {
-        filteredRisks = riskData.filter(r => r.risk_level === 'HIGH')
+        filteredRisks = filteredRisks.filter(r => r.risk_level === 'HIGH')
       }
       
-      // Filter by system if specified
+      // Filter by system if specified (would need system mapping in database)
       const systemMatch = query.match(/SYS-\d{3}/i)
       if (systemMatch) {
         const systemId = systemMatch[0].toUpperCase()
-        filteredRisks = filteredRisks.filter(r => r.system_id === systemId)
+        // For now, filter by equipment ID patterns that typically belong to systems
+        if (systemId === 'SYS-001') {
+          filteredRisks = filteredRisks.filter(r => r.equipment_id.startsWith('HX-') || r.equipment_id.startsWith('PU-'))
+        }
       }
 
-      const summary = `Found ${filteredRisks.length} risk assessment${filteredRisks.length === 1 ? '' : 's'}:\n\n` +
-        filteredRisks.map((risk, index) => 
+      const summary = `Risk Assessment Analysis (Real Database Data):\n\n` +
+        `Found ${filteredRisks.length} risk assessment${filteredRisks.length === 1 ? '' : 's'}:\n\n` +
+        filteredRisks.slice(0, 10).map((risk, index) => 
           `${index + 1}. ${risk.equipment_name} (${risk.equipment_id})\n` +
-          `   Risk Type: ${risk.risk_type}\n` +
+          `   Equipment Type: ${risk.equipment_type}\n` +
           `   Risk Level: ${risk.risk_level} (Score: ${risk.risk_score}/10)\n` +
-          `   Description: ${risk.description}\n` +
+          `   Risk Factors: ${risk.risk_factors}\n` +
           `   Impact: ${risk.impact}\n` +
           `   Mitigation: ${risk.mitigation}\n`
         ).join('\n')
 
       const recommendations = []
       
-      if (filteredRisks.some(r => r.risk_type === 'Fouling' && r.risk_level === 'HIGH')) {
-        recommendations.push('Immediate action required for high fouling risks in heat exchangers')
-        recommendations.push('Consider implementing online fouling monitoring systems')
-        recommendations.push('Review cleaning schedules for affected equipment')
+      const highRisks = filteredRisks.filter(r => r.risk_level === 'HIGH')
+      if (highRisks.length > 0) {
+        recommendations.push(`${highRisks.length} equipment items have HIGH risk levels - immediate attention required`)
+        recommendations.push('Prioritize maintenance planning for high-risk equipment')
+        recommendations.push('Consider upgrading to predictive maintenance strategies')
       }
       
       if (filteredRisks.length === 0) {
-        recommendations.push('No specific risks found for your criteria')
-        recommendations.push('Try searching for specific risk types like "fouling" or "corrosion"')
+        recommendations.push('No risk assessments found matching your criteria')
+        recommendations.push('Verify risk assessment data is available in the database')
       } else {
-        recommendations.push('Review equipment strategies for high-risk items')
-        recommendations.push('Consider predictive maintenance for critical equipment')
+        recommendations.push('Review and update risk mitigation strategies regularly')
+        recommendations.push('Monitor equipment performance trends for early risk detection')
       }
 
       return {
@@ -1203,64 +1311,69 @@ export class EnhancedAIService {
 
   private async handleEquipmentStrategy(query: string, entities: any, context: any): Promise<AIQueryResponse> {
     try {
-      // Mock equipment strategy data focusing on high-risk fouling equipment
-      const equipmentStrategies = [
-        {
-          equipment_id: 'HX-101',
-          equipment_name: 'Heat Exchanger 101',
-          system_id: 'SYS-001',
-          risk_level: 'HIGH',
-          risk_type: 'Fouling',
-          strategy_id: 'ES-HX-101-001',
-          strategy_name: 'Fouling Prevention & Monitoring',
-          strategy_type: 'PREDICTIVE',
-          frequency: 'Weekly',
-          description: 'Online fouling monitoring with weekly cleaning cycles',
-          is_active: true,
-          coverage_status: 'FULLY_COVERED',
-          last_review: '2024-01-10',
-          next_review: '2024-04-10'
-        },
-        {
-          equipment_id: 'HX-102',
-          equipment_name: 'Heat Exchanger 102',
-          system_id: 'SYS-001',
-          risk_level: 'HIGH',
-          risk_type: 'Fouling',
-          strategy_id: 'ES-HX-102-001',
-          strategy_name: 'Fouling Prevention & Monitoring',
-          strategy_type: 'PREDICTIVE',
-          frequency: 'Weekly',
-          description: 'Online fouling monitoring with weekly cleaning cycles',
-          is_active: true,
-          coverage_status: 'FULLY_COVERED',
-          last_review: '2024-01-10',
-          next_review: '2024-04-10'
-        },
-        {
-          equipment_id: 'CV-105',
-          equipment_name: 'Control Valve 105',
-          system_id: 'SYS-001',
-          risk_level: 'MEDIUM',
-          risk_type: 'Fouling',
-          strategy_id: 'ES-CV-105-001',
-          strategy_name: 'Valve Maintenance Program',
-          strategy_type: 'PREVENTIVE',
-          frequency: 'Monthly',
-          description: 'Monthly inspection and cleaning of valve internals',
-          is_active: true,
-          coverage_status: 'PARTIALLY_COVERED',
-          last_review: '2023-12-15',
-          next_review: '2024-03-15'
-        }
-      ]
+      // Query real equipment strategy data from database
+      const { data: strategyData, error } = await supabase
+        .from('equipment_strategy')
+        .select(`
+          strategy_id,
+          equipment_id,
+          strategy_name,
+          strategy_type,
+          frequency_type,
+          frequency_value,
+          priority,
+          is_active,
+          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        `)
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .limit(20)
 
-      // Filter by system if specified
+      if (error) {
+        console.error('Error fetching equipment strategy data:', error)
+        throw error
+      }
+
+      // Transform database data to expected format
+      let equipmentStrategies = strategyData.map(strategy => ({
+        equipment_id: strategy.equipment_id,
+        equipment_name: strategy.equipment?.設備名 || 'Unknown Equipment',
+        equipment_type: strategy.equipment?.equipment_type_master?.設備種別名 || 'Unknown Type',
+        strategy_id: strategy.strategy_id,
+        strategy_name: strategy.strategy_name,
+        strategy_type: strategy.strategy_type,
+        frequency: `${strategy.frequency_value} ${strategy.frequency_type}`,
+        priority: strategy.priority,
+        is_active: strategy.is_active,
+        coverage_status: strategy.is_active ? 'FULLY_COVERED' : 'NOT_COVERED'
+      }))
+
+      // Also get risk assessment data to correlate strategies with risks
+      const { data: riskData } = await supabase
+        .from('equipment_risk_assessment')
+        .select('設備ID, リスクレベル, リスク要因')
+        .in('設備ID', equipmentStrategies.map(s => s.equipment_id))
+
+      // Enhance strategy data with risk information
+      equipmentStrategies = equipmentStrategies.map(strategy => {
+        const risk = riskData?.find(r => r.設備ID === strategy.equipment_id)
+        return {
+          ...strategy,
+          risk_level: risk?.リスクレベル || 'UNKNOWN',
+          risk_factors: risk?.リスク要因 || 'No risk assessment available'
+        }
+      })
+
+      // Filter by system if specified (would need proper system mapping in database)
       let filteredStrategies = equipmentStrategies
       const systemMatch = query.match(/SYS-\d{3}/i)
       if (systemMatch) {
         const systemId = systemMatch[0].toUpperCase()
-        filteredStrategies = equipmentStrategies.filter(s => s.system_id === systemId)
+        // Filter by equipment ID patterns that typically belong to systems
+        if (systemId === 'SYS-001') {
+          filteredStrategies = equipmentStrategies.filter(s => 
+            s.equipment_id.startsWith('HX-') || s.equipment_id.startsWith('PU-'))
+        }
       }
 
       // Filter by high risk if mentioned
@@ -1270,18 +1383,22 @@ export class EnhancedAIService {
 
       // Filter by fouling if mentioned
       if (query.toLowerCase().includes('fouling')) {
-        filteredStrategies = filteredStrategies.filter(s => s.risk_type === 'Fouling')
+        filteredStrategies = filteredStrategies.filter(s => 
+          s.risk_factors?.toLowerCase().includes('fouling') || 
+          s.risk_factors?.toLowerCase().includes('ファウリング'))
       }
 
-      const summary = `Equipment Strategy Analysis:\n\n` +
+      const summary = `Equipment Strategy Analysis (Real Database Data):\n\n` +
+        `Found ${filteredStrategies.length} equipment strategies:\n\n` +
         filteredStrategies.map((strategy, index) => 
           `${index + 1}. ${strategy.equipment_name} (${strategy.equipment_id})\n` +
-          `   Risk Level: ${strategy.risk_level} (${strategy.risk_type})\n` +
+          `   Equipment Type: ${strategy.equipment_type}\n` +
+          `   Risk Level: ${strategy.risk_level}\n` +
+          `   Risk Factors: ${strategy.risk_factors}\n` +
           `   Strategy: ${strategy.strategy_name}\n` +
-          `   Coverage: ${strategy.coverage_status}\n` +
           `   Type: ${strategy.strategy_type}\n` +
           `   Frequency: ${strategy.frequency}\n` +
-          `   Next Review: ${new Date(strategy.next_review).toLocaleDateString()}\n`
+          `   Priority: ${strategy.priority}\n`
         ).join('\n')
 
       const recommendations = []
@@ -1289,20 +1406,18 @@ export class EnhancedAIService {
       // Check coverage gaps
       const fullyCovered = filteredStrategies.filter(s => s.coverage_status === 'FULLY_COVERED').length
       const total = filteredStrategies.length
+      const highRiskCount = filteredStrategies.filter(s => s.risk_level === 'HIGH').length
       
-      if (fullyCovered === total) {
-        recommendations.push('✅ All high-risk fouling equipment are fully reflected in Equipment Strategy')
-        recommendations.push('Strategies are actively monitoring and preventing fouling issues')
-        recommendations.push('Continue current predictive maintenance approach')
+      if (total > 0) {
+        recommendations.push(`Equipment strategy coverage: ${fullyCovered}/${total} equipment fully covered`)
+        if (highRiskCount > 0) {
+          recommendations.push(`${highRiskCount} high-risk equipment items have maintenance strategies`)
+        }
+        recommendations.push('Review strategy effectiveness regularly')
+        recommendations.push('Consider predictive maintenance for critical equipment')
       } else {
-        recommendations.push('⚠️ Some equipment have partial strategy coverage - review needed')
-        recommendations.push('Consider upgrading to predictive maintenance for high-risk items')
-        recommendations.push('Schedule strategy review meetings for partially covered equipment')
-      }
-
-      if (query.toLowerCase().includes('sys-001')) {
-        recommendations.push('SYS-001 (Process Cooling System) has comprehensive fouling prevention strategies')
-        recommendations.push('Online monitoring systems are in place for critical heat exchangers')
+        recommendations.push('No equipment strategies found matching your criteria')
+        recommendations.push('Consider creating maintenance strategies for high-risk equipment')
       }
 
       return {
@@ -1486,6 +1601,35 @@ export class EnhancedAIService {
       execution_time: 0,
       source: 'ai'
     }
+  }
+  /**
+   * Calculate maintenance priority based on due date
+   */
+  private calculateMaintenancePriority(dueDate: string): string {
+    const due = new Date(dueDate)
+    const now = new Date()
+    const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (daysUntilDue <= 3) return 'HIGH'
+    if (daysUntilDue <= 7) return 'MEDIUM'
+    return 'LOW'
+  }
+
+  /**
+   * Estimate maintenance hours based on task type
+   */
+  private estimateMaintenanceHours(taskType: string): number {
+    const taskMap: Record<string, number> = {
+      '定期点検': 4,
+      '精密点検': 8,
+      '分解点検': 12,
+      'オーバーホール': 24,
+      '日常点検': 1,
+      '月次点検': 2,
+      '年次点検': 6
+    }
+    
+    return taskMap[taskType] || 4 // Default 4 hours
   }
 }
 
