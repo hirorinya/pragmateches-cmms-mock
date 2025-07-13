@@ -379,10 +379,10 @@ Generate SQL with proper JOINs and system filtering.`}
               <div className="p-4 bg-red-50 rounded-lg">
                 <h4 className="font-medium text-red-800">5. Expected OpenAI Response</h4>
                 <pre className="text-xs mt-2 overflow-x-auto">
-{`SELECT e.設備ID, e.設備名, e.稼働状態, etm.設備種別名
+{`SELECT e.設備ID, e.設備名, e.稼働状態, etm.equipment_type_name
 FROM equipment e
 JOIN equipment_system_mapping esm ON e.設備ID = esm.equipment_id
-JOIN equipment_type_master etm ON e.設備種別ID = etm.id
+JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
 WHERE esm.system_id = 'SYS-001'
 ORDER BY e.設備ID
 LIMIT 100;`}

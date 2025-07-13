@@ -328,25 +328,25 @@ Please respond with:
     
     if (equipmentEntity) {
       // Equipment-specific query
-      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.設備種別名
+      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.equipment_type_name
 FROM equipment e
-LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.id
+LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
 WHERE e.設備ID = '${equipmentEntity.resolved}'`
       reasoning = `Generated template query for specific equipment: ${equipmentEntity.resolved}`
     } else if (typeEntity) {
       // Equipment type query
-      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.設備種別名
+      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.equipment_type_name
 FROM equipment e
-JOIN equipment_type_master etm ON e.設備種別ID = etm.id
-WHERE etm.設備種別名 LIKE '%${typeEntity.resolved}%'
+JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
+WHERE etm.equipment_type_name LIKE '%${typeEntity.resolved}%'
 ORDER BY e.設備ID
 LIMIT 50`
       reasoning = `Generated template query for equipment type: ${typeEntity.resolved}`
     } else {
       // Generic equipment list
-      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.設備種別名
+      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.equipment_type_name
 FROM equipment e
-LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.id
+LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
 ORDER BY e.設備ID
 LIMIT 20`
       reasoning = 'Generated generic equipment listing query'

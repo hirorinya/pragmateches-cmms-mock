@@ -40,7 +40,7 @@ export default function InsightsAnalysisPage() {
         .from('equipment')
         .select(`
           *,
-          equipment_type_master("設備種別名"),
+          equipment_type_master(equipment_type_name),
           maintenance_history(*),
           anomaly_report(*),
           inspection_plan(*)

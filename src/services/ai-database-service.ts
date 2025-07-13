@@ -365,7 +365,7 @@ export class AIDatabaseService {
         設備種別ID,
         設置場所,
         稼働状態,
-        equipment_type_master(設備種別名)
+        equipment_type_master(equipment_type_name)
       `)
       .eq('設備ID', equipmentId)
       .single()
@@ -543,7 +543,7 @@ export class AIDatabaseService {
       results: [{
         equipment_id: equipmentId,
         equipment_name: equipmentData?.設備名 || equipmentId,
-        equipment_type: equipmentData?.equipment_type_master?.設備種別名 || 'Unknown',
+        equipment_type: equipmentData?.equipment_type_master?.equipment_type_name || 'Unknown',
         location: equipmentData?.設置場所 || 'Unknown',
         operational_status: equipmentData?.稼働状態 || 'Unknown',
         department: department,
@@ -672,7 +672,7 @@ export class AIDatabaseService {
           設備名,
           設備タグ,
           設備種別ID,
-          equipment_type_master(設備種別名)
+          equipment_type_master(equipment_type_name)
         )
       `)
       .eq('system_id', systemId || 'SYS-001')
@@ -879,7 +879,7 @@ export class AIDatabaseService {
           設備ID,
           設備名,
           稼働状態,
-          equipment_type_master!inner(設備種別名)
+          equipment_type_master!inner(equipment_type_name)
         `)
         .eq('operational_status', 'OPERATIONAL')
         .limit(10)

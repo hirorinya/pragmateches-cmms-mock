@@ -597,7 +597,7 @@ export class EntityResolutionService {
       // Load equipment cache
       const { data: equipmentData } = await supabase
         .from('equipment')
-        .select('設備ID, 設備名, 設置場所, 稼働状態, equipment_type_master(設備種別名)')
+        .select('設備ID, 設備名, 設置場所, 稼働状態, equipment_type_master(equipment_type_name)')
       
       if (equipmentData) {
         this.equipmentCache.clear()
