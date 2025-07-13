@@ -597,19 +597,19 @@ export class EntityResolutionService {
       // Load equipment cache
       const { data: equipmentData } = await supabase
         .from('equipment')
-        .select('設備ID, 設備名, 設置場所, 稼働状態, equipment_type_master(equipment_type_name)')
+        .select('equipment_id, equipment_name, location, operating_status, equipment_type_master(equipment_type_name)')
       
       if (equipmentData) {
         this.equipmentCache.clear()
         equipmentData.forEach(equipment => {
-          this.equipmentCache.set(equipment.設備ID, equipment)
+          this.equipmentCache.set(equipment.equipment_id, equipment)
         })
       }
       
       // Load system cache (if systems table exists)
       const { data: systemData } = await supabase
         .from('equipment')
-        .select('設備ID')
+        .select('equipment_id')
         .limit(1)
       
       // For now, create a simple system cache

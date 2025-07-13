@@ -56,7 +56,7 @@ export async function getDataSchema(categoryTypeId: number): Promise<DataSchema>
   return {
     available_tables: {
       equipment: {
-        fields: ['設備ID', '設備名', '設備種別ID', '設備タグ', '設置場所', '製造者', '型式', '設置年月日', '稼働状態', '重要度'],
+        fields: ['equipment_id', 'equipment_name', 'equipment_type_id', 'equipment_tag', 'location', 'manufacturer', 'model', 'installation_date', 'operating_status', 'importance'],
         sample_values: ['EQ001', 'CNC旋盤1号機', 1, 'PE-001', '第1工場A棟', 'ヤマザキマザック', 'INTEGREX i-300', '2020-03-15', '稼働中', '高'],
         description: '設備の基本情報（名前、場所、製造者、重要度など）'
       },

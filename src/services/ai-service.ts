@@ -422,7 +422,7 @@ export class AIService {
       const { data: maintenanceData, error } = await supabase
         .from('maintenance_history')
         .select(`
-          設備ID,
+          equipment_id,
           実施日,
           作業内容,
           作業結果,
@@ -444,7 +444,7 @@ export class AIService {
       // Group by equipment
       const equipmentMap = new Map()
       maintenanceData?.forEach((record: any) => {
-        const equipmentId = record.設備ID
+        const equipmentId = record.equipment_id
         if (!equipmentMap.has(equipmentId)) {
           equipmentMap.set(equipmentId, {
             equipment_id: equipmentId,

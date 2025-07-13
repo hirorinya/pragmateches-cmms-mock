@@ -328,26 +328,26 @@ Please respond with:
     
     if (equipmentEntity) {
       // Equipment-specific query
-      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.equipment_type_name
+      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, etm.equipment_type_name
 FROM equipment e
-LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
-WHERE e.設備ID = '${equipmentEntity.resolved}'`
+LEFT JOIN equipment_type_master etm ON e.equipment_type_id = etm.equipment_type_id
+WHERE e.equipment_id = '${equipmentEntity.resolved}'`
       reasoning = `Generated template query for specific equipment: ${equipmentEntity.resolved}`
     } else if (typeEntity) {
       // Equipment type query
-      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.equipment_type_name
+      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, etm.equipment_type_name
 FROM equipment e
-JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
+JOIN equipment_type_master etm ON e.equipment_type_id = etm.equipment_type_id
 WHERE etm.equipment_type_name LIKE '%${typeEntity.resolved}%'
-ORDER BY e.設備ID
+ORDER BY e.equipment_id
 LIMIT 50`
       reasoning = `Generated template query for equipment type: ${typeEntity.resolved}`
     } else {
       // Generic equipment list
-      sql = `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.equipment_type_name
+      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, etm.equipment_type_name
 FROM equipment e
-LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.equipment_type_id
-ORDER BY e.設備ID
+LEFT JOIN equipment_type_master etm ON e.equipment_type_id = etm.equipment_type_id
+ORDER BY e.equipment_id
 LIMIT 20`
       reasoning = 'Generated generic equipment listing query'
     }
@@ -482,13 +482,13 @@ LIMIT 20`
         // First get equipment IDs for the system, then filter maintenance history
         const { data: equipmentList } = await supabase
           .from('equipment')
-          .select('設備ID')
-          .like('設備ID', `${systemEntity.resolved}%`)
+          .select('equipment_id')
+          .like('equipment_id', `${systemEntity.resolved}%`)
           .limit(20)
         
         if (equipmentList && equipmentList.length > 0) {
-          const equipmentIds = equipmentList.map(eq => eq.設備ID)
-          query = query.in('設備ID', equipmentIds)
+          const equipmentIds = equipmentList.map(eq => eq.equipment_id)
+          query = query.in('equipment_id', equipmentIds)
         }
       }
 

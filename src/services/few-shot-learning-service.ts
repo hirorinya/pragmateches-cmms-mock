@@ -227,11 +227,11 @@ ORDER BY 月 DESC`,
       // System-based Queries
       {
         natural_language: "Show me all equipment in the cooling system",
-        sql: `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, e.equipment_type_id
+        sql: `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, e.equipment_type_id
 FROM equipment e
 -- Equipment type info included in equipment table
-WHERE e.設備ID LIKE 'HX-%' OR e.設備ID LIKE 'PU-%'
-ORDER BY e.設備ID`,
+WHERE e.equipment_id LIKE 'HX-%' OR e.equipment_id LIKE 'PU-%'
+ORDER BY e.equipment_id`,
         explanation: "System-based equipment filtering using ID patterns",
         tables_used: ['equipment', 'equipment'],
         complexity_level: 'basic',
