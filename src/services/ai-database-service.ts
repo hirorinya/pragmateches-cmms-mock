@@ -913,14 +913,14 @@ export class AIDatabaseService {
     const { data: costData, error: costError } = await this.supabase
       .from('maintenance_history')
       .select(`
-        実施日,
-        コスト,
-        作業内容,
-        設備ID,
-        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        implementation_date,
+        cost,
+        work_content,
+        equipment_id,
+        equipment!inner(equipment_name, equipment_type_id)
       `)
-      .gte('実施日', this.getDateFromTimeframe(timeframe))
-      .order('実施日', { ascending: false })
+      .gte('implementation_date', this.getDateFromTimeframe(timeframe))
+      .order('implementation_date', { ascending: false })
 
     if (costError) {
       return {
@@ -976,16 +976,16 @@ export class AIDatabaseService {
     const { data: overdueInspections, error: inspectionError } = await this.supabase
       .from('inspection_plan')
       .select(`
-        計画ID,
-        設備ID,
-        点検項目,
-        次回点検日,
-        状態,
-        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        plan_id,
+        equipment_id,
+        inspection_item,
+        next_inspection_date,
+        status,
+        equipment!inner(equipment_name, equipment_type_id)
       `)
-      .lt('次回点検日', currentDate)
+      .lt('next_inspection_date', currentDate)
       .neq('status', 'COMPLETED')
-      .order('次回点検日', { ascending: true })
+      .order('next_inspection_date', { ascending: true })
 
     // Get upcoming inspections (next 90 days) - extended for demo data coverage
     const futureDate = new Date()
@@ -994,17 +994,17 @@ export class AIDatabaseService {
     const { data: upcomingInspections, error: upcomingError } = await this.supabase
       .from('inspection_plan')
       .select(`
-        計画ID,
-        設備ID,
-        点検項目,
-        次回点検日,
-        状態,
-        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        plan_id,
+        equipment_id,
+        inspection_item,
+        next_inspection_date,
+        status,
+        equipment!inner(equipment_name, equipment_type_id)
       `)
-      .gte('次回点検日', currentDate)
-      .lte('次回点検日', futureDate.toISOString().split('T')[0])
+      .gte('next_inspection_date', currentDate)
+      .lte('next_inspection_date', futureDate.toISOString().split('T')[0])
       .neq('status', 'COMPLETED')
-      .order('次回点検日', { ascending: true })
+      .order('next_inspection_date', { ascending: true })
 
     const overdueCount = (overdueInspections || []).length
     const upcomingCount = (upcomingInspections || []).length
@@ -1054,7 +1054,7 @@ export class AIDatabaseService {
         strategy_name,
         frequency_type,
         frequency_value,
-        equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+        equipment!inner(equipment_name, equipment_type_id)
       `)
       .eq('is_active', true)
       .order('strategy_id', { ascending: true })
@@ -1063,18 +1063,18 @@ export class AIDatabaseService {
     const { data: workOrders, error: workOrderError } = await this.supabase
       .from('work_order')
       .select(`
-        作業指示ID,
-        設備ID,
-        作業種別ID,
-        計画開始日時,
-        計画終了日時,
-        実際開始日時,
-        状態,
-        equipment!inner(設備名)
+        work_order_id,
+        equipment_id,
+        work_type_id,
+        planned_start_datetime,
+        planned_end_datetime,
+        actual_start_datetime,
+        status,
+        equipment!inner(equipment_name)
       `)
-      .gte('計画開始日時', currentDate.toISOString().split('T')[0])
-      .lte('計画開始日時', futureDate.toISOString().split('T')[0])
-      .order('計画開始日時', { ascending: true })
+      .gte('planned_start_datetime', currentDate.toISOString().split('T')[0])
+      .lte('planned_start_datetime', futureDate.toISOString().split('T')[0])
+      .order('planned_start_datetime', { ascending: true })
 
     const strategiesCount = (strategiesData || []).length
     const workOrdersCount = (workOrders || []).length
