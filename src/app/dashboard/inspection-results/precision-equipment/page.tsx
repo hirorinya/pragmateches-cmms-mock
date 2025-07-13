@@ -15,9 +15,7 @@ export default function PrecisionEquipmentPage() {
         .from('inspection_plan')
         .select(`
           *,
-          equipment!inner(equipment_name, equipment_tag, equipment_type_id),
-          inspection_cycle_master(cycle_name),
-          staff_master(staff_name)
+          equipment!inner(equipment_name, equipment_tag, equipment_type_id)
         `)
         .eq('equipment.equipment_type_id', 1) // 1 = 静機器
         .order('next_inspection_date', { ascending: true })

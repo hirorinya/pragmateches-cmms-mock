@@ -33,33 +33,31 @@ export class FewShotLearningService {
       // Basic Equipment Queries
       {
         natural_language: "Tell me about equipment HX-101",
-        sql: `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.設備種別名
+        sql: `SELECT e.equipment_id, e.equipment_name, e.installation_location, e.operational_status, e.equipment_type_id
 FROM equipment e
-LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.id
-WHERE e.設備ID = 'HX-101'`,
+WHERE e.equipment_id = 'HX-101'`,
         explanation: "Basic equipment information lookup with type details",
-        tables_used: ['equipment', 'equipment_type_master'],
+        tables_used: ['equipment'],
         complexity_level: 'basic',
         category: 'equipment_info',
         result_description: "Returns basic equipment details including name, location, status, and type"
       },
       {
         natural_language: "Show me all heat exchangers",
-        sql: `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態
+        sql: `SELECT e.equipment_id, e.equipment_name, e.installation_location, e.operational_status
 FROM equipment e
-JOIN equipment_type_master etm ON e.設備種別ID = etm.id
-WHERE etm.設備種別名 LIKE '%熱交換器%' OR etm.設備種別名 LIKE '%Heat Exchanger%'`,
-        explanation: "Filter equipment by type using JOIN with type master table",
-        tables_used: ['equipment', 'equipment_type_master'],
+WHERE e.equipment_type_id = 1`,
+        explanation: "Filter equipment by type using equipment_type_id",
+        tables_used: ['equipment'],
         complexity_level: 'basic',
         category: 'equipment_filtering',
         result_description: "Returns all equipment of heat exchanger type"
       },
       {
         natural_language: "What equipment is in the process area?",
-        sql: `SELECT 設備ID, 設備名, 設置場所, 稼働状態
+        sql: `SELECT equipment_id, equipment_name, installation_location, operational_status
 FROM equipment
-WHERE 設置場所 LIKE '%プロセス%' OR 設置場所 LIKE '%Process%'`,
+WHERE installation_location LIKE '%Process%'`,
         explanation: "Filter equipment by location using pattern matching",
         tables_used: ['equipment'],
         complexity_level: 'basic',
@@ -70,11 +68,11 @@ WHERE 設置場所 LIKE '%プロセス%' OR 設置場所 LIKE '%Process%'`,
       // Maintenance History Queries
       {
         natural_language: "Show me maintenance history for HX-101",
-        sql: `SELECT mh.実施日, mh.作業内容, mh.作業結果, mh.コスト, e.設備名
+        sql: `SELECT mh.implementation_date, mh.work_content, mh.work_result, mh.cost, e.equipment_name
 FROM maintenance_history mh
-JOIN equipment e ON mh.設備ID = e.設備ID
-WHERE mh.設備ID = 'HX-101'
-ORDER BY mh.実施日 DESC`,
+JOIN equipment e ON mh.equipment_id = e.equipment_id
+WHERE mh.equipment_id = 'HX-101'
+ORDER BY mh.implementation_date DESC`,
         explanation: "Equipment-specific maintenance history with chronological ordering",
         tables_used: ['maintenance_history', 'equipment'],
         complexity_level: 'basic',
@@ -83,11 +81,11 @@ ORDER BY mh.実施日 DESC`,
       },
       {
         natural_language: "What maintenance was done in the last 30 days?",
-        sql: `SELECT mh.設備ID, e.設備名, mh.実施日, mh.作業内容, mh.コスト
+        sql: `SELECT mh.equipment_id, e.equipment_name, mh.implementation_date, mh.work_content, mh.cost
 FROM maintenance_history mh
-JOIN equipment e ON mh.設備ID = e.設備ID
-WHERE mh.実施日 >= CURRENT_DATE - INTERVAL '30 days'
-ORDER BY mh.実施日 DESC`,
+JOIN equipment e ON mh.equipment_id = e.equipment_id
+WHERE mh.implementation_date >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY mh.implementation_date DESC`,
         explanation: "Time-based maintenance query using date arithmetic",
         tables_used: ['maintenance_history', 'equipment'],
         complexity_level: 'intermediate',
@@ -214,13 +212,13 @@ ORDER BY era.リスクスコア DESC`,
   AVG(mh.コスト) as 平均コスト
 FROM maintenance_history mh
 JOIN equipment e ON mh.設備ID = e.設備ID
-JOIN equipment_type_master etm ON e.設備種別ID = etm.id
-WHERE etm.設備種別名 LIKE '%熱交換器%'
+-- Equipment type info included in equipment table
+WHERE e.equipment_type_id LIKE '%熱交換器%'
   AND mh.実施日 >= CURRENT_DATE - INTERVAL '12 months'
 GROUP BY DATE_TRUNC('month', mh.実施日)
 ORDER BY 月 DESC`,
         explanation: "Time series analysis with aggregation and date functions",
-        tables_used: ['maintenance_history', 'equipment', 'equipment_type_master'],
+        tables_used: ['maintenance_history', 'equipment', 'equipment'],
         complexity_level: 'advanced',
         category: 'cost_trend_analysis',
         result_description: "Returns monthly maintenance cost trends for equipment type"
@@ -229,13 +227,13 @@ ORDER BY 月 DESC`,
       // System-based Queries
       {
         natural_language: "Show me all equipment in the cooling system",
-        sql: `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.設備種別名
+        sql: `SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, e.equipment_type_id
 FROM equipment e
-JOIN equipment_type_master etm ON e.設備種別ID = etm.id
+-- Equipment type info included in equipment table
 WHERE e.設備ID LIKE 'HX-%' OR e.設備ID LIKE 'PU-%'
 ORDER BY e.設備ID`,
         explanation: "System-based equipment filtering using ID patterns",
-        tables_used: ['equipment', 'equipment_type_master'],
+        tables_used: ['equipment', 'equipment'],
         complexity_level: 'basic',
         category: 'system_equipment',
         result_description: "Returns equipment belonging to specific systems"

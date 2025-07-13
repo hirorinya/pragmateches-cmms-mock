@@ -427,15 +427,15 @@ export class AIService {
           作業内容,
           作業結果,
           equipment!inner(
-            設備名,
-            設備タグ,
-            設置場所,
-            稼働状態,
-            equipment_type_master(設備種別名)
+            equipment_name,
+            equipment_tag,
+            installation_location,
+            operational_status,
+            equipment_type_id
           )
         `)
-        .gte('実施日', cutoffDateString)
-        .order('実施日', { ascending: false })
+        .gte('implementation_date', cutoffDateString)
+        .order('implementation_date', { ascending: false })
 
       if (error) {
         throw error
@@ -447,32 +447,32 @@ export class AIService {
         const equipmentId = record.設備ID
         if (!equipmentMap.has(equipmentId)) {
           equipmentMap.set(equipmentId, {
-            設備ID: equipmentId,
-            設備名: record.equipment.設備名,
-            設備タグ: record.equipment.設備タグ,
-            設置場所: record.equipment.設置場所,
-            稼働状態: record.equipment.稼働状態,
-            設備種別名: record.equipment.equipment_type_master?.設備種別名 || 'Unknown',
-            最新メンテナンス日: record.実施日,
-            メンテナンス回数: 0,
-            メンテナンス履歴: []
+            equipment_id: equipmentId,
+            equipment_name: record.equipment.equipment_name,
+            equipment_tag: record.equipment.equipment_tag,
+            installation_location: record.equipment.installation_location,
+            operational_status: record.equipment.operational_status,
+            equipment_type_name: this.getEquipmentTypeName(record.equipment.equipment_type_id) || 'Unknown',
+            latest_maintenance_date: record.implementation_date,
+            maintenance_count: 0,
+            maintenance_history: []
           })
         }
 
         const equipment = equipmentMap.get(equipmentId)
-        if (new Date(record.実施日) > new Date(equipment.最新メンテナンス日)) {
-          equipment.最新メンテナンス日 = record.実施日
+        if (new Date(record.implementation_date) > new Date(equipment.latest_maintenance_date)) {
+          equipment.latest_maintenance_date = record.implementation_date
         }
-        equipment.メンテナンス回数++
-        equipment.メンテナンス履歴.push({
-          実施日: record.実施日,
-          作業内容: record.作業内容,
-          作業結果: record.作業結果
+        equipment.maintenance_count++
+        equipment.maintenance_history.push({
+          implementation_date: record.implementation_date,
+          work_content: record.work_content,
+          work_result: record.work_result
         })
       })
 
       const equipment = Array.from(equipmentMap.values())
-        .sort((a, b) => new Date(b.最新メンテナンス日).getTime() - new Date(a.最新メンテナンス日).getTime())
+        .sort((a, b) => new Date(b.latest_maintenance_date).getTime() - new Date(a.latest_maintenance_date).getTime())
 
       return {
         success: true,
@@ -737,6 +737,19 @@ export class AIService {
    */
   private hasEquipmentId(query: string): boolean {
     return /(?:HX|PU|TK|EQ)-?\d+/i.test(query)
+  }
+
+  /**
+   * Get equipment type name by ID (since we no longer use master tables)
+   */
+  private getEquipmentTypeName(typeId: number): string {
+    const equipmentTypes = {
+      1: '静機器',
+      2: '回転機',
+      3: '電気設備',
+      4: '計装設備'
+    }
+    return equipmentTypes[typeId] || 'Unknown'
   }
 
   /**

@@ -99,7 +99,7 @@ export class SchemaContextService {
           aliases: ['設備', 'assets', 'machines', 'units'],
           columns: [
             {
-              column_name: '設備ID',
+              column_name: 'equipment_id',
               data_type: 'varchar',
               description: 'Unique identifier for equipment',
               business_meaning: 'Primary key for equipment records, follows naming convention like HX-101, PU-200',
@@ -108,7 +108,7 @@ export class SchemaContextService {
               aliases: ['equipment_id', 'asset_id', 'unit_id']
             },
             {
-              column_name: '設備名',
+              column_name: 'equipment_name',
               data_type: 'varchar',
               description: 'Human-readable name of the equipment',
               business_meaning: 'Business name used by operators and maintenance staff',
@@ -117,7 +117,7 @@ export class SchemaContextService {
               aliases: ['equipment_name', 'asset_name', 'name']
             },
             {
-              column_name: '設備種別ID',
+              column_name: 'equipment_type_id',
               data_type: 'int',
               description: 'Foreign key to equipment type master',
               business_meaning: 'Categories equipment for maintenance planning and analysis',
@@ -139,11 +139,11 @@ export class SchemaContextService {
               aliases: ['location', 'installation_location', 'area']
             },
             {
-              column_name: '稼働状態',
+              column_name: 'operational_status',
               data_type: 'varchar',
               description: 'Current operational status',
               business_meaning: 'Indicates if equipment is running, stopped, or under maintenance',
-              sample_values: ['稼働中', '停止中', '保守中', 'Running', 'Stopped'],
+              sample_values: ['OPERATIONAL', 'STOPPED', 'MAINTENANCE', 'Running', 'Stopped'],
               is_foreign_key: false,
               aliases: ['operating_status', 'status', 'state']
             }
@@ -151,7 +151,7 @@ export class SchemaContextService {
           relationships: [
             {
               from_table: 'equipment',
-              from_column: '設備種別ID',
+              from_column: 'equipment_type_id',
               to_table: 'equipment_type_master',
               to_column: 'id',
               relationship_type: 'many_to_one',
@@ -172,7 +172,7 @@ export class SchemaContextService {
           aliases: ['保全履歴', 'maintenance_records', 'work_orders', 'maintenance_log'],
           columns: [
             {
-              column_name: '設備ID',
+              column_name: 'equipment_id',
               data_type: 'varchar',
               description: 'Equipment that received maintenance',
               business_meaning: 'Links maintenance activity to specific equipment',
@@ -180,7 +180,7 @@ export class SchemaContextService {
               is_foreign_key: true,
               references: {
                 table: 'equipment',
-                column: '設備ID'
+                column: 'equipment_id'
               },
               aliases: ['equipment_id']
             },
@@ -215,9 +215,9 @@ export class SchemaContextService {
           relationships: [
             {
               from_table: 'maintenance_history',
-              from_column: '設備ID',
+              from_column: 'equipment_id',
               to_table: 'equipment',
-              to_column: '設備ID',
+              to_column: 'equipment_id',
               relationship_type: 'many_to_one',
               description: 'Multiple maintenance records per equipment'
             }
@@ -236,7 +236,7 @@ export class SchemaContextService {
           aliases: ['リスク評価', 'risk_analysis', 'failure_analysis'],
           columns: [
             {
-              column_name: '設備ID',
+              column_name: 'equipment_id',
               data_type: 'varchar',
               description: 'Equipment being assessed',
               business_meaning: 'Links risk data to specific equipment',
@@ -244,7 +244,7 @@ export class SchemaContextService {
               is_foreign_key: true,
               references: {
                 table: 'equipment',
-                column: '設備ID'
+                column: 'equipment_id'
               },
               aliases: ['equipment_id']
             },
@@ -279,9 +279,9 @@ export class SchemaContextService {
           relationships: [
             {
               from_table: 'equipment_risk_assessment',
-              from_column: '設備ID',
+              from_column: 'equipment_id',
               to_table: 'equipment',
-              to_column: '設備ID',
+              to_column: 'equipment_id',
               relationship_type: 'many_to_one',
               description: 'Multiple risk assessments per equipment'
             }
@@ -300,7 +300,7 @@ export class SchemaContextService {
           aliases: ['肉厚測定', 'thickness_data', 'corrosion_monitoring'],
           columns: [
             {
-              column_name: '設備ID',
+              column_name: 'equipment_id',
               data_type: 'varchar',
               description: 'Equipment being measured',
               business_meaning: 'Links thickness data to specific equipment',
@@ -308,7 +308,7 @@ export class SchemaContextService {
               is_foreign_key: true,
               references: {
                 table: 'equipment',
-                column: '設備ID'
+                column: 'equipment_id'
               },
               aliases: ['equipment_id']
             },
@@ -343,9 +343,9 @@ export class SchemaContextService {
           relationships: [
             {
               from_table: 'thickness_measurement',
-              from_column: '設備ID',
+              from_column: 'equipment_id',
               to_table: 'equipment',
-              to_column: '設備ID',
+              to_column: 'equipment_id',
               relationship_type: 'many_to_one',
               description: 'Multiple thickness measurements per equipment over time'
             }
@@ -356,8 +356,8 @@ export class SchemaContextService {
         {
           entity_type: 'equipment',
           table_name: 'equipment',
-          id_column: '設備ID',
-          name_column: '設備名',
+          id_column: 'equipment_id',
+          name_column: 'equipment_name',
           description: 'Physical equipment and assets in the facility',
           examples: ['HX-101', 'PU-200', 'TK-101', 'heat exchanger', 'pump', 'tank']
         },
@@ -383,7 +383,7 @@ export class SchemaContextService {
           term: 'equipment',
           definition: 'Physical assets requiring maintenance and monitoring',
           related_tables: ['equipment', 'maintenance_history', 'equipment_risk_assessment'],
-          related_columns: ['設備ID', '設備名', '設備種別ID'],
+          related_columns: ['equipment_id', 'equipment_name', 'equipment_type_id'],
           synonyms: ['asset', 'machine', 'unit', 'device', '設備', '機器']
         },
         {
@@ -418,13 +418,12 @@ export class SchemaContextService {
             'What is the status of HX-101?'
           ],
           sql_template: `
-            SELECT e.設備ID, e.設備名, e.設置場所, e.稼働状態, etm.設備種別名
+            SELECT e.equipment_id, e.equipment_name, e.installation_location, e.operational_status, e.equipment_type_id
             FROM equipment e
-            LEFT JOIN equipment_type_master etm ON e.設備種別ID = etm.id
-            WHERE e.設備ID = ?
+            WHERE e.equipment_id = ?
           `,
           required_tables: ['equipment', 'equipment_type_master'],
-          common_filters: ['設備ID']
+          common_filters: ['equipment_id']
         },
         {
           pattern_name: 'maintenance_history',
@@ -435,14 +434,14 @@ export class SchemaContextService {
             'Recent maintenance activities'
           ],
           sql_template: `
-            SELECT mh.設備ID, mh.実施日, mh.作業内容, mh.コスト, e.設備名
+            SELECT mh.equipment_id, mh.implementation_date, mh.work_content, mh.cost, e.equipment_name
             FROM maintenance_history mh
-            JOIN equipment e ON mh.設備ID = e.設備ID
-            WHERE mh.設備ID = ? OR mh.実施日 >= ?
+            JOIN equipment e ON mh.equipment_id = e.equipment_id
+            WHERE mh.equipment_id = ? OR mh.implementation_date >= ?
             ORDER BY mh.実施日 DESC
           `,
           required_tables: ['maintenance_history', 'equipment'],
-          common_filters: ['設備ID', '実施日']
+          common_filters: ['equipment_id', 'implementation_date']
         },
         {
           pattern_name: 'risk_analysis',
@@ -453,14 +452,14 @@ export class SchemaContextService {
             'Equipment with corrosion risk'
           ],
           sql_template: `
-            SELECT era.設備ID, era.故障モード, era.リスクスコア, era.影響度ランク, e.設備名
+            SELECT era.equipment_id, era.failure_mode, era.risk_score, era.impact_level, e.equipment_name
             FROM equipment_risk_assessment era
-            JOIN equipment e ON era.設備ID = e.設備ID
-            WHERE era.リスクスコア > ? OR era.設備ID = ?
+            JOIN equipment e ON era.equipment_id = e.equipment_id
+            WHERE era.risk_score > ? OR era.equipment_id = ?
             ORDER BY era.リスクスコア DESC
           `,
           required_tables: ['equipment_risk_assessment', 'equipment'],
-          common_filters: ['リスクスコア', '設備ID', '故障モード']
+          common_filters: ['risk_score', 'equipment_id', 'failure_mode']
         }
       ]
     }

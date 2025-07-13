@@ -11,11 +11,8 @@ import type {
 export async function getEquipment() {
   const { data, error } = await supabase
     .from('equipment')
-    .select(`
-      *,
-      equipment_type_master(設備種別名)
-    `)
-    .order('設備ID')
+    .select('*')
+    .order('equipment_id')
   
   if (error) throw error
   return data
@@ -24,11 +21,8 @@ export async function getEquipment() {
 export async function getEquipmentById(equipmentId: string) {
   const { data, error } = await supabase
     .from('equipment')
-    .select(`
-      *,
-      equipment_type_master(設備種別名)
-    `)
-    .eq('設備ID', equipmentId)
+    .select('*')
+    .eq('equipment_id', equipmentId)
     .single()
   
   if (error) throw error
@@ -41,14 +35,12 @@ export async function getMaintenanceHistory(equipmentId?: string) {
     .from('maintenance_history')
     .select(`
       *,
-      equipment(設備名, 設備タグ),
-      staff_master(氏名),
-      work_order(作業内容)
+      equipment(equipment_name, equipment_tag)
     `)
-    .order('実施日', { ascending: false })
+    .order('implementation_date', { ascending: false })
   
   if (equipmentId) {
-    query = query.eq('設備ID', equipmentId)
+    query = query.eq('equipment_id', equipmentId)
   }
   
   const { data, error } = await query
@@ -62,13 +54,12 @@ export async function getAnomalyReports(status?: string) {
     .from('anomaly_report')
     .select(`
       *,
-      equipment(設備名, 設備タグ),
-      staff_master(氏名)
+      equipment(equipment_name, equipment_tag)
     `)
-    .order('発生日時', { ascending: false })
+    .order('occurrence_datetime', { ascending: false })
   
   if (status) {
-    query = query.eq('状態', status)
+    query = query.eq('status', status)
   }
   
   const { data, error } = await query
@@ -82,14 +73,12 @@ export async function getWorkOrders(status?: string) {
     .from('work_order')
     .select(`
       *,
-      equipment(設備名, 設備タグ),
-      work_type_master(作業種別名),
-      staff_master(氏名)
+      equipment(equipment_name, equipment_tag)
     `)
-    .order('計画開始日時', { ascending: false })
+    .order('created_date', { ascending: false })
   
   if (status) {
-    query = query.eq('状態', status)
+    query = query.eq('status', status)
   }
   
   const { data, error } = await query
@@ -103,11 +92,9 @@ export async function getInspectionPlans() {
     .from('inspection_plan')
     .select(`
       *,
-      equipment(設備名, 設備タグ),
-      inspection_cycle_master(周期名),
-      staff_master(氏名)
+      equipment(equipment_name, equipment_tag)
     `)
-    .order('次回点検日')
+    .order('next_inspection_date')
   
   if (error) throw error
   return data
@@ -121,10 +108,10 @@ export async function getDashboardStats() {
     pendingAnomalies,
     upcomingInspections
   ] = await Promise.all([
-    supabase.from('equipment').select('設備ID', { count: 'exact', head: true }),
-    supabase.from('work_order').select('作業指示ID', { count: 'exact', head: true }).eq('状態', '計画中'),
-    supabase.from('anomaly_report').select('報告ID', { count: 'exact', head: true }).eq('状態', '対応中'),
-    supabase.from('inspection_plan').select('計画ID', { count: 'exact', head: true }).lte('次回点検日', new Date().toISOString().split('T')[0])
+    supabase.from('equipment').select('equipment_id', { count: 'exact', head: true }),
+    supabase.from('work_order').select('id', { count: 'exact', head: true }).eq('status', 'IN_PROGRESS'),
+    supabase.from('anomaly_report').select('report_id', { count: 'exact', head: true }).eq('status', 'INVESTIGATING'),
+    supabase.from('inspection_plan').select('plan_id', { count: 'exact', head: true }).lte('next_inspection_date', new Date().toISOString().split('T')[0])
   ])
 
   return {
@@ -141,14 +128,13 @@ export async function getEquipmentDataForAI(categoryFilter?: string) {
     .from('equipment')
     .select(`
       *,
-      equipment_type_master(設備種別名),
       maintenance_history(*),
       anomaly_report(*),
       inspection_plan(*)
     `)
   
   if (categoryFilter) {
-    query = query.eq('equipment_type_master.設備種別名', categoryFilter)
+    query = query.eq('equipment_type_id', categoryFilter)
   }
   
   const { data, error } = await query
@@ -180,20 +166,19 @@ export async function getEquipmentWithRecentMaintenance(daysBack: number = 365) 
   const { data, error } = await supabase
     .from('maintenance_history')
     .select(`
-      設備ID,
-      実施日,
-      作業内容,
-      作業結果,
+      equipment_id,
+      implementation_date,
+      work_content,
+      work_result,
       equipment!inner(
-        設備名,
-        設備タグ,
-        設置場所,
-        稼働状態,
-        equipment_type_master(設備種別名)
+        equipment_name,
+        equipment_tag,
+        installation_location,
+        operational_status
       )
     `)
-    .gte('実施日', cutoffDateString)
-    .order('実施日', { ascending: false })
+    .gte('implementation_date', cutoffDateString)
+    .order('implementation_date', { ascending: false })
 
   if (error) throw error
 
@@ -201,43 +186,42 @@ export async function getEquipmentWithRecentMaintenance(daysBack: number = 365) 
   const equipmentMap = new Map()
   
   data.forEach(record => {
-    const equipmentId = record.設備ID
+    const equipmentId = record.equipment_id
     
     if (!equipmentMap.has(equipmentId)) {
       equipmentMap.set(equipmentId, {
-        設備ID: equipmentId,
-        設備名: record.equipment.設備名,
-        設備タグ: record.equipment.設備タグ,
-        設置場所: record.equipment.設置場所,
-        稼働状態: record.equipment.稼働状態,
-        設備種別名: record.equipment.equipment_type_master?.設備種別名 || 'Unknown',
-        最新メンテナンス日: record.実施日,
-        メンテナンス回数: 0,
-        メンテナンス履歴: []
+        equipment_id: equipmentId,
+        equipment_name: record.equipment.equipment_name,
+        equipment_tag: record.equipment.equipment_tag,
+        installation_location: record.equipment.installation_location,
+        operational_status: record.equipment.operational_status,
+        latest_maintenance_date: record.implementation_date,
+        maintenance_count: 0,
+        maintenance_history: []
       })
     }
     
     const equipment = equipmentMap.get(equipmentId)
     
     // Update latest maintenance date if this record is more recent
-    if (new Date(record.実施日) > new Date(equipment.最新メンテナンス日)) {
-      equipment.最新メンテナンス日 = record.実施日
+    if (new Date(record.implementation_date) > new Date(equipment.latest_maintenance_date)) {
+      equipment.latest_maintenance_date = record.implementation_date
     }
     
     // Increment maintenance count
-    equipment.メンテナンス回数++
+    equipment.maintenance_count++
     
     // Add to maintenance history
-    equipment.メンテナンス履歴.push({
-      実施日: record.実施日,
-      作業内容: record.作業内容,
-      作業結果: record.作業結果
+    equipment.maintenance_history.push({
+      implementation_date: record.implementation_date,
+      work_content: record.work_content,
+      work_result: record.work_result
     })
   })
 
   // Convert map to array and sort by most recent maintenance first
   const result = Array.from(equipmentMap.values()).sort((a, b) => 
-    new Date(b.最新メンテナンス日).getTime() - new Date(a.最新メンテナンス日).getTime()
+    new Date(b.latest_maintenance_date).getTime() - new Date(a.latest_maintenance_date).getTime()
   )
 
   const finalResult = {

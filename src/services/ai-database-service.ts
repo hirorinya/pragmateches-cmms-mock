@@ -184,10 +184,9 @@ export class AIDatabaseService {
         equipment_id,
         role_in_system,
         equipment!inner(
-          設備名,
-          設備タグ,
-          設備種別ID,
-          equipment_type_master(設備種別名)
+          equipment_name,
+          equipment_tag,
+          equipment_type_id
         )
       `)
       .eq('system_id', systemId)
@@ -263,8 +262,8 @@ export class AIDatabaseService {
     let targetEquipment = allEquipment
     if (query.toLowerCase().includes('heat exchanger')) {
       targetEquipment = allEquipment.filter(eq => 
-        eq.equipment?.equipment_type_master?.設備種別名?.toLowerCase().includes('heat') ||
-        eq.equipment?.設備名?.toLowerCase().includes('heat') ||
+        this.getEquipmentTypeName(eq.equipment?.equipment_type_id)?.toLowerCase().includes('heat') ||
+        eq.equipment?.equipment_name?.toLowerCase().includes('heat') ||
         DatabaseBridge.getEquipmentId(eq)?.includes('HX-')
       )
     }
@@ -310,8 +309,8 @@ export class AIDatabaseService {
       confidence: 0.95,
       results: targetList.map(eq => ({
         equipment_id: DatabaseBridge.getEquipmentId(eq),
-        equipment_name: eq.equipment?.設備名 || eq.equipment_id,
-        equipment_type: eq.equipment?.equipment_type_master?.設備種別名 || 'Unknown',
+        equipment_name: eq.equipment?.equipment_name || eq.equipment_id,
+        equipment_type: this.getEquipmentTypeName(eq.equipment?.equipment_type_id) || 'Unknown',
         system: systemId,
         system_name: systemName,
         role_in_system: eq.role_in_system,
@@ -692,8 +691,8 @@ export class AIDatabaseService {
 
       return {
         equipment_id: DatabaseBridge.getEquipmentId(eq),
-        equipment_name: eq.equipment?.設備名 || eq.equipment_id,
-        equipment_type: eq.equipment?.equipment_type_master?.設備種別名 || 'Unknown',
+        equipment_name: eq.equipment?.equipment_name || eq.equipment_id,
+        equipment_type: this.getEquipmentTypeName(eq.equipment?.equipment_type_id) || 'Unknown',
         role_in_system: eq.role_in_system,
         risk_scenarios: riskCount,
         average_rpn: Math.round(avgRPN),
@@ -882,7 +881,7 @@ export class AIDatabaseService {
           稼働状態,
           equipment_type_master!inner(設備種別名)
         `)
-        .eq('稼働状態', '稼働中')
+        .eq('operational_status', 'OPERATIONAL')
         .limit(10)
 
       if (error) {
@@ -985,7 +984,7 @@ export class AIDatabaseService {
         equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
       `)
       .lt('次回点検日', currentDate)
-      .neq('状態', '完了')
+      .neq('status', 'COMPLETED')
       .order('次回点検日', { ascending: true })
 
     // Get upcoming inspections (next 90 days) - extended for demo data coverage
@@ -1004,7 +1003,7 @@ export class AIDatabaseService {
       `)
       .gte('次回点検日', currentDate)
       .lte('次回点検日', futureDate.toISOString().split('T')[0])
-      .neq('状態', '完了')
+      .neq('status', 'COMPLETED')
       .order('次回点検日', { ascending: true })
 
     const overdueCount = (overdueInspections || []).length
@@ -1240,5 +1239,18 @@ export class AIDatabaseService {
     if (taskCount > 20) return 'HIGH'
     if (taskCount > 10) return 'MEDIUM'
     return 'LOW'
+  }
+
+  /**
+   * Get equipment type name by ID (since we no longer use master tables)
+   */
+  private getEquipmentTypeName(typeId: number): string {
+    const equipmentTypes = {
+      1: '静機器',
+      2: '回転機',
+      3: '電気設備',
+      4: '計装設備'
+    }
+    return equipmentTypes[typeId] || 'Unknown'
   }
 }

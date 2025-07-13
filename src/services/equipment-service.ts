@@ -47,16 +47,15 @@ export class EquipmentService {
         .from('equipment')
         .select(`
           設備ID,
-          設備名,
-          製造者,
-          型式,
-          設置場所,
-          稼働状態,
-          設置年月日,
-          設備種別ID,
-          equipment_type_master(設備種別名)
+          equipment_name,
+          manufacturer,
+          model,
+          installation_location,
+          operational_status,
+          installation_date,
+          equipment_type_id
         `)
-        .eq('設備ID', equipmentId)
+        .eq('equipment_id', equipmentId)
         .single()
 
       if (equipmentError || !equipment) {
@@ -105,21 +104,21 @@ export class EquipmentService {
 
       // Format response
       const result: EquipmentInfo = {
-        equipment_id: equipment.設備ID,
-        name: equipment.設備名,
-        manufacturer: equipment.製造者,
-        model: equipment.型式,
-        location: equipment.設置場所,
-        status: equipment.稼働状態,
-        installed_date: equipment.設置年月日,
-        type: equipment.equipment_type_master?.設備種別名,
+        equipment_id: equipment.equipment_id,
+        name: equipment.equipment_name,
+        manufacturer: equipment.manufacturer,
+        model: equipment.model,
+        location: equipment.installation_location,
+        status: equipment.operational_status,
+        installed_date: equipment.installation_date,
+        type: this.getEquipmentTypeName(equipment.equipment_type_id),
         system: systemMapping?.system_id,
         specifications: {
           service: systemMapping?.equipment_systems?.system_name
         },
-        last_maintenance: lastMaintenance?.実施日,
-        next_inspection: nextInspection?.次回検査日,
-        risk_level: riskAssessment?.リスクレベル
+        last_maintenance: lastMaintenance?.implementation_date,
+        next_inspection: nextInspection?.next_inspection_date,
+        risk_level: riskAssessment?.risk_level
       }
 
       return result
@@ -256,10 +255,9 @@ export class EquipmentService {
         .select(`
           equipment_id,
           equipment(
-            設備名,
-            稼働状態,
-            設備種別ID,
-            equipment_type_master(設備種別名)
+            equipment_name,
+            operational_status,
+            equipment_type_id
           )
         `)
         .eq('system_id', systemId)
@@ -271,9 +269,9 @@ export class EquipmentService {
 
       return equipmentMappings.map(mapping => ({
         equipment_id: mapping.equipment_id,
-        name: mapping.equipment.設備名,
-        type: mapping.equipment.equipment_type_master?.設備種別名 || 'Unknown',
-        status: mapping.equipment.稼働状態
+        name: mapping.equipment.equipment_name,
+        type: this.getEquipmentTypeName(mapping.equipment.equipment_type_id) || 'Unknown',
+        status: mapping.equipment.operational_status
       }))
 
     } catch (error) {
@@ -449,7 +447,7 @@ export class EquipmentService {
               is_active,
               created_at,
               updated_at,
-              equipment!inner(設備名, 設備タグ, 設備種別ID)
+              equipment!inner(equipment_name, equipment_tag, equipment_type_id)
             `)
             .eq('equipment_id', equipmentId)
             .eq('is_active', true)
@@ -788,6 +786,19 @@ export class EquipmentService {
         }
       }
     )
+  }
+
+  /**
+   * Get equipment type name by ID (since we no longer use master tables)
+   */
+  private getEquipmentTypeName(typeId: number): string {
+    const equipmentTypes = {
+      1: '静機器',
+      2: '回転機',
+      3: '電気設備',
+      4: '計装設備'
+    }
+    return equipmentTypes[typeId] || 'Unknown'
   }
 
   /**

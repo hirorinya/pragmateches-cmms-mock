@@ -462,19 +462,19 @@ LIMIT 20`
       let query = supabase
         .from('maintenance_history')
         .select(`
-          設備ID,
-          実施日,
-          作業内容,
-          作業者,
-          作業時間,
-          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+          equipment_id,
+          implementation_date,
+          work_content,
+          worker,
+          work_hours,
+          equipment!inner(equipment_name, equipment_type_id)
         `)
-        .order('実施日', { ascending: false })
+        .order('implementation_date', { ascending: false })
         .limit(maxResults)
 
       // Filter by specific equipment if mentioned
       if (equipmentEntity) {
-        query = query.eq('設備ID', equipmentEntity.resolved)
+        query = query.eq('equipment_id', equipmentEntity.resolved)
       }
 
       // Filter by system if mentioned (assuming system relates to equipment)
@@ -522,18 +522,17 @@ LIMIT 20`
         .from('equipment')
         .select(`
           設備ID,
-          設備名,
-          設置場所,
-          稼働状態,
-          設備種別ID,
-          equipment_type_master!inner(設備種別名)
+          equipment_name,
+          installation_location,
+          operational_status,
+          equipment_type_id
         `)
-        .order('設備ID')
+        .order('equipment_id')
         .limit(maxResults)
 
       // Filter by specific equipment
       if (equipmentEntity) {
-        query = query.eq('設備ID', equipmentEntity.resolved)
+        query = query.eq('equipment_id', equipmentEntity.resolved)
       }
       
       // Filter by system
@@ -543,15 +542,21 @@ LIMIT 20`
       
       // Filter by equipment type
       if (typeEntity) {
-        const { data: typeData } = await supabase
-          .from('equipment_type_master')
-          .select('id')
-          .ilike('設備種別名', `%${typeEntity.resolved}%`)
-          .limit(5)
+        // Map type names to IDs directly since we no longer use master tables
+        const typeMapping = {
+          '静機器': 1,
+          '回転機': 2,
+          '電気設備': 3,
+          '計装設備': 4
+        }
         
-        if (typeData && typeData.length > 0) {
-          const typeIds = typeData.map(t => t.id)
-          query = query.in('設備種別ID', typeIds)
+        // Find matching type
+        const matchingType = Object.keys(typeMapping).find(typeName => 
+          typeName.includes(typeEntity.resolved) || typeEntity.resolved.includes(typeName)
+        )
+        
+        if (matchingType) {
+          query = query.eq('equipment_type_id', typeMapping[matchingType])
         }
       }
 
@@ -583,16 +588,16 @@ LIMIT 20`
       let query = supabase
         .from('equipment_risk_assessment')
         .select(`
-          設備ID,
-          リスクレベル,
-          リスクスコア,
-          リスク要因,
-          影響度,
-          発生確率,
-          リスク対策,
-          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+          equipment_id,
+          risk_level,
+          risk_score,
+          risk_factor,
+          impact_level,
+          probability,
+          mitigation_strategy,
+          equipment!inner(equipment_name, equipment_type_id)
         `)
-        .order('リスクスコア', { ascending: false })
+        .order('risk_score', { ascending: false })
         .limit(maxResults)
 
       // Filter by equipment
@@ -633,13 +638,13 @@ LIMIT 20`
       let query = supabase
         .from('inspection_plan')
         .select(`
-          設備ID,
-          次回検査日,
-          検査種別,
-          検査間隔,
-          equipment!inner(設備名, 設備種別ID, equipment_type_master(設備種別名))
+          equipment_id,
+          next_inspection_date,
+          inspection_item,
+          inspection_interval,
+          equipment!inner(equipment_name, equipment_type_id)
         `)
-        .order('次回検査日')
+        .order('next_inspection_date')
         .limit(maxResults)
 
       // Filter by equipment
@@ -677,13 +682,13 @@ LIMIT 20`
       const { data, error } = await supabase
         .from('equipment')
         .select(`
-          設備ID,
-          設備名,
-          設置場所,
-          稼働状態,
-          equipment_type_master!inner(設備種別名)
+          equipment_id,
+          equipment_name,
+          installation_location,
+          operational_status,
+          equipment_type_id
         `)
-        .order('設備ID')
+        .order('equipment_id')
         .limit(maxResults)
 
       if (error) {
