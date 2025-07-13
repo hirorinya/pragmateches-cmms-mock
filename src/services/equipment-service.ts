@@ -50,7 +50,7 @@ export class EquipmentService {
           equipment_name,
           manufacturer,
           model,
-          installation_location,
+          location,
           operational_status,
           installation_date,
           equipment_type_id
@@ -108,7 +108,7 @@ export class EquipmentService {
         name: equipment.equipment_name,
         manufacturer: equipment.manufacturer,
         model: equipment.model,
-        location: equipment.installation_location,
+        location: equipment.location,
         status: equipment.operational_status,
         installed_date: equipment.installation_date,
         type: this.getEquipmentTypeName(equipment.equipment_type_id),
@@ -135,6 +135,52 @@ export class EquipmentService {
       },
       { equipmentId }
     )
+  }
+
+  /**
+   * Get all equipment in the facility
+   */
+  async getAllEquipment(): Promise<EquipmentInfo[]> {
+    try {
+      const { data: equipmentList, error } = await supabase
+        .from('equipment')
+        .select(`
+          equipment_id,
+          equipment_name,
+          manufacturer,
+          model,
+          location,
+          operational_status,
+          installation_date,
+          equipment_type_id
+        `)
+        .order('equipment_id')
+
+      if (error) {
+        console.error('Error fetching all equipment:', error)
+        return []
+      }
+
+      return equipmentList.map(equipment => ({
+        equipment_id: equipment.equipment_id,
+        name: equipment.equipment_name,
+        manufacturer: equipment.manufacturer,
+        model: equipment.model,
+        location: equipment.location,
+        status: equipment.operational_status,
+        installed_date: equipment.installation_date,
+        type: this.getEquipmentTypeName(equipment.equipment_type_id),
+        system: null,
+        system_name: null,
+        criticality: 'MEDIUM',
+        next_inspection: null,
+        risk_level: null
+      }))
+
+    } catch (error) {
+      console.error('Error in getAllEquipment:', error)
+      return []
+    }
   }
 
   /**

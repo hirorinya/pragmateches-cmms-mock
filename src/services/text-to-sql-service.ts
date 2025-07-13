@@ -523,7 +523,7 @@ LIMIT 20`
         .select(`
           設備ID,
           equipment_name,
-          installation_location,
+          location,
           operational_status,
           equipment_type_id
         `)
@@ -684,7 +684,7 @@ LIMIT 20`
         .select(`
           equipment_id,
           equipment_name,
-          installation_location,
+          location,
           operational_status,
           equipment_type_id
         `)

@@ -130,13 +130,13 @@ export class SchemaContextService {
               aliases: ['equipment_type_id', 'type_id']
             },
             {
-              column_name: '設置場所',
+              column_name: 'location',
               data_type: 'varchar',
               description: 'Physical location where equipment is installed',
               business_meaning: 'Used for maintenance routing and emergency response',
               sample_values: ['プロセスエリア', 'ユーティリティ', 'Process Area', 'Utility Area'],
               is_foreign_key: false,
-              aliases: ['location', 'installation_location', 'area']
+              aliases: ['設置場所', 'area']
             },
             {
               column_name: 'operational_status',
@@ -418,7 +418,7 @@ export class SchemaContextService {
             'What is the status of HX-101?'
           ],
           sql_template: `
-            SELECT e.equipment_id, e.equipment_name, e.installation_location, e.operational_status, e.equipment_type_id
+            SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status, e.equipment_type_id
             FROM equipment e
             WHERE e.equipment_id = ?
           `,

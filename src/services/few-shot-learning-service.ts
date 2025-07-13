@@ -33,7 +33,7 @@ export class FewShotLearningService {
       // Basic Equipment Queries
       {
         natural_language: "Tell me about equipment HX-101",
-        sql: `SELECT e.equipment_id, e.equipment_name, e.installation_location, e.operational_status, e.equipment_type_id
+        sql: `SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status, e.equipment_type_id
 FROM equipment e
 WHERE e.equipment_id = 'HX-101'`,
         explanation: "Basic equipment information lookup with type details",
@@ -44,7 +44,7 @@ WHERE e.equipment_id = 'HX-101'`,
       },
       {
         natural_language: "Show me all heat exchangers",
-        sql: `SELECT e.equipment_id, e.equipment_name, e.installation_location, e.operational_status
+        sql: `SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status
 FROM equipment e
 WHERE e.equipment_type_id = 1`,
         explanation: "Filter equipment by type using equipment_type_id",
@@ -55,9 +55,9 @@ WHERE e.equipment_type_id = 1`,
       },
       {
         natural_language: "What equipment is in the process area?",
-        sql: `SELECT equipment_id, equipment_name, installation_location, operational_status
+        sql: `SELECT equipment_id, equipment_name, location, operational_status
 FROM equipment
-WHERE installation_location LIKE '%Process%'`,
+WHERE location LIKE '%Process%'`,
         explanation: "Filter equipment by location using pattern matching",
         tables_used: ['equipment'],
         complexity_level: 'basic',

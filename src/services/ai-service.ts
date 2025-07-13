@@ -429,7 +429,7 @@ export class AIService {
           equipment!inner(
             equipment_name,
             equipment_tag,
-            installation_location,
+            location,
             operational_status,
             equipment_type_id
           )
@@ -450,7 +450,7 @@ export class AIService {
             equipment_id: equipmentId,
             equipment_name: record.equipment.equipment_name,
             equipment_tag: record.equipment.equipment_tag,
-            installation_location: record.equipment.installation_location,
+            installation_location: record.equipment.location,
             operational_status: record.equipment.operational_status,
             equipment_type_name: this.getEquipmentTypeName(record.equipment.equipment_type_id) || 'Unknown',
             latest_maintenance_date: record.implementation_date,

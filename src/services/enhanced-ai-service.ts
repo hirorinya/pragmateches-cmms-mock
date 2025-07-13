@@ -1134,7 +1134,7 @@ export class EnhancedAIService {
           equipment_id,
           equipment_name,
           operational_status,
-          installation_location,
+          location,
           equipment_type_id
         `)
         .limit(20)
@@ -1571,7 +1571,7 @@ export class EnhancedAIService {
           .select(`
             equipment_id,
             equipment_name,
-            installation_location,
+            location,
             operational_status,
             equipment_type_id
           `)
@@ -1585,7 +1585,7 @@ export class EnhancedAIService {
             name: eq.equipment_name,
             type: this.getEquipmentTypeName(eq.equipment_type_id) || 'Unknown',
             status: eq.operational_status,
-            location: eq.installation_location
+            location: eq.location
           }))
           
           return {
