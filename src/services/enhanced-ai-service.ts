@@ -143,7 +143,8 @@ export class EnhancedAIService {
         intent: 'EQUIPMENT_BY_SYSTEM',
         patterns: [
           'equipment belongs to', 'equipment in system', 'equipment for system',
-          'belongs to SYS', 'in SYS-', 'システムの機器', 'システムに属する'
+          'belongs to SYS', 'in SYS-', 'list equipments belongs', 'show equipments belongs',
+          'equipments belongs to', 'システムの機器', 'システムに属する'
         ],
         confidence: 0.9,
         handler: 'handleEquipmentBySystem',
