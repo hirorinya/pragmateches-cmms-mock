@@ -54,8 +54,7 @@ export default function TasksPage() {
         .from('work_order')
         .select(`
           *,
-          equipment:equipment_id(equipment_name, equipment_tag),
-          staff:assigned_to(name, department)
+          equipment:equipment_id(equipment_name, equipment_tag)
         `)
         .order('created_at', { ascending: false })
         .limit(50)
