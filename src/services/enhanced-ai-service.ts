@@ -1401,8 +1401,9 @@ export class EnhancedAIService {
       let scenarioMasterData: any[] = []
       try {
         const { data: masterData } = await supabase
-          .from('risk_scenario_master')
-          .select('id, scenario_name, scenario_name_en, description')
+          .from('equipment_risk_assessment')
+          .select('risk_scenario, risk_description, risk_factors')
+          .not('risk_scenario', 'is', null)
         scenarioMasterData = masterData || []
       } catch (masterError) {
         // Table doesn't exist yet, continue without master data
@@ -2322,10 +2323,11 @@ ${triggerScenarios.map(t => `- ${t.triggered_risk_scenario} (${t.severity_level}
   async handleRiskScenarioCount(query: string): Promise<any> {
     try {
 
-      // Count standardized risk scenarios
+      // Count standardized risk scenarios (using equipment risk assessment as base)
       const { data: standardScenarios, error: standardError } = await supabase
-        .from('risk_scenario_master')
-        .select('scenario_name, scenario_name_en, scenario_description')
+        .from('equipment_risk_assessment')
+        .select('risk_scenario, risk_description, risk_factors')
+        .not('risk_scenario', 'is', null)
 
       // Count equipment-specific risk scenarios
       const { data: equipmentRisks, error: equipmentError } = await supabase

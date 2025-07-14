@@ -46,7 +46,7 @@ export class EquipmentService {
       const { data: equipment, error: equipmentError } = await supabase
         .from('equipment')
         .select(`
-          設備ID,
+          equipment_id,
           equipment_name,
           manufacturer,
           model,
@@ -78,18 +78,18 @@ export class EquipmentService {
       // Get latest maintenance history
       const { data: lastMaintenance } = await supabase
         .from('maintenance_history')
-        .select('実施日, 作業内容')
-        .eq('設備ID', equipmentId)
-        .order('実施日', { ascending: false })
+        .select('implementation_date, work_content')
+        .eq('equipment_id', equipmentId)
+        .order('implementation_date', { ascending: false })
         .limit(1)
         .single()
 
       // Get next inspection
       const { data: nextInspection } = await supabase
         .from('inspection_plan')
-        .select('次回検査日')
-        .eq('設備ID', equipmentId)
-        .order('次回検査日', { ascending: true })
+        .select('next_inspection_date')
+        .eq('equipment_id', equipmentId)
+        .order('next_inspection_date', { ascending: true })
         .limit(1)
         .single()
 
@@ -369,8 +369,8 @@ export class EquipmentService {
       const { data: measurements, error } = await supabase
         .from('thickness_measurement')
         .select('*')
-        .eq('機器ID', equipmentId)
-        .order('検査日', { ascending: false })
+        .eq('equipment_id', equipmentId)
+        .order('inspection_date', { ascending: false })
 
       if (error || !measurements || measurements.length === 0) {
         console.warn(`No thickness measurements found for ${equipmentId}`)
@@ -380,19 +380,19 @@ export class EquipmentService {
       // Group by measurement point and get latest for each
       const pointsMap = new Map()
       measurements.forEach(m => {
-        const point = m.測定点ID
-        if (!pointsMap.has(point) || new Date(m.検査日) > new Date(pointsMap.get(point).検査日)) {
+        const point = m.measurement_point_id
+        if (!pointsMap.has(point) || new Date(m.inspection_date) > new Date(pointsMap.get(point).inspection_date)) {
           pointsMap.set(point, m)
         }
       })
 
       const measurementPoints = Array.from(pointsMap.values()).map(m => ({
-        point: m.測定点ID,
-        current: `${m['測定値(mm)']}mm`,
-        design: `${m['設計肉厚(mm)']}mm`,
-        minimum: `${m['最小許容肉厚(mm)']}mm`,
-        status: m.判定結果,
-        date: m.検査日
+        point: m.measurement_point_id,
+        current: `${m['measurement_value_mm']}mm`,
+        design: `${m['design_thickness_mm']}mm`,
+        minimum: `${m['minimum_allowable_thickness_mm']}mm`,
+        status: m.judgment_result,
+        date: m.inspection_date
       }))
 
       // Analyze trend
@@ -402,7 +402,7 @@ export class EquipmentService {
         : "Single measurement available"
 
       // Generate recommendation
-      const failingPoints = measurementPoints.filter(p => p.status !== '合格')
+      const failingPoints = measurementPoints.filter(p => p.status !== 'PASS')
       const recommendation = failingPoints.length > 0
         ? `${failingPoints.length} measurement points require attention`
         : "All measurement points within acceptable limits"
@@ -448,8 +448,8 @@ export class EquipmentService {
               priority,
               is_active,
               equipment!inner(
-                設備名,
-                設備種別ID
+                equipment_name,
+                equipment_type_id
               )
             `)
             .order('equipment_id')
@@ -687,7 +687,7 @@ export class EquipmentService {
               frequency_type,
               frequency_value,
               priority,
-              equipment!inner(設備名, 設備タグ),
+              equipment!inner(equipment_name, equipment_tag),
               task_generation_log!left(
                 generated_date,
                 next_generation_date,

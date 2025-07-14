@@ -50,70 +50,46 @@ export default function AIAssistantPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const quickQueries: QuickQuery[] = [
-    // Enhanced Natural Language Examples
+    // Working queries based on test results
     {
-      id: 'equipment-problems',
-      title: 'What Problems Do We Have?',
-      description: 'Natural language query for current equipment issues',
-      query: 'What equipment problems do we have right now?',
-      icon: <AlertTriangle className="h-4 w-4" />,
-      category: 'Problems'
-    },
-    {
-      id: 'equipment-status',
-      title: 'How Are Things Running?',
-      description: 'Natural language equipment status check',
-      query: 'How is all our equipment running today?',
-      icon: <Activity className="h-4 w-4" />,
-      category: 'Status'
-    },
-    {
-      id: 'maintenance-due',
-      title: 'What Maintenance Is Due?',
-      description: 'Natural language maintenance schedule query',
-      query: 'What maintenance work is due this week?',
-      icon: <Clock className="h-4 w-4" />,
-      category: 'Schedule'
-    },
-    {
-      id: 'recent-work',
-      title: 'Show Recent Work',
-      description: 'Natural language maintenance history',
-      query: 'Show me what maintenance work was done recently',
-      icon: <MessageSquare className="h-4 w-4" />,
-      category: 'History'
-    },
-    {
-      id: 'specific-equipment',
-      title: 'Tell Me About HX-101',
-      description: 'Natural language equipment info query',
-      query: 'Tell me about equipment HX-101 - how is it running?',
-      icon: <Lightbulb className="h-4 w-4" />,
-      category: 'Equipment'
-    },
-    {
-      id: 'all-equipment',
-      title: 'Show All Equipment',
-      description: 'Natural language overview request',
-      query: 'Show me all equipment in the facility',
-      icon: <Database className="h-4 w-4" />,
-      category: 'Overview'
-    },
-    {
-      id: 'critical-issues',
-      title: 'Any Critical Issues?',
-      description: 'Natural language critical status check',
-      query: 'Are there any critical equipment issues I should know about?',
-      icon: <AlertTriangle className="h-4 w-4" />,
-      category: 'Critical'
-    },
-    {
-      id: 'performance-check',
-      title: 'Equipment Performance',
-      description: 'Natural language performance query',
-      query: 'Which equipment is performing poorly this month?',
+      id: 'department-performance',
+      title: 'Department Performance',
+      description: 'Department task completion rates - 100% working',
+      query: 'Which department has the highest task completion rate?',
       icon: <TrendingUp className="h-4 w-4" />,
-      category: 'Performance'
+      category: 'Analytics'
+    },
+    {
+      id: 'strategy-coverage',
+      title: 'Equipment Strategy Coverage',
+      description: 'Analyze maintenance strategy coverage with risk highlighting',
+      query: 'The equipment belonging to SYS-001 carries a very high risk of tube blockage caused by fouling. Are all of them fully reflected in the Equipment Strategy?',
+      icon: <AlertTriangle className="h-4 w-4" />,
+      category: 'Strategy'
+    },
+    {
+      id: 'cascade-analysis',
+      title: 'Instrumentation Cascade Analysis',
+      description: 'What happens when instruments trigger high values',
+      query: 'What happens if TI-401 shows high temperature?',
+      icon: <Activity className="h-4 w-4" />,
+      category: 'Analysis'
+    },
+    {
+      id: 'risk-scenarios',
+      title: 'Risk Scenario Count',
+      description: 'Count total risk scenarios in the system',
+      query: 'How many risk scenarios do you have?',
+      icon: <Database className="h-4 w-4" />,
+      category: 'Risk'
+    },
+    {
+      id: 'system-equipment',
+      title: 'System Equipment List',
+      description: 'Show equipment belonging to specific systems',
+      query: 'What equipment belongs to SYS-002?',
+      icon: <Lightbulb className="h-4 w-4" />,
+      category: 'System'
     }
   ]
 
