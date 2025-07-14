@@ -1920,17 +1920,51 @@ export class EnhancedAIService {
     try {
       console.log(`🏢 Processing department task status query for ${department}${equipmentId ? ` and equipment ${equipmentId}` : ''}`)
 
+      // Extract department and equipment from query if not provided
+      if (!department) {
+        if (query.toUpperCase().includes('PUMP OPERATIONS') || query.toUpperCase().includes('PUMP-OPS')) {
+          department = 'PUMP-OPS'
+        } else if (query.toUpperCase().includes('TANK OPERATIONS') || query.toUpperCase().includes('TANK-OPS')) {
+          department = 'TANK-OPS'
+        } else if (query.toUpperCase().includes('UTILITIES')) {
+          department = 'UTILS'
+        } else if (query.toUpperCase().includes('REFINING')) {
+          department = 'REFINING'
+        } else if (query.toUpperCase().includes('MAINTENANCE')) {
+          department = 'MAINT'
+        } else if (query.toUpperCase().includes('PLANNING')) {
+          department = 'PLANNING'
+        }
+      }
+
+      if (!equipmentId) {
+        const equipmentMatch = query.match(/\b([A-Z]{1,3}-\d{1,4})\b/)
+        if (equipmentMatch) {
+          equipmentId = equipmentMatch[1]
+        }
+      }
+
       let queryBuilder = supabase
         .from('department_performance_view')
         .select('*')
 
       // Filter by department
-      if (department.toUpperCase().includes('REFINING') || department.includes('精製')) {
-        queryBuilder = queryBuilder.eq('department_id', 'REFINING')
-      } else if (department.toUpperCase().includes('MAINTENANCE') || department.includes('保全')) {
-        queryBuilder = queryBuilder.eq('department_id', 'MAINT')
-      } else if (department.toUpperCase().includes('SAFETY') || department.includes('安全')) {
-        queryBuilder = queryBuilder.eq('department_id', 'SAFETY')
+      if (department) {
+        if (department.toUpperCase().includes('REFINING') || department.includes('精製')) {
+          queryBuilder = queryBuilder.eq('department_id', 'REFINING')
+        } else if (department.toUpperCase().includes('MAINTENANCE') || department.includes('保全')) {
+          queryBuilder = queryBuilder.eq('department_id', 'MAINT')
+        } else if (department.toUpperCase().includes('SAFETY') || department.includes('安全')) {
+          queryBuilder = queryBuilder.eq('department_id', 'SAFETY')
+        } else if (department.toUpperCase().includes('PUMP OPERATIONS') || department.toUpperCase().includes('PUMP-OPS') || department === 'PUMP-OPS') {
+          queryBuilder = queryBuilder.eq('department_id', 'PUMP-OPS')
+        } else if (department.toUpperCase().includes('TANK OPERATIONS') || department.toUpperCase().includes('TANK-OPS') || department === 'TANK-OPS') {
+          queryBuilder = queryBuilder.eq('department_id', 'TANK-OPS')
+        } else if (department.toUpperCase().includes('UTILITIES') || department.toUpperCase().includes('UTILS') || department === 'UTILS') {
+          queryBuilder = queryBuilder.eq('department_id', 'UTILS')
+        } else if (department.toUpperCase().includes('PLANNING') || department === 'PLANNING') {
+          queryBuilder = queryBuilder.eq('department_id', 'PLANNING')
+        }
       }
 
       // Filter by equipment if specified
