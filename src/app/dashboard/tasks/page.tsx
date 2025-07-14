@@ -207,42 +207,35 @@ export default function TasksPage() {
               </TableHeader>
               <TableBody>
                 {workOrders.map((order) => (
-                  <TableRow key={order.作業指示ID}>
-                    <TableCell className="font-mono">{order.作業指示ID}</TableCell>
+                  <TableRow key={order.id}>
+                    <TableCell className="font-mono">{order.id}</TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{order.equipment?.設備名}</div>
-                        <div className="text-sm text-muted-foreground">{order.equipment?.設備タグ}</div>
+                        <div className="font-medium">{order.equipment?.equipment_name}</div>
+                        <div className="text-sm text-muted-foreground">{order.equipment?.equipment_tag}</div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="max-w-md">
-                        <p className="truncate">{order.作業内容}</p>
+                        <p className="truncate">{order.description || order.title}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{getPriorityBadge(order.優先度)}</TableCell>
+                    <TableCell>{getPriorityBadge(order.priority)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{formatDate(order.計画開始日時)}</div>
+                        <div>{formatDate(order.created_date)}</div>
                         <div className="text-muted-foreground">
-                          ~ {formatDate(order.計画終了日時)}
+                          ~ {formatDate(order.due_date)}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {order.staff ? (
-                        <div>
-                          <div className="font-medium">{order.staff.氏名}</div>
-                          <div className="text-sm text-muted-foreground">{order.staff.部署}</div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">Unassigned</span>
-                      )}
+                      <span className="text-muted-foreground">{order.assigned_to || 'Unassigned'}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(order.状態)}
-                        <span>{order.状態}</span>
+                        {getStatusIcon(order.status)}
+                        <span>{order.status}</span>
                       </div>
                     </TableCell>
                   </TableRow>
