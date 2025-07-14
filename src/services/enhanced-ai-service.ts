@@ -1268,7 +1268,7 @@ export class EnhancedAIService {
           実施日,
           作業内容,
           作業時間,
-          equipment!inner(設備名, 設備種別ID)
+          equipment!inner(equipment_name, equipment_type_id)
         `)
         .order('実施日', { ascending: false })
         .limit(50)

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         parameter_name,
         tag_name,
         unit,
-        equipment!inner(設備名)
+        equipment!inner(equipment_name)
       `)
       .eq('parameter_id', parameterX)
       .single()
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         parameter_name,
         tag_name,
         unit,
-        equipment!inner(設備名)
+        equipment!inner(equipment_name)
       `)
       .eq('parameter_id', parameterY)
       .single()

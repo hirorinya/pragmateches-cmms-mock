@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         equipment_systems!inner(system_name, system_type),
-        review_leader_staff:review_leader(氏名, 部署),
+        review_leader_staff:review_leader(name, department),
         review_failure_mode_assessments(
           *,
           failure_modes!inner(
