@@ -635,8 +635,17 @@ export class EnhancedAIService {
       /\b設備戦略|戦略|メンテナンス戦略|反映|カバレッジ\b/i
     ]
     
-    if (strategyPatterns.some(pattern => pattern.test(query))) {
-      console.log('🔧 Enhanced AI: Equipment strategy query detected');
+    // Debug: Check each pattern
+    for (let i = 0; i < strategyPatterns.length; i++) {
+      if (strategyPatterns[i].test(query)) {
+        console.log(`🔧 Enhanced AI: Equipment strategy query detected by pattern ${i}: ${strategyPatterns[i]}`);
+        return false
+      }
+    }
+    
+    // Also check for simpler "Equipment Strategy" phrase
+    if (query.toLowerCase().includes('equipment strategy')) {
+      console.log('🔧 Enhanced AI: Simple equipment strategy phrase detected');
       return false
     }
     
