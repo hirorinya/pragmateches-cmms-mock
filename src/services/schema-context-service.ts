@@ -486,6 +486,30 @@ export class SchemaContextService {
           name_column: 'scenario_name',
           description: 'Standardized risk scenario definitions',
           examples: ['腐食', '漏洩', '破損', 'corrosion', 'leakage', 'damage']
+        },
+        {
+          entity_type: 'department',
+          table_name: 'departments',
+          id_column: 'department_id',
+          name_column: 'department_name',
+          description: 'Organizational departments managing equipment and tasks',
+          examples: ['REFINING', 'MAINT', 'SAFETY', 'ENG', 'Refining Department', 'Maintenance Department']
+        },
+        {
+          entity_type: 'instrument',
+          table_name: 'instrumentation_equipment_mapping',
+          id_column: 'instrument_tag',
+          name_column: 'instrument_tag',
+          description: 'Process instruments monitoring equipment parameters',
+          examples: ['TI-201', 'PI-101', 'FI-301', 'temperature indicator', 'pressure gauge', 'flow meter']
+        },
+        {
+          entity_type: 'personnel',
+          table_name: 'personnel_assignments',
+          id_column: 'staff_id',
+          name_column: 'staff_id',
+          description: 'Personnel assigned to equipment with specific responsibilities',
+          examples: ['STAFF001', 'STAFF002', 'equipment owner', 'maintenance lead', 'operator']
         }
       ],
       business_glossary: [

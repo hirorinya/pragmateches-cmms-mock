@@ -154,6 +154,57 @@ export class EnhancedAIService {
         ]
       },
       
+      // Department Task Status
+      {
+        intent: 'DEPARTMENT_TASK_STATUS',
+        patterns: [
+          'implementation status', 'department responsibility', 'refining department',
+          'maintenance department', 'task status', 'department tasks',
+          '部署の責任', '実装状況', '精製部門', '保全部門', 'タスク状況'
+        ],
+        confidence: 0.9,
+        handler: 'handleDepartmentTaskStatus',
+        examples: [
+          'Implementation status of tasks under Refining Department responsibility for E-101',
+          'Show department task status for maintenance department',
+          'Refining department implementation rates'
+        ]
+      },
+      
+      // Instrumentation Alert Analysis
+      {
+        intent: 'INSTRUMENTATION_ALERT',
+        patterns: [
+          'temperature rises', 'pressure increases', 'TI-201', 'PI-101', 'FI-301',
+          'instrument alert', 'rises sharply', 'extract risk scenarios', 'affected equipment',
+          '温度上昇', '圧力上昇', '計器異常', 'リスクシナリオ', '影響機器'
+        ],
+        confidence: 0.95,
+        handler: 'handleInstrumentationAlert',
+        examples: [
+          'TI-201 temperature rises sharply - extract risk scenarios and affected equipment',
+          'PI-101 pressure increases - show cascade effects',
+          'Instrument alert analysis for TI-201'
+        ]
+      },
+      
+      // Risk Scenario Count
+      {
+        intent: 'RISK_SCENARIO_COUNT',
+        patterns: [
+          'how many risk scenarios', 'count risk scenarios', 'total scenarios',
+          'number of risk scenarios', 'scenario count', 'risk scenario statistics',
+          'リスクシナリオ数', 'シナリオの数', 'リスク総数'
+        ],
+        confidence: 0.95,
+        handler: 'handleRiskScenarioCount',
+        examples: [
+          'How many risk scenarios do you have?',
+          'Count total risk scenarios in system',
+          'Show risk scenario statistics'
+        ]
+      },
+      
       // System Lists
       {
         intent: 'SYSTEM_LIST',
@@ -350,6 +401,52 @@ export class EnhancedAIService {
           /(?:current|電流)/gi,
           /(?:voltage|電圧)/gi,
           /(?:speed|rpm|回転数)/gi
+        ],
+        extractor: (match) => match[0].toLowerCase()
+      },
+      
+      // Instrument Tags (New)
+      {
+        type: 'instrument_tag',
+        patterns: [
+          /\b([TPFLI][IR]?-\d{3})\b/gi,  // TI-201, PI-101, FI-301, etc.
+          /\b(温度計|圧力計|流量計)-?\d{3}\b/gi
+        ],
+        extractor: (match) => match[1] || match[0]
+      },
+      
+      // Department Names (New)
+      {
+        type: 'department',
+        patterns: [
+          /(?:refining|精製|製油)\s*(?:department|部門|部)?/gi,
+          /(?:maintenance|保全|整備)\s*(?:department|部門|部)?/gi,
+          /(?:safety|安全)\s*(?:department|部門|部)?/gi,
+          /(?:engineering|技術|エンジニアリング)\s*(?:department|部門|部)?/gi,
+          /(?:operations|運転|オペレーション)\s*(?:department|部門|部)?/gi
+        ],
+        extractor: (match) => {
+          const text = match[0].toLowerCase()
+          if (text.includes('refining') || text.includes('精製')) return 'REFINING'
+          if (text.includes('maintenance') || text.includes('保全')) return 'MAINTENANCE'
+          if (text.includes('safety') || text.includes('安全')) return 'SAFETY'
+          if (text.includes('engineering') || text.includes('技術')) return 'ENGINEERING'
+          if (text.includes('operations') || text.includes('運転')) return 'OPERATIONS'
+          return text
+        }
+      },
+      
+      // Risk Scenarios (Enhanced)
+      {
+        type: 'risk_scenario',
+        patterns: [
+          /(?:risk scenarios|リスクシナリオ)/gi,
+          /(?:fouling|ファウリング)/gi,
+          /(?:corrosion|腐食)/gi,
+          /(?:leakage|漏洩)/gi,
+          /(?:blockage|詰まり)/gi,
+          /(?:overheating|過熱)/gi,
+          /(?:failure|故障)/gi
         ],
         extractor: (match) => match[0].toLowerCase()
       },
@@ -727,6 +824,12 @@ export class EnhancedAIService {
         return this.handleComplianceTracking(query, entities, context)
       case 'PERFORMANCE_ANALYSIS':
         return this.handlePerformanceAnalysis(query, entities, context)
+      case 'DEPARTMENT_TASK_STATUS':
+        return this.handleDepartmentTaskStatus(query, entities.department || entities.system_id, entities.equipment_id)
+      case 'INSTRUMENTATION_ALERT':
+        return this.handleInstrumentationAlert(query, entities.instrument_tag || entities.equipment_id)
+      case 'RISK_SCENARIO_COUNT':
+        return this.handleRiskScenarioCount(query)
       default:
         return this.handleGeneralQuery(query, entities, context)
     }
@@ -1786,6 +1889,269 @@ export class EnhancedAIService {
     }
     
     return taskMap[taskType] || 4 // Default 4 hours
+  }
+
+  // =============================================================================
+  // ENHANCED ANALYTICS METHODS FOR COMPLEX QUESTIONS
+  // =============================================================================
+
+  /**
+   * Handle department-specific task implementation status queries
+   * Example: "implementation status of tasks under Refining Department's responsibility for E-101"
+   */
+  async handleDepartmentTaskStatus(query: string, department: string, equipmentId?: string): Promise<any> {
+    try {
+      console.log(`🏢 Processing department task status query for ${department}${equipmentId ? ` and equipment ${equipmentId}` : ''}`)
+
+      let queryBuilder = supabase
+        .from('department_performance_view')
+        .select('*')
+
+      // Filter by department
+      if (department.toUpperCase().includes('REFINING') || department.includes('精製')) {
+        queryBuilder = queryBuilder.eq('department_id', 'REFINING')
+      } else if (department.toUpperCase().includes('MAINTENANCE') || department.includes('保全')) {
+        queryBuilder = queryBuilder.eq('department_id', 'MAINT')
+      } else if (department.toUpperCase().includes('SAFETY') || department.includes('安全')) {
+        queryBuilder = queryBuilder.eq('department_id', 'SAFETY')
+      }
+
+      // Filter by equipment if specified
+      if (equipmentId) {
+        queryBuilder = queryBuilder.eq('equipment_id', equipmentId)
+      }
+
+      const { data: taskStatus, error } = await queryBuilder
+
+      if (error) {
+        console.error('Error fetching department task status:', error)
+        return this.createErrorResponse(query, 'Failed to fetch department task status')
+      }
+
+      // Also get personnel assignments for the department/equipment
+      let personnelQuery = supabase
+        .from('personnel_responsibility_view')
+        .select('*')
+
+      if (equipmentId) {
+        personnelQuery = personnelQuery.eq('equipment_id', equipmentId)
+      }
+
+      const { data: personnel, error: personnelError } = await personnelQuery
+
+      // Calculate summary statistics
+      const totalPlanned = taskStatus?.reduce((sum, task) => sum + (task.planned_tasks || 0), 0) || 0
+      const totalCompleted = taskStatus?.reduce((sum, task) => sum + (task.completed_tasks || 0), 0) || 0
+      const totalOverdue = taskStatus?.reduce((sum, task) => sum + (task.overdue_tasks || 0), 0) || 0
+      const overallRate = totalPlanned > 0 ? (totalCompleted / totalPlanned * 100).toFixed(1) : '0'
+
+      return {
+        query,
+        intent: 'DEPARTMENT_TASK_STATUS',
+        confidence: 0.9,
+        results: taskStatus || [],
+        summary: `Department Task Implementation Status Analysis:
+
+Found ${taskStatus?.length || 0} task categories for ${department} Department${equipmentId ? ` (Equipment: ${equipmentId})` : ''}:
+
+📊 **Overall Performance:**
+- Total Planned Tasks: ${totalPlanned}
+- Completed Tasks: ${totalCompleted}
+- Overdue Tasks: ${totalOverdue}
+- Implementation Rate: ${overallRate}%
+
+👥 **Assigned Personnel:** ${personnel?.length || 0} staff members`,
+        recommendations: taskStatus?.length > 0 ? [
+          totalOverdue > 0 ? `${totalOverdue} tasks are overdue - immediate attention required` : 'All tasks are on schedule',
+          `Implementation rate is ${overallRate}% - ${parseFloat(overallRate) >= 90 ? 'excellent performance' : 'improvement needed'}`,
+          personnel?.length > 0 ? `${personnel.length} personnel assigned with verified competencies` : 'Review personnel assignments'
+        ] : ['No task data found for specified criteria'],
+        context: {
+          department,
+          equipmentId,
+          totalPlanned,
+          totalCompleted,
+          totalOverdue,
+          personnelCount: personnel?.length || 0
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in handleDepartmentTaskStatus:', error)
+      return this.createErrorResponse(query, 'Failed to analyze department task status')
+    }
+  }
+
+  /**
+   * Handle instrumentation alert and cascade analysis
+   * Example: "TI-201 temperature rises sharply - extract risk scenarios, affected equipment, personnel"
+   */
+  async handleInstrumentationAlert(query: string, instrumentTag: string): Promise<any> {
+    try {
+      console.log(`🌡️ Processing instrumentation alert for ${instrumentTag}`)
+
+      // Get instrument details and risk triggers
+      const { data: instrumentData, error: instrumentError } = await supabase
+        .from('instrumentation_status_view')
+        .select('*')
+        .eq('instrument_tag', instrumentTag)
+
+      if (instrumentError) {
+        console.error('Error fetching instrument data:', instrumentError)
+      }
+
+      // Get affected equipment through cascade analysis
+      const { data: cascadeData, error: cascadeError } = await supabase
+        .from('equipment_cascade_view')
+        .select('*')
+        .or(`upstream_equipment_id.eq.${instrumentTag},downstream_equipment_id.eq.${instrumentTag}`)
+
+      // Get equipment that this instrument monitors
+      const equipmentId = instrumentData?.[0]?.equipment_id
+      let affectedEquipment = []
+      
+      if (equipmentId) {
+        // Get direct equipment
+        const { data: equipment, error: eqError } = await supabase
+          .from('equipment')
+          .select('設備ID, 設備名, 稼働状態, 設備種別ID')
+          .eq('設備ID', equipmentId)
+
+        if (!eqError && equipment) {
+          affectedEquipment = equipment
+        }
+
+        // Get cascade effects
+        const { data: cascadeEquipment, error: cascadeEqError } = await supabase
+          .from('equipment_cascade_view')
+          .select('*')
+          .eq('upstream_equipment_id', equipmentId)
+
+        if (!cascadeEqError && cascadeEquipment) {
+          affectedEquipment = [...affectedEquipment, ...cascadeEquipment]
+        }
+      }
+
+      // Get responsible personnel
+      const { data: personnel, error: personnelError } = await supabase
+        .from('personnel_responsibility_view')
+        .select('*')
+        .eq('equipment_id', equipmentId)
+
+      const instrument = instrumentData?.[0]
+      const triggerScenarios = instrumentData?.filter(item => item.triggered_risk_scenario) || []
+
+      return {
+        query,
+        intent: 'INSTRUMENTATION_ALERT',
+        confidence: 0.95,
+        results: [{
+          instrument_tag: instrumentTag,
+          equipment_id: equipmentId,
+          equipment_name: affectedEquipment[0]?.設備名 || 'Unknown',
+          measurement_type: instrument?.measurement_type,
+          measurement_location: instrument?.measurement_location,
+          risk_scenarios: triggerScenarios.map(t => ({
+            scenario: t.triggered_risk_scenario,
+            severity: t.severity_level,
+            response_time: t.response_time_minutes
+          })),
+          affected_equipment: affectedEquipment,
+          responsible_personnel: personnel || [],
+          cascade_effects: cascadeData || []
+        }],
+        summary: `Instrumentation Alert Analysis for ${instrumentTag}:
+
+🚨 **Alert Details:**
+- Instrument: ${instrumentTag} (${instrument?.measurement_type || 'Unknown type'})
+- Location: ${instrument?.measurement_location || 'Unknown location'}
+- Equipment: ${affectedEquipment[0]?.設備名 || 'Unknown'} (${equipmentId || 'N/A'})
+
+⚠️ **Triggered Risk Scenarios:** ${triggerScenarios.length}
+${triggerScenarios.map(t => `- ${t.triggered_risk_scenario} (${t.severity_level} severity, ${t.response_time_minutes}min response time)`).join('\n')}
+
+🔗 **Cascade Effects:** ${cascadeData?.length || 0} downstream impacts identified
+👥 **Responsible Personnel:** ${personnel?.length || 0} assigned staff members`,
+        recommendations: [
+          triggerScenarios.length > 0 ? `${triggerScenarios.length} risk scenarios triggered - immediate response required` : 'Monitor instrument closely',
+          personnel?.length > 0 ? `Contact ${personnel.length} responsible personnel immediately` : 'Assign personnel to investigate',
+          cascadeData?.length > 0 ? `${cascadeData.length} downstream equipment may be affected` : 'Limited cascade impact expected',
+          instrument?.critical_for_operation ? 'Critical instrument - production impact likely' : 'Non-critical instrument'
+        ],
+        context: {
+          instrumentTag,
+          equipmentId,
+          riskCount: triggerScenarios.length,
+          personnelCount: personnel?.length || 0,
+          cascadeCount: cascadeData?.length || 0,
+          critical: instrument?.critical_for_operation || false
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in handleInstrumentationAlert:', error)
+      return this.createErrorResponse(query, 'Failed to analyze instrumentation alert')
+    }
+  }
+
+  /**
+   * Count total risk scenarios in the system
+   * Example: "how many risk scenarios do you have?"
+   */
+  async handleRiskScenarioCount(query: string): Promise<any> {
+    try {
+      console.log('📊 Counting risk scenarios in system')
+
+      // Count standardized risk scenarios
+      const { data: standardScenarios, error: standardError } = await supabase
+        .from('risk_scenario_master')
+        .select('scenario_name, scenario_name_en, scenario_description')
+
+      // Count equipment-specific risk scenarios
+      const { data: equipmentRisks, error: equipmentError } = await supabase
+        .from('equipment_risk_assessment')
+        .select('risk_scenario')
+        .not('risk_scenario', 'is', null)
+
+      // Count unique equipment risk scenarios
+      const uniqueEquipmentScenarios = new Set(equipmentRisks?.map(r => r.risk_scenario) || [])
+
+      const standardCount = standardScenarios?.length || 0
+      const equipmentCount = uniqueEquipmentScenarios.size
+
+      return {
+        query,
+        intent: 'RISK_SCENARIO_COUNT',
+        confidence: 1.0,
+        results: [{
+          standardized_scenarios: standardCount,
+          equipment_specific_scenarios: equipmentCount,
+          total_scenarios: standardCount + equipmentCount,
+          scenario_details: standardScenarios || []
+        }],
+        summary: `Risk Scenario Analysis:
+
+📋 **Standardized Risk Scenarios:** ${standardCount}
+🏭 **Equipment-Specific Scenarios:** ${equipmentCount}
+📊 **Total Risk Scenarios:** ${standardCount + equipmentCount}
+
+The system contains ${standardCount} standardized risk scenarios in the master database and ${equipmentCount} unique equipment-specific risk scenarios.`,
+        recommendations: [
+          standardCount > 0 ? `${standardCount} standardized scenarios provide consistent risk assessment` : 'Consider adding standardized risk scenarios',
+          equipmentCount > 0 ? `${equipmentCount} equipment-specific scenarios provide detailed coverage` : 'Add equipment-specific risk scenarios',
+          `Total of ${standardCount + equipmentCount} scenarios available for comprehensive risk analysis`
+        ],
+        context: {
+          standardCount,
+          equipmentCount,
+          totalCount: standardCount + equipmentCount
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in handleRiskScenarioCount:', error)
+      return this.createErrorResponse(query, 'Failed to count risk scenarios')
+    }
   }
 }
 
