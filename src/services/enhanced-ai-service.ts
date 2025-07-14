@@ -700,6 +700,23 @@ export class EnhancedAIService {
    * Enhanced intent detection with scoring
    */
   private enhancedIntentDetection(query: string): string {
+    const queryLower = query.toLowerCase()
+    
+    // Priority check for specific equipment strategy phrases
+    const strategyPhrases = [
+      'are all of them fully reflected in the equipment strategy',
+      'reflected in the equipment strategy',
+      'fully reflected in equipment strategy',
+      'equipment strategy coverage'
+    ]
+    
+    for (const phrase of strategyPhrases) {
+      if (queryLower.includes(phrase)) {
+        console.log(`🎯 Direct phrase match for EQUIPMENT_STRATEGY: "${phrase}"`)
+        return 'EQUIPMENT_STRATEGY'
+      }
+    }
+    
     const scores = new Map<string, number>()
     
     for (const pattern of this.intentPatterns) {
