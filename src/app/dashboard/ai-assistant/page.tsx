@@ -13,7 +13,8 @@ import {
   AlertTriangle, 
   Settings,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  Lightbulb
 } from 'lucide-react'
 import { aiQueryService } from '@/services/ai-query-service'
 import { DatabaseBridge } from '@/lib/database-bridge'
@@ -385,8 +386,7 @@ export default function AIAssistantPage() {
 
         <TabsContent value="chat" className="space-y-4">
           {/* Chat Interface */}
-          <div>
-              <Card className="h-[600px] flex flex-col">
+          <Card className="h-[600px] flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <MessageSquare className="mr-2 h-5 w-5" />
@@ -488,8 +488,6 @@ export default function AIAssistantPage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </div>
         </TabsContent>
 
         <TabsContent value="examples" className="space-y-4">
