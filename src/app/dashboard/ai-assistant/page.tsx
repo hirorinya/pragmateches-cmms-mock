@@ -289,7 +289,7 @@ export default function AIAssistantPage() {
           if (equipment.設備種別名 || equipment.equipment_type_name) formatted += `- **Type:** ${equipment.設備種別名 || equipment.equipment_type_name}\n`
           formatted += '\n'
         })
-      } else if (uniqueResults.length > 0 && uniqueResults[0]?.risk_level) {
+      } else if (uniqueResults.length > 0 && (uniqueResults[0]?.risk_level || uniqueResults[0]?.risk_score || uniqueResults[0]?.risk_scenario)) {
         // Risk assessment format - show comprehensive risk details with standardized scenarios
         uniqueResults.forEach((risk: any, index: number) => {
           formatted += `**${index + 1}. Equipment ${risk.equipment_id}**\n`
@@ -355,28 +355,52 @@ export default function AIAssistantPage() {
           formatted += '\n'
         })
       } else if (uniqueResults.length > 0) {
-        // Generic results format - improved display
-        formatted += `**Equipment Analysis:**\n\n`
-        uniqueResults.forEach((result: any, index: number) => {
-          formatted += `**${index + 1}. Analysis Result**\n`
-          
-          // Display key-value pairs in a user-friendly way
-          Object.entries(result).forEach(([key, value]) => {
-            if (value !== null && value !== undefined && value !== '') {
-              const displayKey = key
-                .replace(/_/g, ' ')
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase())
-              
-              if (typeof value === 'object' && value !== null) {
-                formatted += `- **${displayKey}:** ${JSON.stringify(value, null, 2)}\n`
-              } else {
-                formatted += `- **${displayKey}:** ${value}\n`
-              }
+        // Generic results format - check what's actually in the data for debugging
+        console.log('Generic case - first result keys:', Object.keys(uniqueResults[0] || {}))
+        console.log('First result sample:', uniqueResults[0])
+        
+        // For equipment with basic info, show equipment details
+        if (uniqueResults[0]?.equipment_id) {
+          uniqueResults.forEach((equipment: any, index: number) => {
+            formatted += `**${index + 1}. Equipment ${equipment.equipment_id}**\n`
+            if (equipment.equipment_name) formatted += `- **Name:** ${equipment.equipment_name}\n`
+            if (equipment.equipment_type) formatted += `- **Type:** ${equipment.equipment_type}\n`
+            if (equipment.risk_level) formatted += `- **Risk Level:** ${equipment.risk_level}\n`
+            if (equipment.risk_score) formatted += `- **Risk Score:** ${equipment.risk_score}\n`
+            if (equipment.risk_scenario || equipment.risk_scenario_standardized) {
+              formatted += `- **Risk Scenario:** ${equipment.risk_scenario_standardized || equipment.risk_scenario}\n`
             }
+            if (equipment.risk_factor || equipment.risk_factors) {
+              formatted += `- **Risk Factors:** ${equipment.risk_factors || equipment.risk_factor}\n`
+            }
+            if (equipment.impact_rank) formatted += `- **Impact Rank:** ${equipment.impact_rank}\n`
+            if (equipment.mitigation_measures) formatted += `- **Mitigation:** ${equipment.mitigation_measures}\n`
+            formatted += '\n'
           })
-          formatted += '\n'
-        })
+        } else {
+          // Truly generic case - show all data
+          formatted += `**Equipment Analysis:**\n\n`
+          uniqueResults.forEach((result: any, index: number) => {
+            formatted += `**${index + 1}. Analysis Result**\n`
+            
+            // Display key-value pairs in a user-friendly way
+            Object.entries(result).forEach(([key, value]) => {
+              if (value !== null && value !== undefined && value !== '') {
+                const displayKey = key
+                  .replace(/_/g, ' ')
+                  .replace(/([A-Z])/g, ' $1')
+                  .replace(/^./, str => str.toUpperCase())
+                
+                if (typeof value === 'object' && value !== null) {
+                  formatted += `- **${displayKey}:** ${JSON.stringify(value, null, 2)}\n`
+                } else {
+                  formatted += `- **${displayKey}:** ${value}\n`
+                }
+              }
+            })
+            formatted += '\n'
+          })
+        }
       }
     } else if (parsedResponse.results && !Array.isArray(parsedResponse.results) && typeof parsedResponse.results === 'object') {
       // Handle single object results that aren't arrays
