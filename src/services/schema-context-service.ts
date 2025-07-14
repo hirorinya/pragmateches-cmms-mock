@@ -225,13 +225,15 @@ export class SchemaContextService {
         },
         {
           table_name: 'equipment_risk_assessment',
-          description: 'Risk analysis data for equipment including failure modes and mitigation measures',
-          business_context: 'Used for risk-based maintenance and safety planning',
+          description: 'Risk analysis data for equipment including failure modes and mitigation measures with standardized scenarios',
+          business_context: 'Used for risk-based maintenance and safety planning with standardized risk scenarios',
           common_queries: [
             'Find high-risk equipment',
             'Get risk assessment for specific equipment',
-            'Analyze risk by failure mode',
-            'Check mitigation status'
+            'Analyze risk by scenario type',
+            'Check mitigation status',
+            'Show equipment with corrosion risk',
+            'List leakage risk scenarios'
           ],
           aliases: ['リスク評価', 'risk_analysis', 'failure_analysis'],
           columns: [
@@ -249,13 +251,44 @@ export class SchemaContextService {
               aliases: ['equipment_id']
             },
             {
-              column_name: '故障モード',
+              column_name: 'risk_scenario',
               data_type: 'varchar',
-              description: 'Type of failure being analyzed',
-              business_meaning: 'Specific way the equipment can fail',
-              sample_values: ['腐食', '摩耗', '疲労', 'Corrosion', 'Wear'],
+              description: 'Risk scenario description (legacy text field)',
+              business_meaning: 'Type of risk or failure mode',
+              sample_values: ['腐食', '漏洩', '破損', 'Corrosion', 'Leakage', 'Damage'],
               is_foreign_key: false,
-              aliases: ['failure_mode', 'failure_type']
+              aliases: ['failure_mode', 'failure_type', '故障モード']
+            },
+            {
+              column_name: 'scenario_id',
+              data_type: 'integer',
+              description: 'Reference to standardized risk scenario',
+              business_meaning: 'Links to risk_scenario_master table for standardized scenarios',
+              sample_values: ['1', '2', '3'],
+              is_foreign_key: true,
+              references: {
+                table: 'risk_scenario_master',
+                column: 'id'
+              },
+              aliases: ['scenario_ref']
+            },
+            {
+              column_name: 'likelihood_score',
+              data_type: 'integer',
+              description: 'Likelihood score from 1-5 for risk matrix',
+              business_meaning: 'Probability that the risk will occur',
+              sample_values: ['1', '2', '3', '4', '5'],
+              is_foreign_key: false,
+              aliases: ['probability', 'occurrence_score']
+            },
+            {
+              column_name: 'consequence_score',
+              data_type: 'integer',
+              description: 'Consequence score from 1-5 for risk matrix',
+              business_meaning: 'Severity of impact if risk occurs',
+              sample_values: ['1', '2', '3', '4', '5'],
+              is_foreign_key: false,
+              aliases: ['impact_score', 'severity_score']
             },
             {
               column_name: 'リスクスコア',
@@ -284,6 +317,75 @@ export class SchemaContextService {
               to_column: 'equipment_id',
               relationship_type: 'many_to_one',
               description: 'Multiple risk assessments per equipment'
+            }
+          ]
+        },
+        {
+          table_name: 'risk_scenario_master',
+          description: 'Master table for standardized risk scenarios with English translations',
+          business_context: 'Provides standardized risk scenario definitions for consistent risk assessment',
+          common_queries: [
+            'List all available risk scenarios',
+            'Get scenario description for specific scenario',
+            'Find scenarios applicable to equipment type',
+            'Show corrosion scenarios'
+          ],
+          aliases: ['risk_scenarios', 'scenario_master', 'standard_risks'],
+          columns: [
+            {
+              column_name: 'id',
+              data_type: 'serial',
+              description: 'Primary key for risk scenario',
+              business_meaning: 'Unique identifier for standardized risk scenarios',
+              sample_values: ['1', '2', '3'],
+              is_foreign_key: false,
+              aliases: ['scenario_id']
+            },
+            {
+              column_name: 'scenario_name',
+              data_type: 'text',
+              description: 'Japanese name of the risk scenario',
+              business_meaning: 'Standard Japanese terminology for risk types',
+              sample_values: ['腐食', '漏洩', '破損'],
+              is_foreign_key: false,
+              aliases: ['name_jp', 'japanese_name']
+            },
+            {
+              column_name: 'scenario_name_en',
+              data_type: 'text',
+              description: 'English name of the risk scenario',
+              business_meaning: 'Standard English terminology for risk types',
+              sample_values: ['Corrosion', 'Leakage', 'Damage'],
+              is_foreign_key: false,
+              aliases: ['name_en', 'english_name']
+            },
+            {
+              column_name: 'description',
+              data_type: 'text',
+              description: 'Detailed description of the risk scenario',
+              business_meaning: 'Explains the nature and characteristics of the risk',
+              sample_values: ['Chemical exposure and material degradation', 'Seal failure and pressure loss'],
+              is_foreign_key: false,
+              aliases: ['scenario_description']
+            },
+            {
+              column_name: 'typical_equipment_types',
+              data_type: 'text[]',
+              description: 'Array of equipment types typically affected by this scenario',
+              business_meaning: 'Equipment categories where this risk commonly occurs',
+              sample_values: ["['HX', 'TK']", "['PU', 'HX', 'TK']"],
+              is_foreign_key: false,
+              aliases: ['equipment_types', 'applicable_equipment']
+            }
+          ],
+          relationships: [
+            {
+              from_table: 'equipment_risk_assessment',
+              from_column: 'scenario_id',
+              to_table: 'risk_scenario_master',
+              to_column: 'id',
+              relationship_type: 'many_to_one',
+              description: 'Risk assessments reference standardized scenarios'
             }
           ]
         },
@@ -373,9 +475,17 @@ export class SchemaContextService {
           entity_type: 'risk',
           table_name: 'equipment_risk_assessment',
           id_column: 'id',
-          name_column: '故障モード',
-          description: 'Risk assessments and failure mode analysis',
-          examples: ['corrosion', 'wear', 'fatigue', 'high risk', 'low risk']
+          name_column: 'risk_scenario',
+          description: 'Risk assessments and failure mode analysis with standardized scenarios',
+          examples: ['腐食', '漏洩', '破損', 'corrosion', 'leakage', 'damage', 'high risk', 'low risk']
+        },
+        {
+          entity_type: 'risk_scenario',
+          table_name: 'risk_scenario_master',
+          id_column: 'id',
+          name_column: 'scenario_name',
+          description: 'Standardized risk scenario definitions',
+          examples: ['腐食', '漏洩', '破損', 'corrosion', 'leakage', 'damage']
         }
       ],
       business_glossary: [
@@ -395,10 +505,24 @@ export class SchemaContextService {
         },
         {
           term: 'risk',
-          definition: 'Probability and consequence of equipment failure',
-          related_tables: ['equipment_risk_assessment'],
-          related_columns: ['リスクスコア', '故障モード', '影響度ランク'],
-          synonyms: ['failure', 'hazard', 'danger', 'threat', 'リスク', '危険']
+          definition: 'Probability and consequence of equipment failure with standardized scenarios',
+          related_tables: ['equipment_risk_assessment', 'risk_scenario_master'],
+          related_columns: ['risk_score', 'risk_scenario', 'scenario_id', 'likelihood_score', 'consequence_score'],
+          synonyms: ['failure', 'hazard', 'danger', 'threat', 'リスク', '危険', 'scenario']
+        },
+        {
+          term: 'corrosion',
+          definition: 'Chemical degradation of equipment materials, a common risk scenario',
+          related_tables: ['equipment_risk_assessment', 'risk_scenario_master'],
+          related_columns: ['risk_scenario', 'scenario_name'],
+          synonyms: ['腐食', 'degradation', 'material loss', 'chemical attack']
+        },
+        {
+          term: 'leakage',
+          definition: 'Uncontrolled release of process fluids, a critical risk scenario',
+          related_tables: ['equipment_risk_assessment', 'risk_scenario_master'],
+          related_columns: ['risk_scenario', 'scenario_name'],
+          synonyms: ['漏洩', 'leak', 'spill', 'release', 'seal failure']
         },
         {
           term: 'thickness',
