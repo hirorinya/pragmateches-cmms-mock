@@ -1343,6 +1343,8 @@ export class EnhancedAIService {
         strategy_name: strategy.strategy_name,
         strategy_type: strategy.strategy_type,
         frequency: `${strategy.frequency_value} ${strategy.frequency_type}`,
+        frequency_type: strategy.frequency_type,
+        frequency_value: strategy.frequency_value,
         priority: strategy.priority,
         is_active: strategy.is_active,
         coverage_status: strategy.is_active ? 'FULLY_COVERED' : 'NOT_COVERED'
@@ -1356,11 +1358,11 @@ export class EnhancedAIService {
 
       // Enhance strategy data with risk information
       equipmentStrategies = equipmentStrategies.map(strategy => {
-        const risk = riskData?.find(r => r.設備ID === strategy.equipment_id)
+        const risk = riskData?.find(r => r.equipment_id === strategy.equipment_id)
         return {
           ...strategy,
-          risk_level: risk?.リスクレベル || 'UNKNOWN',
-          risk_factors: risk?.リスク要因 || 'No risk assessment available'
+          risk_level: risk?.risk_level || 'UNKNOWN',
+          risk_factors: risk?.risk_factor || 'No risk assessment available'
         }
       })
 
@@ -1386,6 +1388,25 @@ export class EnhancedAIService {
         filteredStrategies = filteredStrategies.filter(s => 
           s.risk_factors?.toLowerCase().includes('fouling') || 
           s.risk_factors?.toLowerCase().includes('ファウリング'))
+      }
+
+      // Filter by frequency if mentioned
+      if (query.toLowerCase().includes('daily')) {
+        filteredStrategies = filteredStrategies.filter(s => 
+          s.frequency_type.toLowerCase() === 'daily')
+      } else if (query.toLowerCase().includes('weekly')) {
+        filteredStrategies = filteredStrategies.filter(s => 
+          s.frequency_type.toLowerCase() === 'weekly')
+      } else if (query.toLowerCase().includes('monthly')) {
+        filteredStrategies = filteredStrategies.filter(s => 
+          s.frequency_type.toLowerCase() === 'monthly')
+      } else if (query.toLowerCase().includes('quarterly')) {
+        filteredStrategies = filteredStrategies.filter(s => 
+          s.frequency_type.toLowerCase() === 'quarterly')
+      } else if (query.toLowerCase().includes('annual')) {
+        filteredStrategies = filteredStrategies.filter(s => 
+          s.frequency_type.toLowerCase() === 'annual' || 
+          s.frequency_type.toLowerCase() === 'yearly')
       }
 
       const summary = `Equipment Strategy Analysis (Real Database Data):\n\n` +

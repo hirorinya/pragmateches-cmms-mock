@@ -290,33 +290,25 @@ export default function AIAssistantPage() {
           formatted += '\n'
         })
       } else if (uniqueResults.length > 0 && uniqueResults[0]?.strategy_id) {
-        // Equipment strategy format
-        const groupedByEquipment = uniqueResults.reduce((acc: any, strategy: any) => {
-          const equipmentId = DatabaseBridge.getEquipmentId(strategy)
-          if (!acc[equipmentId]) {
-            acc[equipmentId] = []
+        // Equipment strategy format - show equipment details along with strategy
+        uniqueResults.forEach((strategy: any, index: number) => {
+          formatted += `**${index + 1}. Equipment ${strategy.equipment_id}**\n`
+          formatted += `- **Name:** ${strategy.equipment_name}\n`
+          formatted += `- **Type:** ${strategy.equipment_type}\n`
+          formatted += `- **Strategy:** ${strategy.strategy_name}\n`
+          formatted += `- **Strategy Type:** ${strategy.strategy_type}\n`
+          formatted += `- **Frequency:** ${strategy.frequency}\n`
+          formatted += `- **Priority:** ${strategy.priority}\n`
+          if (strategy.risk_level) {
+            formatted += `- **Risk Level:** ${strategy.risk_level}\n`
           }
-          acc[equipmentId].push(strategy)
-          return acc
-        }, {})
-
-        Object.entries(groupedByEquipment).forEach(([equipmentId, strategies]: [string, any]) => {
-          formatted += `**🔧 Equipment ${equipmentId}**\n`
-          if (Array.isArray(strategies)) {
-            strategies.forEach((strategy: any, index: number) => {
-              formatted += `  ${index + 1}. **${strategy.strategy_name}**\n`
-              if (strategy.frequency_type && strategy.frequency_value) {
-                formatted += `     - **Frequency:** ${strategy.frequency_value} ${strategy.frequency_type}\n`
-              }
-              if (strategy.priority) {
-                formatted += `     - **Priority:** ${strategy.priority}\n`
-              }
-              if (strategy.status) {
-                formatted += `     - **Status:** ${strategy.status}\n`
-              }
-              formatted += '\n'
-            })
+          if (strategy.risk_factors) {
+            formatted += `- **Risk Factors:** ${strategy.risk_factors}\n`
           }
+          if (strategy.coverage_status) {
+            formatted += `- **Coverage Status:** ${strategy.coverage_status}\n`
+          }
+          formatted += '\n'
         })
       } else if (uniqueResults.length > 0) {
         // Generic results format - improved display
