@@ -289,6 +289,31 @@ export default function AIAssistantPage() {
           if (equipment.設備種別名 || equipment.equipment_type_name) formatted += `- **Type:** ${equipment.設備種別名 || equipment.equipment_type_name}\n`
           formatted += '\n'
         })
+      } else if (uniqueResults.length > 0 && uniqueResults[0]?.risk_level) {
+        // Risk assessment format - show comprehensive risk details
+        uniqueResults.forEach((risk: any, index: number) => {
+          formatted += `**${index + 1}. Equipment ${risk.equipment_id}**\n`
+          formatted += `- **Name:** ${risk.equipment_name || risk.equipment_id}\n`
+          formatted += `- **Type:** ${risk.equipment_type || 'Unknown'}\n`
+          formatted += `- **Risk Level:** ${risk.risk_level || 'Not assessed'}\n`
+          formatted += `- **Risk Score:** ${risk.risk_score || 'N/A'}\n`
+          if (risk.risk_scenario) {
+            formatted += `- **Risk Scenario:** ${risk.risk_scenario}\n`
+          }
+          if (risk.risk_factor) {
+            formatted += `- **Risk Factor:** ${risk.risk_factor}\n`
+          }
+          if (risk.impact_rank) {
+            formatted += `- **Impact Rank:** ${risk.impact_rank}\n`
+          }
+          if (risk.reliability_rank) {
+            formatted += `- **Reliability Rank:** ${risk.reliability_rank}\n`
+          }
+          if (risk.mitigation_measures) {
+            formatted += `- **Mitigation Measures:** ${risk.mitigation_measures}\n`
+          }
+          formatted += '\n'
+        })
       } else if (uniqueResults.length > 0 && uniqueResults[0]?.strategy_id) {
         // Equipment strategy format - show equipment details along with strategy
         uniqueResults.forEach((strategy: any, index: number) => {
