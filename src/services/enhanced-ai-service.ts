@@ -1403,7 +1403,7 @@ export class EnhancedAIService {
         const { data: masterData } = await supabase
           .from('equipment_risk_assessment')
           .select('risk_scenario, risk_description, risk_factors')
-          .not('risk_scenario', 'is', null)
+          .not('risk_scenario', 'is.null')
         scenarioMasterData = masterData || []
       } catch (masterError) {
         // Table doesn't exist yet, continue without master data
@@ -2327,13 +2327,13 @@ ${triggerScenarios.map(t => `- ${t.triggered_risk_scenario} (${t.severity_level}
       const { data: standardScenarios, error: standardError } = await supabase
         .from('equipment_risk_assessment')
         .select('risk_scenario, risk_description, risk_factors')
-        .not('risk_scenario', 'is', null)
+        .not('risk_scenario', 'is.null')
 
       // Count equipment-specific risk scenarios
       const { data: equipmentRisks, error: equipmentError } = await supabase
         .from('equipment_risk_assessment')
         .select('risk_scenario')
-        .not('risk_scenario', 'is', null)
+        .not('risk_scenario', 'is.null')
 
       // Count unique equipment risk scenarios
       const uniqueEquipmentScenarios = new Set(equipmentRisks?.map(r => r.risk_scenario) || [])
