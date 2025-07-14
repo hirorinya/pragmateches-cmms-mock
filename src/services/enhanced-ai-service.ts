@@ -1494,20 +1494,10 @@ export class EnhancedAIService {
 
   private async handleEquipmentStrategy(query: string, entities: any, context: any): Promise<AIQueryResponse> {
     try {
-      // Query real equipment strategy data from database
+      // Query equipment strategy data without problematic JOIN
       const { data: strategyData, error } = await supabase
         .from('equipment_strategy')
-        .select(`
-          strategy_id,
-          equipment_id,
-          strategy_name,
-          strategy_type,
-          frequency_type,
-          frequency_value,
-          priority,
-          is_active,
-          equipment!inner(equipment_name, equipment_type_id)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('priority', { ascending: false })
         .limit(20)
@@ -1517,20 +1507,33 @@ export class EnhancedAIService {
         throw error
       }
 
+      // Get equipment details separately
+      const equipmentIds = [...new Set(strategyData?.map(s => s.equipment_id) || [])]
+      const { data: equipmentData, error: equipmentError } = await supabase
+        .from('equipment')
+        .select('equipment_id, equipment_name, equipment_type_id, operational_status')
+        .in('equipment_id', equipmentIds)
+
+      if (equipmentError) {
+        console.error('Error fetching equipment data:', equipmentError)
+      }
+
       // Transform database data to expected format
-      let equipmentStrategies = strategyData.map(strategy => ({
-        equipment_id: strategy.equipment_id,
-        equipment_name: strategy.equipment?.equipment_name || 'Unknown Equipment',
-        equipment_type: this.getEquipmentTypeName(strategy.equipment?.equipment_type_id) || 'Unknown Type',
-        strategy_id: strategy.strategy_id,
-        strategy_name: strategy.strategy_name,
-        strategy_type: strategy.strategy_type,
-        frequency: `${strategy.frequency_value} ${strategy.frequency_type}`,
-        frequency_type: strategy.frequency_type,
-        frequency_value: strategy.frequency_value,
-        priority: strategy.priority,
-        is_active: strategy.is_active,
-        coverage_status: strategy.is_active ? 'FULLY_COVERED' : 'NOT_COVERED'
+      let equipmentStrategies = strategyData.map(strategy => {
+        const equipment = equipmentData?.find(eq => eq.equipment_id === strategy.equipment_id)
+        return {
+          equipment_id: strategy.equipment_id,
+          equipment_name: equipment?.equipment_name || 'Unknown Equipment',
+          equipment_type: this.getEquipmentTypeName(equipment?.equipment_type_id) || 'Unknown Type',
+          strategy_id: strategy.strategy_id,
+          strategy_name: strategy.strategy_name,
+          strategy_type: strategy.strategy_type,
+          frequency: `${strategy.frequency_value} ${strategy.frequency_type}`,
+          frequency_type: strategy.frequency_type,
+          frequency_value: strategy.frequency_value,
+          priority: strategy.priority,
+          is_active: strategy.is_active,
+          coverage_status: strategy.is_active ? 'FULLY_COVERED' : 'NOT_COVERED'
       }))
 
       // Also get risk assessment data to correlate strategies with risks
