@@ -290,18 +290,37 @@ export default function AIAssistantPage() {
           formatted += '\n'
         })
       } else if (uniqueResults.length > 0 && uniqueResults[0]?.risk_level) {
-        // Risk assessment format - show comprehensive risk details
+        // Risk assessment format - show comprehensive risk details with standardized scenarios
         uniqueResults.forEach((risk: any, index: number) => {
           formatted += `**${index + 1}. Equipment ${risk.equipment_id}**\n`
           formatted += `- **Name:** ${risk.equipment_name || risk.equipment_id}\n`
           formatted += `- **Type:** ${risk.equipment_type || 'Unknown'}\n`
           formatted += `- **Risk Level:** ${risk.risk_level || 'Not assessed'}\n`
           formatted += `- **Risk Score:** ${risk.risk_score || 'N/A'}\n`
-          if (risk.risk_scenario) {
+          
+          // Show standardized scenario if available
+          if (risk.risk_scenario_standardized) {
+            formatted += `- **Risk Scenario:** ${risk.risk_scenario_standardized}`
+            if (risk.risk_scenario_english && risk.risk_scenario_english !== 'Not standardized') {
+              formatted += ` (${risk.risk_scenario_english})`
+            }
+            formatted += '\n'
+          } else if (risk.risk_scenario) {
             formatted += `- **Risk Scenario:** ${risk.risk_scenario}\n`
           }
+          
+          // Show scenario description if available
+          if (risk.scenario_description && risk.scenario_description !== 'No description available') {
+            formatted += `- **Scenario Description:** ${risk.scenario_description}\n`
+          }
+          
+          // Show risk matrix if available
+          if (risk.likelihood_score && risk.consequence_score) {
+            formatted += `- **Risk Matrix:** Likelihood ${risk.likelihood_score}/5, Consequence ${risk.consequence_score}/5\n`
+          }
+          
           if (risk.risk_factor) {
-            formatted += `- **Risk Factor:** ${risk.risk_factor}\n`
+            formatted += `- **Risk Factors:** ${risk.risk_factor}\n`
           }
           if (risk.impact_rank) {
             formatted += `- **Impact Rank:** ${risk.impact_rank}\n`

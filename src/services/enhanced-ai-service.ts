@@ -1207,7 +1207,11 @@ export class EnhancedAIService {
           impact_rank,
           reliability_rank,
           mitigation_measures,
-          equipment!inner(equipment_name, equipment_type_id)
+          scenario_id,
+          likelihood_score,
+          consequence_score,
+          equipment!inner(equipment_name, equipment_type_id),
+          risk_scenario_master(scenario_name, scenario_name_en, description)
         `)
         .order('risk_score', { ascending: false })
         .limit(20)
@@ -1225,10 +1229,15 @@ export class EnhancedAIService {
         risk_level: risk.risk_level,
         risk_score: risk.risk_score,
         risk_scenario: risk.risk_scenario,
+        risk_scenario_standardized: risk.risk_scenario_master?.scenario_name || risk.risk_scenario,
+        risk_scenario_english: risk.risk_scenario_master?.scenario_name_en || 'Not standardized',
+        scenario_description: risk.risk_scenario_master?.description || 'No description available',
         risk_factor: risk.risk_factor,
         risk_factors: risk.risk_factor,
         impact_rank: risk.impact_rank,
         reliability_rank: risk.reliability_rank,
+        likelihood_score: risk.likelihood_score,
+        consequence_score: risk.consequence_score,
         mitigation_measures: risk.mitigation_measures,
         impact: risk.impact_rank,
         mitigation: risk.mitigation_measures
@@ -1258,10 +1267,13 @@ export class EnhancedAIService {
         }
       }
 
-      // Count unique risk scenarios
-      const uniqueScenarios = [...new Set(filteredRisks.map(r => r.risk_scenario).filter(Boolean))]
+      // Count unique risk scenarios from master table
+      const uniqueScenarios = [...new Set(filteredRisks.map(r => r.risk_scenario_standardized).filter(Boolean))]
+      const uniqueScenariosEN = [...new Set(filteredRisks.map(r => r.risk_scenario_english).filter(r => r !== 'Not standardized'))]
+      
       const scenarioCount = uniqueScenarios.length > 0 
-        ? `\n\nUnique Risk Scenarios (${uniqueScenarios.length}): ${uniqueScenarios.join(', ')}`
+        ? `\n\nStandardized Risk Scenarios (${uniqueScenarios.length}): ${uniqueScenarios.join(', ')}` +
+          (uniqueScenariosEN.length > 0 ? `\nEnglish: ${uniqueScenariosEN.join(', ')}` : '')
         : ''
 
       const summary = `Risk Assessment Analysis (Real Database Data):\n\n` +
@@ -1270,8 +1282,11 @@ export class EnhancedAIService {
           `${index + 1}. ${risk.equipment_name} (${risk.equipment_id})\n` +
           `   Equipment Type: ${risk.equipment_type}\n` +
           `   Risk Level: ${risk.risk_level} (Score: ${risk.risk_score})\n` +
-          `   Risk Scenario: ${risk.risk_scenario || 'Not specified'}\n` +
+          `   Risk Scenario: ${risk.risk_scenario_standardized} (${risk.risk_scenario_english})\n` +
+          `   Scenario Description: ${risk.scenario_description}\n` +
           `   Risk Factors: ${risk.risk_factors || 'Not specified'}\n` +
+          (risk.likelihood_score && risk.consequence_score ? 
+            `   Risk Matrix: Likelihood ${risk.likelihood_score}/5, Consequence ${risk.consequence_score}/5\n` : '') +
           `   Impact Rank: ${risk.impact_rank || 'Not assessed'}\n` +
           `   Mitigation: ${risk.mitigation_measures || 'No measures defined'}\n`
         ).join('\n')
