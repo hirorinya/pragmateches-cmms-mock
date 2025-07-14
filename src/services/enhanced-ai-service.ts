@@ -496,21 +496,15 @@ export class EnhancedAIService {
     try {
       // Log processing decision
       const shouldUseSQL = this.shouldUseTextToSQL(query)
-      console.log(`🔍 Query: "${query}"`);
-      console.log(`📊 Should use Text-to-SQL: ${shouldUseSQL}`);
-      console.log(`🔧 Text-to-SQL enabled: ${this.useTextToSQL}`);
       
       // Try text-to-SQL first for complex queries
       if (this.useTextToSQL && shouldUseSQL) {
-        console.log('🚀 Attempting Text-to-SQL conversion...');
         try {
           const textToSQLResult = await textToSQLService.convertTextToSQL({
             natural_language: query,
             max_results: 100
           })
           
-          console.log(`✅ Text-to-SQL result - Confidence: ${textToSQLResult.confidence}`);
-          console.log(`📝 Generated SQL: ${textToSQLResult.sql?.substring(0, 100)}...`);
           
           if (textToSQLResult.confidence > 0.7) {
             // Generate appropriate summary based on execution results
@@ -572,7 +566,6 @@ export class EnhancedAIService {
           console.warn('❌ Text-to-SQL failed, falling back to pattern matching:', textToSQLError)
         }
       } else {
-        console.log('⏭️ Skipping Text-to-SQL, using pattern matching');
       }
       
       // Fallback to existing pattern-based processing
@@ -623,7 +616,6 @@ export class EnhancedAIService {
     ]
     
     if (departmentPatterns.some(pattern => pattern.test(query))) {
-      console.log('🏢 Enhanced AI: Department-specific query detected');
       return false
     }
 
@@ -638,14 +630,12 @@ export class EnhancedAIService {
     // Debug: Check each pattern
     for (let i = 0; i < strategyPatterns.length; i++) {
       if (strategyPatterns[i].test(query)) {
-        console.log(`🔧 Enhanced AI: Equipment strategy query detected by pattern ${i}: ${strategyPatterns[i]}`);
         return false
       }
     }
     
     // Also check for simpler "Equipment Strategy" phrase
     if (query.toLowerCase().includes('equipment strategy')) {
-      console.log('🔧 Enhanced AI: Simple equipment strategy phrase detected');
       return false
     }
     
@@ -657,7 +647,6 @@ export class EnhancedAIService {
     ]
     
     if (forceTextToSQLPatterns.some(pattern => pattern.test(query))) {
-      console.log('🎯 Forced Text-to-SQL: Query matches forced pattern');
       return true
     }
     
@@ -734,7 +723,6 @@ export class EnhancedAIService {
     
     for (const phrase of strategyPhrases) {
       if (queryLower.includes(phrase)) {
-        console.log(`🎯 Direct phrase match for EQUIPMENT_STRATEGY: "${phrase}"`)
         return 'EQUIPMENT_STRATEGY'
       }
     }
@@ -1391,7 +1379,6 @@ export class EnhancedAIService {
         scenarioMasterData = masterData || []
       } catch (masterError) {
         // Table doesn't exist yet, continue without master data
-        console.log('risk_scenario_master table not available yet')
       }
 
       // Transform database data to match expected format
@@ -1579,7 +1566,6 @@ export class EnhancedAIService {
       const systemMatch = query.match(/SYS-\d{3}/i)
       if (systemMatch) {
         const systemId = systemMatch[0].toUpperCase()
-        console.log(`🔍 Filtering by system: ${systemId}`)
         
         // Get actual system equipment mapping from database
         const { data: systemEquipment } = await supabase
@@ -1589,12 +1575,9 @@ export class EnhancedAIService {
         
         if (systemEquipment && systemEquipment.length > 0) {
           const systemEquipmentIds = systemEquipment.map(se => se.equipment_id)
-          console.log(`🔍 ${systemId} equipment IDs:`, systemEquipmentIds)
           filteredStrategies = equipmentStrategies.filter(s => 
             systemEquipmentIds.includes(s.equipment_id))
-          console.log(`🔍 Filtered strategies: ${filteredStrategies.length}`)
         } else {
-          console.log(`⚠️ No equipment found for ${systemId}, showing all strategies`)
         }
       }
 
@@ -1603,8 +1586,6 @@ export class EnhancedAIService {
       const isFoulingQuery = query.toLowerCase().includes('fouling')
       
       if (isHighRiskQuery || isFoulingQuery) {
-        console.log(`🔍 Risk-specific query detected (high risk: ${isHighRiskQuery}, fouling: ${isFoulingQuery})`)
-        console.log(`🔍 Showing all ${filteredStrategies.length} strategies with risk highlighting`)
         
         // Mark strategies that match the risk criteria instead of filtering them out
         filteredStrategies = filteredStrategies.map(strategy => ({
@@ -1980,7 +1961,6 @@ export class EnhancedAIService {
    */
   async handleDepartmentTaskStatus(query: string, department: string, equipmentId?: string): Promise<any> {
     try {
-      console.log(`🏢 Processing department task status query for ${department}${equipmentId ? ` and equipment ${equipmentId}` : ''}`)
 
       // Check if this is a comparison query (which department has the highest/lowest)
       const isComparisonQuery = query.toUpperCase().includes('WHICH DEPARTMENT') || 
@@ -2175,7 +2155,6 @@ Found ${taskStatus?.length || 0} task categories for ${department} Department${e
    */
   async handleInstrumentationAlert(query: string, instrumentTag: string): Promise<any> {
     try {
-      console.log(`🌡️ Processing instrumentation alert for ${instrumentTag}`)
 
       // Get instrument details from base table first
       const { data: instrumentMapping, error: mappingError } = await supabase
@@ -2315,7 +2294,6 @@ ${triggerScenarios.map(t => `- ${t.triggered_risk_scenario} (${t.severity_level}
    */
   async handleRiskScenarioCount(query: string): Promise<any> {
     try {
-      console.log('📊 Counting risk scenarios in system')
 
       // Count standardized risk scenarios
       const { data: standardScenarios, error: standardError } = await supabase
