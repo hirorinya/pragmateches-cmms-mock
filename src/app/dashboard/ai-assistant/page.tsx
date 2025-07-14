@@ -327,8 +327,9 @@ export default function AIAssistantPage() {
           }
           formatted += '\n'
         })
-      } else if (uniqueResults.length > 0 && DatabaseBridge.getEquipmentId(uniqueResults[0])) {
-        // Equipment info format (using bridge functions) - comes after risk assessment check
+      } else if (uniqueResults.length > 0 && DatabaseBridge.getEquipmentId(uniqueResults[0]) && 
+                 !uniqueResults[0]?.risk_level && !uniqueResults[0]?.risk_score && !uniqueResults[0]?.risk_scenario) {
+        // Equipment info format (using bridge functions) - only for equipment WITHOUT risk data
         uniqueResults.forEach((equipment: any, index: number) => {
           formatted += `**${index + 1}. Equipment ${DatabaseBridge.getEquipmentId(equipment)}**\n`
           if (DatabaseBridge.getEquipmentName(equipment)) formatted += `- **Name:** ${DatabaseBridge.getEquipmentName(equipment)}\n`
@@ -362,21 +363,13 @@ export default function AIAssistantPage() {
         })
       } else if (uniqueResults.length > 0) {
         // Generic results format - for equipment with basic info, show equipment details
-        if (uniqueResults[0]?.equipment_id) {
+        if (uniqueResults[0]?.equipment_id && !uniqueResults[0]?.risk_level && !uniqueResults[0]?.risk_score) {
           uniqueResults.forEach((equipment: any, index: number) => {
             formatted += `**${index + 1}. Equipment ${equipment.equipment_id}**\n`
             if (equipment.equipment_name) formatted += `- **Name:** ${equipment.equipment_name}\n`
             if (equipment.equipment_type) formatted += `- **Type:** ${equipment.equipment_type}\n`
-            if (equipment.risk_level) formatted += `- **Risk Level:** ${equipment.risk_level}\n`
-            if (equipment.risk_score) formatted += `- **Risk Score:** ${equipment.risk_score}\n`
-            if (equipment.risk_scenario || equipment.risk_scenario_standardized) {
-              formatted += `- **Risk Scenario:** ${equipment.risk_scenario_standardized || equipment.risk_scenario}\n`
-            }
-            if (equipment.risk_factor || equipment.risk_factors) {
-              formatted += `- **Risk Factors:** ${equipment.risk_factors || equipment.risk_factor}\n`
-            }
-            if (equipment.impact_rank) formatted += `- **Impact Rank:** ${equipment.impact_rank}\n`
-            if (equipment.mitigation_measures) formatted += `- **Mitigation:** ${equipment.mitigation_measures}\n`
+            if (equipment.location) formatted += `- **Location:** ${equipment.location}\n`
+            if (equipment.operational_status) formatted += `- **Status:** ${equipment.operational_status}\n`
             formatted += '\n'
           })
         } else {
