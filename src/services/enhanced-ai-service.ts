@@ -1920,8 +1920,15 @@ export class EnhancedAIService {
     try {
       console.log(`🏢 Processing department task status query for ${department}${equipmentId ? ` and equipment ${equipmentId}` : ''}`)
 
+      // Check if this is a comparison query (which department has the highest/lowest)
+      const isComparisonQuery = query.toUpperCase().includes('WHICH DEPARTMENT') || 
+                                query.toUpperCase().includes('HIGHEST') || 
+                                query.toUpperCase().includes('LOWEST') ||
+                                query.toUpperCase().includes('BEST') ||
+                                query.toUpperCase().includes('WORST')
+
       // Extract department and equipment from query if not provided
-      if (!department) {
+      if (!department && !isComparisonQuery) {
         if (query.toUpperCase().includes('PUMP OPERATIONS') || query.toUpperCase().includes('PUMP-OPS')) {
           department = 'PUMP-OPS'
         } else if (query.toUpperCase().includes('TANK OPERATIONS') || query.toUpperCase().includes('TANK-OPS')) {
@@ -1995,6 +2002,73 @@ export class EnhancedAIService {
       const totalCompleted = taskStatus?.reduce((sum, task) => sum + (task.completed_tasks || 0), 0) || 0
       const totalOverdue = taskStatus?.reduce((sum, task) => sum + (task.overdue_tasks || 0), 0) || 0
       const overallRate = totalPlanned > 0 ? (totalCompleted / totalPlanned * 100).toFixed(1) : '0'
+
+      // Handle comparison queries differently
+      if (isComparisonQuery && taskStatus?.length > 0) {
+        // Group by department and calculate completion rates
+        const departmentStats = new Map()
+        
+        taskStatus.forEach(task => {
+          if (task.department_id && task.planned_tasks > 0) {
+            if (!departmentStats.has(task.department_id)) {
+              departmentStats.set(task.department_id, {
+                department_id: task.department_id,
+                department_name: task.department_name,
+                total_planned: 0,
+                total_completed: 0,
+                total_overdue: 0
+              })
+            }
+            const dept = departmentStats.get(task.department_id)
+            dept.total_planned += task.planned_tasks || 0
+            dept.total_completed += task.completed_tasks || 0
+            dept.total_overdue += task.overdue_tasks || 0
+          }
+        })
+
+        // Calculate rates and sort
+        const departmentRanking = Array.from(departmentStats.values())
+          .map(dept => ({
+            ...dept,
+            completion_rate: dept.total_planned > 0 ? (dept.total_completed / dept.total_planned * 100) : 0
+          }))
+          .sort((a, b) => b.completion_rate - a.completion_rate)
+
+        const topDepartment = departmentRanking[0]
+        
+        return {
+          query,
+          intent: 'DEPARTMENT_TASK_STATUS',
+          confidence: 0.9,
+          results: departmentRanking,
+          summary: `Department Completion Rate Comparison:
+
+🏆 **Highest Task Completion Rate:** ${topDepartment.department_name} (${topDepartment.completion_rate.toFixed(1)}%)
+
+📊 **Department Rankings:**
+${departmentRanking.map((dept, index) => 
+  `${index + 1}. ${dept.department_name}: ${dept.completion_rate.toFixed(1)}% (${dept.total_completed}/${dept.total_planned} tasks)`
+).join('\n')}
+
+📈 **Performance Summary:**
+- Best Performer: ${topDepartment.department_name} with ${topDepartment.completion_rate.toFixed(1)}% completion
+- Total Tasks Across All Departments: ${departmentRanking.reduce((sum, d) => sum + d.total_planned, 0)}
+- Total Completed: ${departmentRanking.reduce((sum, d) => sum + d.total_completed, 0)}
+- Total Overdue: ${departmentRanking.reduce((sum, d) => sum + d.total_overdue, 0)}`,
+          recommendations: [
+            `${topDepartment.department_name} has the highest completion rate at ${topDepartment.completion_rate.toFixed(1)}%`,
+            departmentRanking.length > 1 && departmentRanking[departmentRanking.length - 1].completion_rate < 80 ? 
+              `${departmentRanking[departmentRanking.length - 1].department_name} needs improvement (${departmentRanking[departmentRanking.length - 1].completion_rate.toFixed(1)}%)` : 
+              'All departments performing well',
+            'Consider sharing best practices from top-performing departments'
+          ],
+          context: {
+            comparison: true,
+            topDepartment: topDepartment.department_id,
+            departmentRanking
+          }
+        }
+      }
 
       return {
         query,
