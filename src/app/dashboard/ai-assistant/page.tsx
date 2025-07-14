@@ -11,12 +11,8 @@ import {
   Brain, 
   Clock, 
   AlertTriangle, 
-  TrendingUp,
   Settings,
   MessageSquare,
-  Lightbulb,
-  Database,
-  Activity,
   CheckCircle
 } from 'lucide-react'
 import { aiQueryService } from '@/services/ai-query-service'
@@ -33,14 +29,6 @@ interface ChatMessage {
   source?: 'openai' | 'mock'
 }
 
-interface QuickQuery {
-  id: string
-  title: string
-  description: string
-  query: string
-  icon: React.ReactNode
-  category: string
-}
 
 export default function AIAssistantPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -49,49 +37,6 @@ export default function AIAssistantPage() {
   const [aiService] = useState(() => aiQueryService)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const quickQueries: QuickQuery[] = [
-    // Working queries based on test results
-    {
-      id: 'department-performance',
-      title: 'Department Performance',
-      description: 'Department task completion rates - 100% working',
-      query: 'Which department has the highest task completion rate?',
-      icon: <TrendingUp className="h-4 w-4" />,
-      category: 'Analytics'
-    },
-    {
-      id: 'strategy-coverage',
-      title: 'Equipment Strategy Coverage',
-      description: 'Analyze maintenance strategy coverage with risk highlighting',
-      query: 'The equipment belonging to SYS-001 carries a very high risk of tube blockage caused by fouling. Are all of them fully reflected in the Equipment Strategy?',
-      icon: <AlertTriangle className="h-4 w-4" />,
-      category: 'Strategy'
-    },
-    {
-      id: 'cascade-analysis',
-      title: 'Instrumentation Cascade Analysis',
-      description: 'What happens when instruments trigger high values',
-      query: 'What happens if TI-401 shows high temperature?',
-      icon: <Activity className="h-4 w-4" />,
-      category: 'Analysis'
-    },
-    {
-      id: 'risk-scenarios',
-      title: 'Risk Scenario Count',
-      description: 'Count total risk scenarios in the system',
-      query: 'How many risk scenarios do you have?',
-      icon: <Database className="h-4 w-4" />,
-      category: 'Risk'
-    },
-    {
-      id: 'system-equipment',
-      title: 'System Equipment List',
-      description: 'Show equipment belonging to specific systems',
-      query: 'What equipment belongs to SYS-002?',
-      icon: <Lightbulb className="h-4 w-4" />,
-      category: 'System'
-    }
-  ]
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -439,40 +384,8 @@ export default function AIAssistantPage() {
         </TabsList>
 
         <TabsContent value="chat" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Quick Query Buttons */}
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Quick Queries</CardTitle>
-                  <CardDescription>
-                    Try these common analysis requests
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {quickQueries.map((query) => (
-                    <Button
-                      key={query.id}
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start h-auto p-3"
-                      onClick={() => handleSendMessage(query.query)}
-                    >
-                      <div className="flex items-start space-x-2">
-                        {query.icon}
-                        <div className="text-left">
-                          <div className="font-medium text-xs">{query.title}</div>
-                          <div className="text-xs text-muted-foreground">{query.description}</div>
-                        </div>
-                      </div>
-                    </Button>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Chat Interface */}
-            <div className="lg:col-span-3">
+          {/* Chat Interface */}
+          <div>
               <Card className="h-[600px] flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -580,34 +493,10 @@ export default function AIAssistantPage() {
         </TabsContent>
 
         <TabsContent value="examples" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {quickQueries.map((query) => (
-              <Card key={query.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handleSendMessage(query.query)}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {query.icon}
-                      <CardTitle className="text-lg">{query.title}</CardTitle>
-                    </div>
-                    <Badge variant="outline">{query.category}</Badge>
-                  </div>
-                  <CardDescription>{query.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <p className="text-sm italic">"{query.query}"</p>
-                  </div>
-                  <Button 
-                    className="w-full mt-3" 
-                    size="sm"
-                    onClick={() => handleSendMessage(query.query)}
-                  >
-                    Try This Query
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">
+              Try asking about equipment risks, maintenance status, or process impacts directly in the chat.
+            </p>
           </div>
 
           <Card>
