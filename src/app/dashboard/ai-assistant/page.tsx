@@ -221,11 +221,6 @@ export default function AIAssistantPage() {
       // Handle results array - preserve risk assessment data structure
       let uniqueResults = Array.isArray(parsedResponse.results) ? parsedResponse.results : [parsedResponse.results]
       
-      // Debug: Log what's in the results before processing
-      console.log('🔍 Analysis Results Debug - First result keys:', Object.keys(uniqueResults[0] || {}))
-      console.log('🔍 Analysis Results Debug - First result sample:', uniqueResults[0])
-      console.log('🔍 Analysis Results Debug - Has risk_level?', !!uniqueResults[0]?.risk_level)
-      console.log('🔍 Analysis Results Debug - Has risk_score?', !!uniqueResults[0]?.risk_score)
       
       // Only remove duplicates for basic equipment data, not for risk assessments or strategies
       if (uniqueResults.length > 0 && !uniqueResults[0]?.risk_level && !uniqueResults[0]?.risk_score && !uniqueResults[0]?.strategy_id) {
@@ -286,18 +281,6 @@ export default function AIAssistantPage() {
           }
           formatted += '\n'
         })
-      } else if (uniqueResults.length > 0 && DatabaseBridge.getEquipmentId(uniqueResults[0])) {
-        // Equipment info format (using bridge functions)
-        uniqueResults.forEach((equipment: any, index: number) => {
-          formatted += `**${index + 1}. Equipment ${DatabaseBridge.getEquipmentId(equipment)}**\n`
-          if (DatabaseBridge.getEquipmentName(equipment)) formatted += `- **Name:** ${DatabaseBridge.getEquipmentName(equipment)}\n`
-          if (equipment.製造者 || equipment.manufacturer) formatted += `- **Manufacturer:** ${equipment.製造者 || equipment.manufacturer}\n`
-          if (equipment.型式 || equipment.model) formatted += `- **Model:** ${equipment.型式 || equipment.model}\n`
-          if (DatabaseBridge.getEquipmentLocation(equipment)) formatted += `- **Location:** ${DatabaseBridge.getEquipmentLocation(equipment)}\n`
-          if (equipment.稼働状態 || equipment.operating_status) formatted += `- **Status:** ${equipment.稼働状態 || equipment.operating_status}\n`
-          if (equipment.設備種別名 || equipment.equipment_type_name) formatted += `- **Type:** ${equipment.設備種別名 || equipment.equipment_type_name}\n`
-          formatted += '\n'
-        })
       } else if (uniqueResults.length > 0 && 
                  (uniqueResults[0]?.risk_level || uniqueResults[0]?.risk_score || uniqueResults[0]?.risk_scenario || 
                   uniqueResults[0]?.risk_factors || uniqueResults[0]?.impact_rank || uniqueResults[0]?.mitigation_measures)) {
@@ -344,6 +327,18 @@ export default function AIAssistantPage() {
           }
           formatted += '\n'
         })
+      } else if (uniqueResults.length > 0 && DatabaseBridge.getEquipmentId(uniqueResults[0])) {
+        // Equipment info format (using bridge functions) - comes after risk assessment check
+        uniqueResults.forEach((equipment: any, index: number) => {
+          formatted += `**${index + 1}. Equipment ${DatabaseBridge.getEquipmentId(equipment)}**\n`
+          if (DatabaseBridge.getEquipmentName(equipment)) formatted += `- **Name:** ${DatabaseBridge.getEquipmentName(equipment)}\n`
+          if (equipment.製造者 || equipment.manufacturer) formatted += `- **Manufacturer:** ${equipment.製造者 || equipment.manufacturer}\n`
+          if (equipment.型式 || equipment.model) formatted += `- **Model:** ${equipment.型式 || equipment.model}\n`
+          if (DatabaseBridge.getEquipmentLocation(equipment)) formatted += `- **Location:** ${DatabaseBridge.getEquipmentLocation(equipment)}\n`
+          if (equipment.稼働状態 || equipment.operating_status) formatted += `- **Status:** ${equipment.稼働状態 || equipment.operating_status}\n`
+          if (equipment.設備種別名 || equipment.equipment_type_name) formatted += `- **Type:** ${equipment.設備種別名 || equipment.equipment_type_name}\n`
+          formatted += '\n'
+        })
       } else if (uniqueResults.length > 0 && uniqueResults[0]?.strategy_id) {
         // Equipment strategy format - show equipment details along with strategy
         uniqueResults.forEach((strategy: any, index: number) => {
@@ -366,11 +361,7 @@ export default function AIAssistantPage() {
           formatted += '\n'
         })
       } else if (uniqueResults.length > 0) {
-        // Generic results format - check what's actually in the data for debugging
-        console.log('Generic case - first result keys:', Object.keys(uniqueResults[0] || {}))
-        console.log('First result sample:', uniqueResults[0])
-        
-        // For equipment with basic info, show equipment details
+        // Generic results format - for equipment with basic info, show equipment details
         if (uniqueResults[0]?.equipment_id) {
           uniqueResults.forEach((equipment: any, index: number) => {
             formatted += `**${index + 1}. Equipment ${equipment.equipment_id}**\n`
