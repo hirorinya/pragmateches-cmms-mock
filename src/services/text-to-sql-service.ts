@@ -178,61 +178,266 @@ export class TextToSQLService {
   }
 
   /**
-   * Generate SQL using LLM with comprehensive context
+   * Generate SQL using LLM with comprehensive context and robust fallback system
    */
   private async generateSQLWithLLM(context: SQLGenerationContext): Promise<{sql: string, reasoning: string}> {
-    // Build comprehensive prompt
-    const prompt = this.buildLLMPrompt(context)
-    
-    console.log('🤖 Calling OpenAI API for SQL generation...');
-    console.log(`📄 Prompt length: ${prompt.length} characters`);
+    console.log('🤖 Starting SQL generation with fallback system...');
     console.log(`🎯 User intent: ${context.user_intent}`);
     
     try {
-      // Call OpenAI API for SQL generation
-      const startTime = Date.now();
-      const response = await fetch('/api/chatgpt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'text_to_sql',
-          prompt: prompt,
-          data: {
-            entities: context.entities,
-            intent: context.user_intent,
-            context: context.business_context
-          }
-        })
-      })
-
-      const apiTime = Date.now() - startTime;
-      console.log(`⏱️ OpenAI API response time: ${apiTime}ms`);
-
-      if (!response.ok) {
-        throw new Error(`LLM API failed: ${response.status}`)
+      // Layer 1: Try OpenAI with retry mechanism
+      console.log('🔄 Attempting OpenAI generation with retries...');
+      return await this.callOpenAIWithRetry(context, 2)
+    } catch (openaiError) {
+      console.warn('❌ OpenAI failed after retries:', openaiError.message)
+      
+      try {
+        // Layer 2: Enhanced template generation with entity context
+        console.log('🔧 Trying enhanced template generation...');
+        return await this.generateEnhancedTemplate(context)
+      } catch (templateError) {
+        console.warn('❌ Enhanced template failed:', templateError.message)
+        
+        // Layer 3: Basic fallback with simple patterns
+        console.log('🆘 Using basic fallback generation...');
+        return this.generateBasicFallback(context)
       }
-
-      const result = await response.json()
-      console.log('✅ OpenAI API response received');
-      
-      // Parse the response to extract SQL and reasoning
-      const parsed = this.parseLLMResponse(result.result)
-      console.log(`📝 Generated SQL: ${parsed.sql?.substring(0, 100)}...`);
-      
-      return {
-        sql: parsed.sql,
-        reasoning: parsed.reasoning
-      }
-      
-    } catch (error) {
-      console.error('❌ LLM SQL generation failed:', error)
-      console.log('⚠️ Falling back to template-based generation');
-      
-      // Fallback to template-based generation
-      return this.generateSQLWithTemplate(context)
     }
+  }
+
+  /**
+   * Call OpenAI with retry mechanism and exponential backoff
+   */
+  private async callOpenAIWithRetry(context: SQLGenerationContext, maxRetries: number): Promise<{sql: string, reasoning: string}> {
+    const prompt = this.buildLLMPrompt(context)
+    console.log(`📄 Prompt length: ${prompt.length} characters`);
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 OpenAI attempt ${attempt + 1}/${maxRetries + 1}`);
+        const startTime = Date.now();
+        
+        const response = await this.callOpenAIAPI(prompt, context)
+        
+        const apiTime = Date.now() - startTime;
+        console.log(`⏱️ OpenAI API response time: ${apiTime}ms`);
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`OpenAI API failed: ${response.status} - ${errorText}`)
+        }
+
+        const result = await response.json()
+        console.log('✅ OpenAI API response received');
+        
+        // Validate response structure
+        if (!result.result) {
+          throw new Error('Invalid OpenAI response structure')
+        }
+        
+        // Parse and validate the response
+        const parsed = this.parseLLMResponse(result.result)
+        if (!parsed.sql || parsed.sql.trim().length === 0) {
+          throw new Error('OpenAI returned empty SQL')
+        }
+        
+        console.log(`📝 Generated SQL: ${parsed.sql?.substring(0, 100)}...`);
+        
+        return {
+          sql: parsed.sql,
+          reasoning: parsed.reasoning || 'SQL generated successfully by OpenAI'
+        }
+        
+      } catch (error) {
+        const isRetryable = this.isRetryableError(error)
+        console.warn(`⚠️ Attempt ${attempt + 1} failed:`, error.message)
+        
+        if (isRetryable && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000 // Exponential backoff with jitter
+          console.log(`⏳ Waiting ${delay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        
+        // If not retryable or max retries reached, throw the error
+        throw new Error(`OpenAI failed after ${attempt + 1} attempts: ${error.message}`)
+      }
+    }
+    
+    throw new Error('Maximum retry attempts exceeded')
+  }
+
+  /**
+   * Make the actual OpenAI API call
+   */
+  private async callOpenAIAPI(prompt: string, context: SQLGenerationContext): Promise<Response> {
+    return await fetch('/api/chatgpt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'text_to_sql',
+        prompt: prompt,
+        data: {
+          entities: context.entities,
+          intent: context.user_intent,
+          context: context.business_context
+        }
+      })
+    })
+  }
+
+  /**
+   * Determine if an error is retryable
+   */
+  private isRetryableError(error: any): boolean {
+    if (error.message?.includes('429')) return true  // Rate limit
+    if (error.message?.includes('502')) return true  // Bad gateway
+    if (error.message?.includes('503')) return true  // Service unavailable
+    if (error.message?.includes('504')) return true  // Gateway timeout
+    if (error.message?.includes('timeout')) return true
+    if (error.message?.includes('network')) return true
+    if (error.message?.includes('fetch')) return true
+    return false
+  }
+
+  /**
+   * Enhanced template generation with better entity context
+   */
+  private async generateEnhancedTemplate(context: SQLGenerationContext): Promise<{sql: string, reasoning: string}> {
+    console.log('🔧 Generating enhanced template SQL...')
+    
+    const equipmentEntity = context.entities.find(e => e.type === 'equipment')
+    const systemEntity = context.entities.find(e => e.type === 'system')
+    const typeEntity = context.entities.find(e => e.type === 'equipment_type')
+    
+    let sql = ''
+    let reasoning = ''
+    
+    // Enhanced equipment-specific query
+    if (equipmentEntity) {
+      sql = `SELECT 
+        e.equipment_id,
+        e.equipment_name,
+        e.location,
+        e.operational_status,
+        e.equipment_type_id,
+        'Enhanced template match for equipment' as source
+      FROM equipment e
+      WHERE e.equipment_id = '${equipmentEntity.resolved}'
+      ORDER BY e.equipment_id
+      LIMIT 10`
+      reasoning = `Enhanced template query for specific equipment: ${equipmentEntity.resolved}. Includes comprehensive equipment details.`
+    } 
+    // Enhanced system-based query
+    else if (systemEntity) {
+      sql = `SELECT 
+        e.equipment_id,
+        e.equipment_name,
+        e.location,
+        e.operational_status,
+        e.equipment_type_id,
+        'Enhanced template match for system' as source
+      FROM equipment e
+      WHERE e.equipment_id LIKE '${systemEntity.resolved.replace('SYS-', '')}%'
+         OR e.equipment_id LIKE '%${systemEntity.resolved.slice(-3)}%'
+      ORDER BY e.equipment_id
+      LIMIT 50`
+      reasoning = `Enhanced template query for system: ${systemEntity.resolved}. Uses pattern matching for equipment belonging to system.`
+    }
+    // Enhanced type-based query
+    else if (typeEntity) {
+      const typeMapping = {
+        'HEAT_EXCHANGER': 1,
+        'PUMP': 2,
+        'TANK': 3,
+        'VESSEL': 4,
+        '熱交換器': 1,
+        'ポンプ': 2,
+        'タンク': 3,
+        '容器': 4
+      }
+      
+      const typeId = typeMapping[typeEntity.resolved] || 1
+      sql = `SELECT 
+        e.equipment_id,
+        e.equipment_name,
+        e.location,
+        e.operational_status,
+        e.equipment_type_id,
+        'Enhanced template match for type' as source
+      FROM equipment e
+      WHERE e.equipment_type_id = ${typeId}
+      ORDER BY e.equipment_id
+      LIMIT 50`
+      reasoning = `Enhanced template query for equipment type: ${typeEntity.resolved} (ID: ${typeId})`
+    }
+    // Intent-based fallback
+    else {
+      switch (context.user_intent) {
+        case 'maintenance_history':
+          sql = `SELECT 
+            mh.equipment_id,
+            mh.implementation_date,
+            mh.work_content,
+            mh.worker,
+            e.equipment_name,
+            'Intent-based template' as source
+          FROM maintenance_history mh
+          JOIN equipment e ON mh.equipment_id = e.equipment_id
+          ORDER BY mh.implementation_date DESC
+          LIMIT 20`
+          reasoning = 'Intent-based template for maintenance history queries'
+          break
+          
+        case 'equipment_list':
+        case 'equipment_by_system':
+        default:
+          sql = `SELECT 
+            e.equipment_id,
+            e.equipment_name,
+            e.location,
+            e.operational_status,
+            e.equipment_type_id,
+            'Default enhanced template' as source
+          FROM equipment e
+          ORDER BY e.equipment_id
+          LIMIT 20`
+          reasoning = 'Default enhanced template for general equipment queries'
+      }
+    }
+    
+    if (!sql) {
+      throw new Error('Enhanced template generation failed - no matching pattern')
+    }
+    
+    console.log('✅ Enhanced template SQL generated successfully')
+    return { sql, reasoning }
+  }
+
+  /**
+   * Basic fallback generation - guaranteed to work
+   */
+  private generateBasicFallback(context: SQLGenerationContext): {sql: string, reasoning: string} {
+    console.log('🆘 Generating basic fallback SQL...')
+    
+    const sql = `SELECT 
+      equipment_id,
+      equipment_name,
+      location,
+      operational_status,
+      equipment_type_id,
+      'Basic fallback' as source
+    FROM equipment
+    WHERE equipment_id IS NOT NULL
+    ORDER BY equipment_id
+    LIMIT 10`
+    
+    const reasoning = `Basic fallback query generated due to all other methods failing. Original query: "${context.query}"`
+    
+    console.log('✅ Basic fallback SQL generated')
+    return { sql, reasoning }
   }
 
   /**

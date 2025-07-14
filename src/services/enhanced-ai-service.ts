@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { EquipmentService } from './equipment-service'
 import { AIDatabaseService } from './ai-database-service'
 import { textToSQLService } from './text-to-sql-service'
+import { ErrorHandlingService } from './error-handling-service'
 
 interface AIQueryResponse {
   query: string
@@ -603,30 +604,38 @@ export class EnhancedAIService {
       
     } catch (error) {
       console.error('Enhanced AI Service error:', error)
-      return {
+      
+      // Use centralized error handling service
+      return ErrorHandlingService.handleAIServiceError(error, {
         query,
-        intent: 'ERROR',
-        confidence: 0,
-        results: [],
-        summary: 'I apologize, but I encountered an error processing your query. Please try rephrasing your question or being more specific.',
-        recommendations: [
-          'Try using specific equipment IDs (e.g., HX-101, PU-200)',
-          'Be more specific about what information you need',
-          'Check if your query contains typos'
-        ],
-        execution_time: Date.now() - startTime,
-        source: 'ai'
-      }
+        intent: 'UNKNOWN', // We don't know the intent since processing failed
+        timestamp: Date.now(),
+        attempt_count: 1 // Could be enhanced to track actual attempts
+      })
     }
   }
 
   /**
-   * Determine if query should use text-to-SQL processing
+   * Enhanced route decision logic - determines if query should use text-to-SQL processing
    */
   private shouldUseTextToSQL(query: string): boolean {
     const queryLower = query.toLowerCase()
     
-    // Prioritize enhanced AI for department-specific queries
+    console.log('🔍 Evaluating route decision for query:', query)
+    
+    // Step 1: Check for simple queries that should use pattern matching
+    const simplePatterns = [
+      /^(show|list|get|status)\s+(equipment|機器)\s+[A-Z]+-\d+$/i,
+      /^(status|状態)\s+of\s+[A-Z]+-\d+$/i,
+      /^[A-Z]+-\d+\s+(status|info|information|details)$/i
+    ]
+    
+    if (simplePatterns.some(pattern => pattern.test(query))) {
+      console.log('📍 Route decision: Pattern matching (simple query)')
+      return false
+    }
+    
+    // Step 2: Prioritize enhanced AI for department-specific queries
     const departmentPatterns = [
       /\b(implementation status|department responsibility|refining department)\b/i,
       /\b(maintenance department|task status|department tasks)\b/i,
@@ -636,10 +645,11 @@ export class EnhancedAIService {
     ]
     
     if (departmentPatterns.some(pattern => pattern.test(query))) {
+      console.log('📍 Route decision: Pattern matching (department query)')
       return false
     }
 
-    // Prioritize enhanced AI for equipment strategy queries
+    // Step 3: Prioritize enhanced AI for equipment strategy queries
     const strategyPatterns = [
       /\b(equipment strategy|reflected in the equipment strategy|all of them fully reflected)\b/i,
       /\b(strategy coverage|strategy alignment|coverage gap|gap analysis)\b/i,
@@ -647,56 +657,86 @@ export class EnhancedAIService {
       /\b設備戦略|戦略|メンテナンス戦略|反映|カバレッジ\b/i
     ]
     
-    // Debug: Check each pattern
-    for (let i = 0; i < strategyPatterns.length; i++) {
-      if (strategyPatterns[i].test(query)) {
-        return false
-      }
-    }
-    
-    // Also check for simpler "Equipment Strategy" phrase
-    if (query.toLowerCase().includes('equipment strategy')) {
+    if (strategyPatterns.some(pattern => pattern.test(query))) {
+      console.log('📍 Route decision: Pattern matching (strategy query)')
       return false
     }
     
-    // Force text-to-SQL for certain queries to ensure OpenAI is used
-    const forceTextToSQLPatterns = [
-      /\b(list|show|display|find)\s+(equipment|machines?|assets?)\s+(belongs?|in|for|of)\s+(sys|system)/i,
-      /\bbelongs?\s+to\s+sys/i,
-      /\bsys-\d{3}\b/i  // Any query with system ID
+    // Step 4: Check for complex queries requiring OpenAI
+    const complexPatterns = [
+      // System relationships (enhanced)
+      /\b(belongs?|in|part of|from|within)\s+(sys|system)/i,
+      /\b(equipment|機器)\s+(in|for|belonging|from|within)/i,
+      
+      // Complex maintenance queries
+      /\b(maintenance|保全)\s+(history|履歴|records|analysis|trends)/i,
+      /\b(risk|リスク)\s+(analysis|assessment|factors|scenarios|evaluation)/i,
+      /\b(strategy|戦略)\s+(coverage|implementation|effectiveness)/i,
+      
+      // Multi-table analytical queries
+      /\b(department|部署)\s+(responsibility|task|completion|performance)/i,
+      /\b(instrumentation|計装)\s+(alert|cascade|impact|correlation)/i,
+      /\b(process|プロセス)\s+(impact|correlation|optimization)/i,
+      
+      // Quantitative and comparative queries
+      /\b(how many|count|total|合計|総数|number of)\b/i,
+      /\b(compare|comparison|vs|versus|比較|対比)\b/i,
+      /\b(trend|trends|over time|時系列|推移)\b/i,
+      /\b(highest|lowest|most|least|maximum|minimum|最大|最小|最高|最低)\b/i,
+      
+      // Conditional and logical queries
+      /\b(if|when|where|どこ|いつ|もし)\b.*\b(then|そして|その場合)\b/i,
+      /\band\b.*\bor\b|\bor\b.*\band\b/i,
+      
+      // Time-based complex queries
+      /\b(last|past|recent|next|future|直近|過去|今後|次回)\s+\d+\s+(day|week|month|year|日|週|月|年)s?\b/i,
+      
+      // Equipment lifecycle and relationship queries
+      /\b(lifecycle|relationship|dependency|dependencies|related to|associated with)\b/i,
+      
+      // Advanced analytical terms
+      /\b(correlation|optimization|efficiency|effectiveness|performance analysis)\b/i,
+      /\b(root cause|failure analysis|predictive|forecast|prediction)\b/i
     ]
     
-    if (forceTextToSQLPatterns.some(pattern => pattern.test(query))) {
+    const matchedComplexPattern = complexPatterns.find(pattern => pattern.test(query))
+    if (matchedComplexPattern) {
+      console.log('📍 Route decision: OpenAI (complex pattern matched):', matchedComplexPattern.source)
       return true
     }
     
-    // Use text-to-SQL for complex queries
-    const complexPatterns = [
-      /\b(join|combine|correlate|relate|relationship|関係|結合)\b/,
-      /\b(average|mean|sum|total|count|maximum|minimum|平均|合計|最大|最小)\b/,
-      /\b(trend|pattern|analysis|compare|comparison|分析|比較|傾向)\b/,
-      /\b(between|range|from.*to|during|period|期間|範囲|〜.*間)\b/,
-      /\b(group|grouped|grouping|categorize|グループ|分類)\b/,
-      /\b(order|sorted|ranking|順序|ソート|ランキング)\b/,
-      /\b(filter|where|condition|条件|フィルタ)\b/,
-      /\b(top|bottom|highest|lowest|first|last|最初|最後|最高|最低)\b/
+    // Step 5: Force text-to-SQL for specific system queries
+    const forceTextToSQLPatterns = [
+      /\b(list|show|display|find)\s+(equipment|machines?|assets?)\s+(belongs?|in|for|of)\s+(sys|system)/i,
+      /\bbelongs?\s+to\s+sys/i,
+      /\bsys-\d{3}\b/i,  // Any query with system ID
+      /\bequipment.*system|system.*equipment\b/i
     ]
     
-    // Check for complex query patterns
-    const hasComplexPattern = complexPatterns.some(pattern => pattern.test(queryLower))
+    const matchedForcePattern = forceTextToSQLPatterns.find(pattern => pattern.test(query))
+    if (matchedForcePattern) {
+      console.log('📍 Route decision: OpenAI (forced pattern):', matchedForcePattern.source)
+      return true
+    }
     
-    // Check for multiple entities
-    const entityCount = (query.match(/\b[A-Z]{1,3}-?\d{1,4}\b/gi) || []).length
-    const hasMultipleEntities = entityCount > 1
+    // Step 6: Check query complexity indicators
+    const complexityIndicators = [
+      query.split(' ').length > 8, // Long queries
+      /\band\b|\bor\b/i.test(query), // Logical operators
+      /\bwhere\b|\bwhen\b|\bif\b/i.test(query), // Conditional logic
+      query.split(',').length > 2, // Multiple comma-separated items
+      /\bhighest\b|\blowest\b|\bmost\b|\bleast\b/i.test(query) // Superlatives
+    ]
     
-    // Check for time-based queries
-    const hasTimeReference = /\b(last|past|recent|since|until|before|after|直近|過去|最近|以来|まで|前|後)\b/.test(queryLower)
+    const complexityScore = complexityIndicators.filter(Boolean).length
+    if (complexityScore >= 2) {
+      console.log('📍 Route decision: OpenAI (complexity score):', complexityScore)
+      return true
+    }
     
-    // Check for numerical queries
-    const hasNumericalQuery = /\b(how many|count|number of|何個|いくつ|数)\b/.test(queryLower)
-    
-    // Use text-to-SQL for complex scenarios
-    return hasComplexPattern || hasMultipleEntities || hasTimeReference || hasNumericalQuery
+    // Step 7: Default to pattern matching for simple queries
+    console.log('📍 Route decision: Pattern matching (default)')
+    return false
   }
 
   /**

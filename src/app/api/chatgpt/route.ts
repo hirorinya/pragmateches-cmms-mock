@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { EquipmentService } from '@/services/equipment-service'
 import { AIService } from '@/services/ai-service'
+import { APIConfigService } from '@/services/api-config-service'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -26,13 +27,18 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    // Check if API key is configured for regular ChatGPT requests
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not configured')
-      return NextResponse.json(
-        { error: 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.' },
-        { status: 500 }
-      )
+    // Validate API configuration using configuration service
+    const configStatus = await APIConfigService.validateConfiguration()
+    
+    if (!configStatus.openai_available) {
+      console.error('OpenAI API configuration invalid:', configStatus.config_errors)
+      return NextResponse.json({
+        error: 'OpenAI service is not available',
+        details: configStatus.config_errors,
+        recommendations: configStatus.recommendations,
+        operational_mode: configStatus.operational_mode,
+        fallback_available: configStatus.supabase_available
+      }, { status: 503 }) // Service Unavailable
     }
 
     const { prompt, type, data, schema } = body
