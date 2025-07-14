@@ -161,6 +161,8 @@ export class EnhancedAIService {
         patterns: [
           'implementation status', 'department responsibility', 'refining department',
           'maintenance department', 'task status', 'department tasks',
+          'pump operations department', 'tank operations department', 'utilities department',
+          'department has the highest', 'completion rate', 'department performance',
           '部署の責任', '実装状況', '精製部門', '保全部門', 'タスク状況'
         ],
         confidence: 0.9,
