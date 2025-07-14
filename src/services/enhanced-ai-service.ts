@@ -355,6 +355,23 @@ export class EnhancedAIService {
         }
       },
       
+      // Instrument Tags
+      {
+        type: 'instrument_tag',
+        patterns: [
+          /[A-Z]{1,3}I-?\d+/gi,
+          /(?:TI|PI|FI|LI|AI|CI|VI|DI|SI|XI|YI|ZI)-?\d+/gi
+        ],
+        extractor: (match) => {
+          const cleanMatch = match[0].toUpperCase().replace(/\s+/g, '')
+          // Ensure proper format (e.g., TI-401, not TI401)
+          if (!cleanMatch.includes('-') && /^[A-Z]{1,3}\d+$/.test(cleanMatch)) {
+            return cleanMatch.replace(/([A-Z]+)(\d+)/, '$1-$2')
+          }
+          return cleanMatch
+        }
+      },
+      
       // System IDs (Enhanced)
       {
         type: 'system_id',
