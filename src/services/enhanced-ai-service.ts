@@ -1534,8 +1534,8 @@ export class EnhancedAIService {
           priority: strategy.priority,
           is_active: strategy.is_active,
           coverage_status: strategy.is_active ? 'FULLY_COVERED' : 'NOT_COVERED'
-      }))
-
+        }
+      })
       // Also get risk assessment data to correlate strategies with risks
       const { data: riskData } = await supabase
         .from('equipment_risk_assessment')
