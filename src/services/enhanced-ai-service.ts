@@ -626,6 +626,19 @@ export class EnhancedAIService {
       console.log('🏢 Enhanced AI: Department-specific query detected');
       return false
     }
+
+    // Prioritize enhanced AI for equipment strategy queries
+    const strategyPatterns = [
+      /\b(equipment strategy|reflected in the equipment strategy|all of them fully reflected)\b/i,
+      /\b(strategy coverage|strategy alignment|coverage gap|gap analysis)\b/i,
+      /\b(maintenance strategy coverage|strategy review|strategy completeness)\b/i,
+      /\b設備戦略|戦略|メンテナンス戦略|反映|カバレッジ\b/i
+    ]
+    
+    if (strategyPatterns.some(pattern => pattern.test(query))) {
+      console.log('🔧 Enhanced AI: Equipment strategy query detected');
+      return false
+    }
     
     // Force text-to-SQL for certain queries to ensure OpenAI is used
     const forceTextToSQLPatterns = [
