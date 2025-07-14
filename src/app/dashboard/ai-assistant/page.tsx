@@ -221,6 +221,12 @@ export default function AIAssistantPage() {
       // Handle results array - preserve risk assessment data structure
       let uniqueResults = Array.isArray(parsedResponse.results) ? parsedResponse.results : [parsedResponse.results]
       
+      // Debug: Log what's in the results before processing
+      console.log('🔍 Analysis Results Debug - First result keys:', Object.keys(uniqueResults[0] || {}))
+      console.log('🔍 Analysis Results Debug - First result sample:', uniqueResults[0])
+      console.log('🔍 Analysis Results Debug - Has risk_level?', !!uniqueResults[0]?.risk_level)
+      console.log('🔍 Analysis Results Debug - Has risk_score?', !!uniqueResults[0]?.risk_score)
+      
       // Only remove duplicates for basic equipment data, not for risk assessments or strategies
       if (uniqueResults.length > 0 && !uniqueResults[0]?.risk_level && !uniqueResults[0]?.risk_score && !uniqueResults[0]?.strategy_id) {
         uniqueResults = DatabaseBridge.removeDuplicateEquipment(uniqueResults)
@@ -292,7 +298,9 @@ export default function AIAssistantPage() {
           if (equipment.設備種別名 || equipment.equipment_type_name) formatted += `- **Type:** ${equipment.設備種別名 || equipment.equipment_type_name}\n`
           formatted += '\n'
         })
-      } else if (uniqueResults.length > 0 && (uniqueResults[0]?.risk_level || uniqueResults[0]?.risk_score || uniqueResults[0]?.risk_scenario)) {
+      } else if (uniqueResults.length > 0 && 
+                 (uniqueResults[0]?.risk_level || uniqueResults[0]?.risk_score || uniqueResults[0]?.risk_scenario || 
+                  uniqueResults[0]?.risk_factors || uniqueResults[0]?.impact_rank || uniqueResults[0]?.mitigation_measures)) {
         // Risk assessment format - show comprehensive risk details with standardized scenarios
         uniqueResults.forEach((risk: any, index: number) => {
           formatted += `**${index + 1}. Equipment ${risk.equipment_id}**\n`
