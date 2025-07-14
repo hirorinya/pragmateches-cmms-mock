@@ -1684,7 +1684,6 @@ export class EnhancedAIService {
       }
 
       let systemEquipmentInfo = ''
-      const systemMatch = query.match(/SYS-\d{3}/i)
       if (filteredStrategies.length === 0 && systemMatch) {
         const systemId = systemMatch[0].toUpperCase()
         try {
