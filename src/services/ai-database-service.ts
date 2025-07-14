@@ -360,14 +360,14 @@ export class AIDatabaseService {
     const { data: equipmentInfo, error: equipmentError } = await this.supabase
       .from('equipment')
       .select(`
-        設備ID,
-        設備名,
-        設備種別ID,
-        設置場所,
-        稼働状態,
+        equipment_id,
+        equipment_name,
+        equipment_type_id,
+        location,
+        operational_status,
         equipment_type_master(equipment_type_name)
       `)
-      .eq('設備ID', equipmentId)
+      .eq('equipment_id', equipmentId)
       .single()
 
     let equipmentFound = !!equipmentInfo
@@ -384,11 +384,11 @@ export class AIDatabaseService {
       if (legacyEquipment) {
         equipmentFound = true
         equipmentData = {
-          設備ID: legacyEquipment.equipment_id,
-          設備名: legacyEquipment.equipment_id,
-          設備種別ID: null,
-          設置場所: 'Unknown',
-          稼働状態: 'Unknown',
+          equipment_id: legacyEquipment.equipment_id,
+          equipment_name: legacyEquipment.equipment_id,
+          equipment_type_id: null,
+          location: 'Unknown',
+          operational_status: 'Unknown',
           equipment_type_master: {
             設備種別名: legacyEquipment.equipment_id.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
           }
@@ -487,7 +487,7 @@ export class AIDatabaseService {
         実際開始日時,
         実際終了日時
       `)
-      .eq('設備ID', equipmentId)
+      .eq('equipment_id', equipmentId)
       .order('計画開始日時', { ascending: false })
       .limit(10)
     
@@ -504,7 +504,7 @@ export class AIDatabaseService {
         作業結果,
         次回推奨日
       `)
-      .eq('設備ID', equipmentId)
+      .eq('equipment_id', equipmentId)
       .order('実施日', { ascending: false })
       .limit(5)
     
@@ -876,9 +876,9 @@ export class AIDatabaseService {
       const { data: equipmentData, error } = await supabase
         .from('equipment')
         .select(`
-          設備ID,
-          設備名,
-          稼働状態,
+          equipment_id,
+          equipment_name,
+          operational_status,
           equipment_type_master!inner(equipment_type_name)
         `)
         .eq('operational_status', 'OPERATIONAL')
@@ -890,8 +890,8 @@ export class AIDatabaseService {
       }
 
       return equipmentData?.map(eq => ({
-        equipment_id: eq.設備ID,
-        equipment_name: eq.設備名,
+        equipment_id: eq.equipment_id,
+        equipment_name: eq.equipment_name,
         impact_level: 'MEDIUM', // Would be determined by actual relationships
         immediate_actions: ['Check equipment readings', 'Verify operational parameters']
       })) || []
@@ -916,7 +916,7 @@ export class AIDatabaseService {
         "実施日",
         "コスト",
         "作業内容",
-        "設備ID",
+        "equipment_id",
         equipment!inner("設備名", "設備種別ID")
       `)
       .gte('"実施日"', this.getDateFromTimeframe(timeframe))
@@ -977,7 +977,7 @@ export class AIDatabaseService {
       .from('inspection_plan')
       .select(`
         "計画ID",
-        "設備ID",
+        "equipment_id",
         "点検項目",
         "次回点検日",
         "状態",
@@ -995,7 +995,7 @@ export class AIDatabaseService {
       .from('inspection_plan')
       .select(`
         "計画ID",
-        "設備ID",
+        "equipment_id",
         "点検項目",
         "次回点検日",
         "状態",
@@ -1064,7 +1064,7 @@ export class AIDatabaseService {
       .from('work_order')
       .select(`
         "作業指示ID",
-        "設備ID",
+        "equipment_id",
         "作業種別ID",
         "計画開始日時",
         "計画終了日時",
@@ -1165,7 +1165,7 @@ export class AIDatabaseService {
 
   private groupCostsByEquipment(costData: any[]): any[] {
     const grouped = costData.reduce((acc, item) => {
-      const equipmentId = item.設備ID
+      const equipmentId = item.equipment_id
       if (!acc[equipmentId]) {
         acc[equipmentId] = {
           equipment_id: equipmentId,

@@ -95,7 +95,7 @@ export class DataIntegrityService {
         // No mappings exist, all equipment are unmapped
         const result = await supabase
           .from('equipment')
-          .select('設備ID, 設備名')
+          .select('equipment_id, equipment_name')
           .limit(10)
         unmappedEquipment = result.data
         error = result.error
@@ -103,8 +103,8 @@ export class DataIntegrityService {
         // Some mappings exist, check for unmapped equipment
         const result = await supabase
           .from('equipment')
-          .select('設備ID, 設備名')
-          .not('設備ID', 'in', 
+          .select('equipment_id, equipment_name')
+          .not('equipment_id', 'in', 
             `(${mappedEquipmentIds})`
           )
           .limit(10)
@@ -217,7 +217,7 @@ export class DataIntegrityService {
       // Check for maintenance history without equipment
       const { data: orphanedMaintenance, error: maintenanceError } = await supabase
         .from('maintenance_history')
-        .select('設備ID')
+        .select('equipment_id')
         .not('設備ID', 'in', 
           `(${await this.getValidEquipmentIds()})`
         )
@@ -281,7 +281,7 @@ export class DataIntegrityService {
       // Check for future maintenance dates that are unrealistic
       const { data: futureMaintenance, error: maintenanceError } = await supabase
         .from('maintenance_history')
-        .select('設備ID, 実施日')
+        .select('equipment_id, implementation_date')
         .gt('実施日', currentDate.toISOString())
         .limit(5)
       
@@ -295,7 +295,7 @@ export class DataIntegrityService {
       
       const { data: oldInspections, error: inspectionError } = await supabase
         .from('inspection_plan')
-        .select('設備ID, 次回検査日')
+        .select('equipment_id, next_inspection_date')
         .lt('次回検査日', oneYearAgo.toISOString())
         .limit(5)
       
@@ -342,7 +342,7 @@ export class DataIntegrityService {
       // Check for equipment without names
       const { data: equipmentWithoutNames, error: equipmentError } = await supabase
         .from('equipment')
-        .select('設備ID')
+        .select('equipment_id')
         .or('設備名.is.null,設備名.eq.')
         .limit(5)
       
@@ -418,7 +418,7 @@ export class DataIntegrityService {
   private async getValidEquipmentIds(): Promise<string> {
     const { data, error } = await supabase
       .from('equipment')
-      .select('設備ID')
+      .select('equipment_id')
     
     if (error || !data) return ''
     
@@ -431,7 +431,7 @@ export class DataIntegrityService {
   private async getValidEquipmentIdsEnglish(): Promise<string> {
     const { data, error } = await supabase
       .from('equipment')
-      .select('設備ID')
+      .select('equipment_id')
     
     if (error || !data) return ''
     

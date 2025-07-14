@@ -157,7 +157,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
   // Base query for equipment
   const { data: equipmentData } = await supabase
     .from('equipment')
-    .select('設備ID, 設備名, 重要度, 稼働状態, 設備種別ID')
+    .select('equipment_id, equipment_name, importance_level, operational_status, equipment_type_id')
     .eq('設備種別ID', categoryTypeId)
 
   if (!equipmentData || equipmentData.length === 0) {
@@ -236,7 +236,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
   if (requirements.aggregations.includes('anomaly_severity')) {
     const { data: anomalyData } = await supabase
       .from('anomaly_report')
-      .select('重大度, 設備ID')
+      .select('severity, equipment_id')
       .in('設備ID', equipmentData.map(eq => eq.設備ID))
     
     rawData.anomaly_severity = aggregateAnomalySeverity(anomalyData || [])
@@ -249,7 +249,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
     // First, check what equipment IDs exist in thickness_measurement table
     const { data: allThicknessData } = await supabase
       .from('thickness_measurement')
-      .select('設備ID')
+      .select('equipment_id')
       .limit(10)
     console.log('Sample thickness measurement equipment IDs:', allThicknessData?.map(d => d.設備ID))
     

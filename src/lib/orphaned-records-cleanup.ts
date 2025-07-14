@@ -33,16 +33,16 @@ export class OrphanedRecordsCleanupService {
     // Get valid equipment IDs
     const { data: equipment, error: equipmentError } = await supabase
       .from('equipment')
-      .select('設備ID')
+      .select('equipment_id')
     
     if (equipmentError) throw equipmentError
     
-    const validEquipmentIds = equipment.map(e => e.設備ID)
+    const validEquipmentIds = equipment.map(e => e.equipment_id)
     
     // Find orphaned maintenance records
     const { data: allMaintenance, error: maintenanceError } = await supabase
       .from('maintenance_history')
-      .select('履歴ID, 設備ID, 実施日, 作業内容')
+      .select('history_id, equipment_id, implementation_date, work_content')
     
     if (maintenanceError) throw maintenanceError
     

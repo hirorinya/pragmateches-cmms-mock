@@ -13,9 +13,9 @@ export async function getEquipment() {
     .from('equipment')
     .select(`
       *,
-      equipment_type_master(設備種別名)
+      equipment_type_master(equipment_type_name)
     `)
-    .order('設備ID')
+    .order('equipment_id')
   
   if (error) throw error
   return data
@@ -26,9 +26,9 @@ export async function getEquipmentById(equipmentId: string) {
     .from('equipment')
     .select(`
       *,
-      equipment_type_master(設備種別名)
+      equipment_type_master(equipment_type_name)
     `)
-    .eq('設備ID', equipmentId)
+    .eq('equipment_id', equipmentId)
     .single()
   
   if (error) throw error
@@ -48,7 +48,7 @@ export async function getMaintenanceHistory(equipmentId?: string) {
     .order('実施日', { ascending: false })
   
   if (equipmentId) {
-    query = query.eq('設備ID', equipmentId)
+    query = query.eq('equipment_id', equipmentId)
   }
   
   const { data, error } = await query
@@ -121,7 +121,7 @@ export async function getDashboardStats() {
     pendingAnomalies,
     upcomingInspections
   ] = await Promise.all([
-    supabase.from('equipment').select('設備ID', { count: 'exact', head: true }),
+    supabase.from('equipment').select('equipment_id', { count: 'exact', head: true }),
     supabase.from('work_order').select('作業指示ID', { count: 'exact', head: true }).eq('状態', '計画中'),
     supabase.from('anomaly_report').select('報告ID', { count: 'exact', head: true }).eq('状態', '対応中'),
     supabase.from('inspection_plan').select('計画ID', { count: 'exact', head: true }).lte('次回点検日', new Date().toISOString().split('T')[0])
@@ -141,7 +141,7 @@ export async function getEquipmentDataForAI(categoryFilter?: string) {
     .from('equipment')
     .select(`
       *,
-      equipment_type_master(設備種別名),
+      equipment_type_master(equipment_type_name),
       maintenance_history(*),
       anomaly_report(*),
       inspection_plan(*)

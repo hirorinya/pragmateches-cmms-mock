@@ -521,7 +521,7 @@ LIMIT 20`
       let query = supabase
         .from('equipment')
         .select(`
-          設備ID,
+          equipment_id,
           equipment_name,
           location,
           operational_status,
@@ -537,7 +537,7 @@ LIMIT 20`
       
       // Filter by system
       if (systemEntity && !equipmentEntity) {
-        query = query.like('設備ID', `${systemEntity.resolved}%`)
+        query = query.like('equipment_id', `${systemEntity.resolved}%`)
       }
       
       // Filter by equipment type
@@ -649,12 +649,12 @@ LIMIT 20`
 
       // Filter by equipment
       if (equipmentEntity) {
-        query = query.eq('設備ID', equipmentEntity.resolved)
+        query = query.eq('equipment_id', equipmentEntity.resolved)
       }
       
       // Filter by system
       if (systemEntity && !equipmentEntity) {
-        query = query.like('設備ID', `${systemEntity.resolved}%`)
+        query = query.like('equipment_id', `${systemEntity.resolved}%`)
       }
 
       const { data, error } = await query
