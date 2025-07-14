@@ -1737,23 +1737,23 @@ export class EnhancedAIService {
         const { data: altEquipment, error: altError } = await supabase
           .from('equipment')
           .select(`
-            設備ID,
-            設備名,
-            設置場所,
-            稼働状態,
-            設備種別ID
+            equipment_id,
+            equipment_name,
+            location,
+            operational_status,
+            equipment_type_id
           `)
-          .like('設備ID', `${systemId.replace('SYS-', '')}%`)
-          .order('設備ID')
+          .like('equipment_id', `${systemId.replace('SYS-', '')}%`)
+          .order('equipment_id')
           .limit(50)
 
         if (!altError && altEquipment && altEquipment.length > 0) {
           const formattedEquipment = altEquipment.map(eq => ({
-            equipment_id: eq.設備ID,
-            name: eq.設備名,
-            type: this.getEquipmentTypeName(eq.設備種別ID) || 'Unknown',
-            status: eq.稼働状態,
-            location: eq.設置場所
+            equipment_id: eq.equipment_id,
+            name: eq.equipment_name,
+            type: this.getEquipmentTypeName(eq.equipment_type_id) || 'Unknown',
+            status: eq.operational_status,
+            location: eq.location
           }))
           
           return {
@@ -2015,8 +2015,8 @@ Found ${taskStatus?.length || 0} task categories for ${department} Department${e
         // Get direct equipment
         const { data: equipment, error: eqError } = await supabase
           .from('equipment')
-          .select('設備ID, 設備名, 稼働状態, 設備種別ID')
-          .eq('設備ID', equipmentId)
+          .select('equipment_id, equipment_name, operational_status, equipment_type_id')
+          .eq('equipment_id', equipmentId)
 
         if (!eqError && equipment) {
           affectedEquipment = equipment
@@ -2049,7 +2049,7 @@ Found ${taskStatus?.length || 0} task categories for ${department} Department${e
         results: [{
           instrument_tag: instrumentTag,
           equipment_id: equipmentId,
-          equipment_name: affectedEquipment[0]?.設備名 || 'Unknown',
+          equipment_name: affectedEquipment[0]?.equipment_name || 'Unknown',
           measurement_type: instrument?.measurement_type,
           measurement_location: instrument?.measurement_location,
           risk_scenarios: triggerScenarios.map(t => ({
