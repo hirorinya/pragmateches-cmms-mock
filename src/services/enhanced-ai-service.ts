@@ -1437,6 +1437,9 @@ export class EnhancedAIService {
         throw error
       }
 
+      // Debug: Log the raw risk data to see what we're getting
+      console.log('Raw risk data from database:', JSON.stringify(riskData?.slice(0, 2), null, 2))
+
       // Try to get risk scenario master data separately (if table exists)
       let scenarioMasterData: any[] = []
       try {
@@ -1475,6 +1478,9 @@ export class EnhancedAIService {
           mitigation: risk.mitigation_measures
         }
       })
+
+      // Debug: Log transformed data to see if risk_score is preserved
+      console.log('Transformed risk data:', JSON.stringify(transformedRisks?.slice(0, 2), null, 2))
 
       // Filter based on query
       let filteredRisks = transformedRisks
