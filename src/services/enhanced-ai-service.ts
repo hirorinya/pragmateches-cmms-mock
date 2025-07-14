@@ -795,8 +795,15 @@ export class EnhancedAIService {
           
           for (const match of matches) {
             const extracted = pattern.extractor(match.match(regex)!)
-            if (extracted && !entities[pattern.type].includes(extracted)) {
-              entities[pattern.type].push(extracted)
+            if (extracted) {
+              // Case-insensitive deduplication
+              const upperExtracted = extracted.toUpperCase()
+              const exists = entities[pattern.type].some(existing => 
+                existing.toUpperCase() === upperExtracted
+              )
+              if (!exists) {
+                entities[pattern.type].push(extracted.toUpperCase())
+              }
             }
           }
         }
