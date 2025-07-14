@@ -277,20 +277,23 @@ export class EnhancedAIService {
         ]
       },
 
-      // Equipment Strategy
+      // Equipment Strategy & Coverage Analysis
       {
         intent: 'EQUIPMENT_STRATEGY',
         patterns: [
           'equipment strategy', 'strategy', 'maintenance strategy', 'reflected',
-          'fully reflected', 'accurately reflected', 'equipment strategy',
+          'fully reflected', 'accurately reflected', 'are all of them reflected',
           'strategy coverage', 'strategy alignment', 'strategy review',
-          '設備戦略', '戦略', 'メンテナンス戦略', '反映'
+          'coverage gap', 'gap analysis', 'strategy gap', 'missing strategies',
+          'carries a very high risk', 'all of them fully reflected', 'equipment strategy',
+          '設備戦略', '戦略', 'メンテナンス戦略', '反映', 'カバレッジ'
         ],
-        confidence: 0.9,
+        confidence: 0.95,
         handler: 'handleEquipmentStrategy',
         examples: [
           'Are high-risk equipment reflected in Equipment Strategy?',
           'Show equipment strategy coverage',
+          'The equipment carries a very high risk - are all reflected in Equipment Strategy?',
           'Review maintenance strategies for critical equipment'
         ]
       },
