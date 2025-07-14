@@ -218,10 +218,13 @@ export default function AIAssistantPage() {
     if (parsedResponse.results && (Array.isArray(parsedResponse.results) ? parsedResponse.results.length > 0 : Object.keys(parsedResponse.results).length > 0)) {
       formatted += `### 📊 Analysis Results\n\n`
       
-      // Remove duplicates using clean bridge logic (eliminates field name mapping complexity)
-      const uniqueResults = DatabaseBridge.removeDuplicateEquipment(
-        Array.isArray(parsedResponse.results) ? parsedResponse.results : [parsedResponse.results]
-      )
+      // Handle results array - preserve risk assessment data structure
+      let uniqueResults = Array.isArray(parsedResponse.results) ? parsedResponse.results : [parsedResponse.results]
+      
+      // Only remove duplicates for basic equipment data, not for risk assessments or strategies
+      if (uniqueResults.length > 0 && !uniqueResults[0]?.risk_level && !uniqueResults[0]?.risk_score && !uniqueResults[0]?.strategy_id) {
+        uniqueResults = DatabaseBridge.removeDuplicateEquipment(uniqueResults)
+      }
       
       if (Array.isArray(uniqueResults) && DatabaseBridge.getEquipmentId(uniqueResults[0]) && (uniqueResults[0]?.missing_risk || uniqueResults[0]?.risk_coverage)) {
         // Coverage analysis format - handles both missing and covered scenarios
