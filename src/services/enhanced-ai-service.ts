@@ -180,14 +180,17 @@ export class EnhancedAIService {
         patterns: [
           'temperature rises', 'pressure increases', 'TI-201', 'PI-101', 'FI-301',
           'instrument alert', 'rises sharply', 'extract risk scenarios', 'affected equipment',
+          'what happens if', 'shows abnormal', 'shows high', 'shows low', 'fails', 'triggers',
+          'cascade', 'downstream effect', 'impact analysis', 'abnormal readings',
+          'TI-200', 'TI-400', 'TI-401', 'PI-200', 'LI-200', 'FI-200', 'PI-300', 'TI-300',
           '温度上昇', '圧力上昇', '計器異常', 'リスクシナリオ', '影響機器'
         ],
         confidence: 0.95,
         handler: 'handleInstrumentationAlert',
         examples: [
-          'TI-201 temperature rises sharply - extract risk scenarios and affected equipment',
-          'PI-101 pressure increases - show cascade effects',
-          'Instrument alert analysis for TI-201'
+          'What happens if TI-201 shows high temperature?',
+          'What happens if TI-401 shows abnormal readings?',
+          'Show me cascade analysis for PI-200 high pressure'
         ]
       },
       
