@@ -1210,8 +1210,7 @@ export class EnhancedAIService {
           scenario_id,
           likelihood_score,
           consequence_score,
-          equipment!inner(equipment_name, equipment_type_id),
-          risk_scenario_master(scenario_name, scenario_name_en, description)
+          equipment!inner(equipment_name, equipment_type_id)
         `)
         .order('risk_score', { ascending: false })
         .limit(20)
@@ -1221,27 +1220,44 @@ export class EnhancedAIService {
         throw error
       }
 
+      // Try to get risk scenario master data separately (if table exists)
+      let scenarioMasterData: any[] = []
+      try {
+        const { data: masterData } = await supabase
+          .from('risk_scenario_master')
+          .select('id, scenario_name, scenario_name_en, description')
+        scenarioMasterData = masterData || []
+      } catch (masterError) {
+        // Table doesn't exist yet, continue without master data
+        console.log('risk_scenario_master table not available yet')
+      }
+
       // Transform database data to match expected format
-      let transformedRisks = riskData.map(risk => ({
-        equipment_id: risk.equipment_id,
-        equipment_name: risk.equipment?.equipment_name || 'Unknown Equipment',
-        equipment_type: this.getEquipmentTypeName(risk.equipment?.equipment_type_id) || 'Unknown Type',
-        risk_level: risk.risk_level,
-        risk_score: risk.risk_score,
-        risk_scenario: risk.risk_scenario,
-        risk_scenario_standardized: risk.risk_scenario_master?.scenario_name || risk.risk_scenario,
-        risk_scenario_english: risk.risk_scenario_master?.scenario_name_en || 'Not standardized',
-        scenario_description: risk.risk_scenario_master?.description || 'No description available',
-        risk_factor: risk.risk_factor,
-        risk_factors: risk.risk_factor,
-        impact_rank: risk.impact_rank,
-        reliability_rank: risk.reliability_rank,
-        likelihood_score: risk.likelihood_score,
-        consequence_score: risk.consequence_score,
-        mitigation_measures: risk.mitigation_measures,
-        impact: risk.impact_rank,
-        mitigation: risk.mitigation_measures
-      }))
+      let transformedRisks = riskData.map(risk => {
+        // Find matching scenario from master data
+        const masterScenario = scenarioMasterData.find(master => master.id === risk.scenario_id)
+        
+        return {
+          equipment_id: risk.equipment_id,
+          equipment_name: risk.equipment?.equipment_name || 'Unknown Equipment',
+          equipment_type: this.getEquipmentTypeName(risk.equipment?.equipment_type_id) || 'Unknown Type',
+          risk_level: risk.risk_level,
+          risk_score: risk.risk_score,
+          risk_scenario: risk.risk_scenario,
+          risk_scenario_standardized: masterScenario?.scenario_name || risk.risk_scenario,
+          risk_scenario_english: masterScenario?.scenario_name_en || 'Not standardized',
+          scenario_description: masterScenario?.description || 'No description available',
+          risk_factor: risk.risk_factor,
+          risk_factors: risk.risk_factor,
+          impact_rank: risk.impact_rank,
+          reliability_rank: risk.reliability_rank,
+          likelihood_score: risk.likelihood_score,
+          consequence_score: risk.consequence_score,
+          mitigation_measures: risk.mitigation_measures,
+          impact: risk.impact_rank,
+          mitigation: risk.mitigation_measures
+        }
+      })
 
       // Filter based on query
       let filteredRisks = transformedRisks
