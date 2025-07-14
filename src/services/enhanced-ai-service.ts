@@ -1445,11 +1445,12 @@ export class EnhancedAIService {
       try {
         const { data: masterData } = await supabase
           .from('equipment_risk_assessment')
-          .select('risk_scenario, risk_description, risk_factors')
-          .not('risk_scenario', 'is.null')
+          .select('risk_scenario, risk_factor')
+          .not('risk_scenario', 'is', null)
         scenarioMasterData = masterData || []
       } catch (masterError) {
         // Table doesn't exist yet, continue without master data
+        console.log('Master data query failed:', masterError)
       }
 
       // Transform database data to match expected format
