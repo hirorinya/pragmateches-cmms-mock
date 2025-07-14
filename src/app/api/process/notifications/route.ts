@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
         equipment_strategy!inner(
           strategy_name, 
           equipment_id,
-          equipment!inner(設備名, 設備タグ)
+          equipment!inner(equipment_name, equipment_tag)
         )
       `)
       .eq('status', status)

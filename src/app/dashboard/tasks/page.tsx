@@ -54,8 +54,8 @@ export default function TasksPage() {
         .from('work_order')
         .select(`
           *,
-          equipment:設備ID(設備名, 設備タグ),
-          staff:作業者ID(氏名, 部署)
+          equipment:equipment_id(equipment_name, equipment_tag),
+          staff:assigned_to(name, department)
         `)
         .order('created_at', { ascending: false })
         .limit(50)
