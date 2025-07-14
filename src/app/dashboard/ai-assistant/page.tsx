@@ -181,7 +181,7 @@ export default function AIAssistantPage() {
           formatted += `- **Name:** ${risk.equipment_name || risk.equipment_id}\n`
           formatted += `- **Type:** ${risk.equipment_type || 'Unknown'}\n`
           formatted += `- **Risk Level:** ${risk.risk_level || 'Not assessed'}\n`
-          formatted += `- **Risk Score:** ${risk.risk_score || 'N/A'}\n`
+          formatted += `- **Risk Score:** ${risk.risk_score !== null && risk.risk_score !== undefined ? risk.risk_score : 'N/A'}\n`
           
           // Show standardized scenario if available
           if (risk.risk_scenario_standardized) {
