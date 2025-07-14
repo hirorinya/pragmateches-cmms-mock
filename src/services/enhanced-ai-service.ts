@@ -2115,24 +2115,52 @@ Found ${taskStatus?.length || 0} task categories for ${department} Department${e
     try {
       console.log(`🌡️ Processing instrumentation alert for ${instrumentTag}`)
 
-      // Get instrument details and risk triggers
-      const { data: instrumentData, error: instrumentError } = await supabase
-        .from('instrumentation_status_view')
+      // Get instrument details from base table first
+      const { data: instrumentMapping, error: mappingError } = await supabase
+        .from('instrumentation_equipment_mapping')
         .select('*')
-        .eq('instrument_tag', instrumentTag)
+        .ilike('instrument_tag', instrumentTag)
 
-      if (instrumentError) {
-        console.error('Error fetching instrument data:', instrumentError)
+      if (mappingError) {
+        console.error('Error fetching instrument mapping:', mappingError)
       }
 
-      // Get affected equipment through cascade analysis
-      const { data: cascadeData, error: cascadeError } = await supabase
-        .from('equipment_cascade_view')
+      // Get risk triggers for this instrument
+      const { data: riskTriggers, error: triggerError } = await supabase
+        .from('instrument_risk_triggers')
         .select('*')
-        .or(`upstream_equipment_id.eq.${instrumentTag},downstream_equipment_id.eq.${instrumentTag}`)
+        .ilike('instrument_tag', instrumentTag)
+
+      if (triggerError) {
+        console.error('Error fetching risk triggers:', triggerError)
+      }
+
+      // Combine instrument data
+      const instrumentData = instrumentMapping?.map(mapping => ({
+        ...mapping,
+        risk_scenarios: riskTriggers?.filter(trigger => 
+          trigger.instrument_tag.toLowerCase() === mapping.instrument_tag.toLowerCase()
+        ) || []
+      })) || []
+
+      // Get affected equipment through cascade analysis
+      const equipmentId = instrumentData?.[0]?.equipment_id
+      let cascadeData = []
+      
+      if (equipmentId) {
+        const { data: cascade, error: cascadeError } = await supabase
+          .from('equipment_dependencies')
+          .select('*')
+          .or(`upstream_equipment_id.eq.${equipmentId},downstream_equipment_id.eq.${equipmentId}`)
+        
+        if (cascadeError) {
+          console.error('Error fetching cascade data:', cascadeError)
+        } else {
+          cascadeData = cascade || []
+        }
+      }
 
       // Get equipment that this instrument monitors
-      const equipmentId = instrumentData?.[0]?.equipment_id
       let affectedEquipment = []
       
       if (equipmentId) {
