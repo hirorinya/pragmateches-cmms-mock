@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // supabase is already imported
-    let updateData: any = {
+    const updateData: any = {
       reviewed_by,
       reviewed_at: new Date().toISOString(),
       review_notes

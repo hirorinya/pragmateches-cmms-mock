@@ -836,13 +836,24 @@ export class EnhancedAIService {
           for (const match of matches) {
             const extracted = pattern.extractor(match.match(regex)!)
             if (extracted) {
-              // Case-insensitive deduplication
-              const upperExtracted = extracted.toUpperCase()
-              const exists = entities[pattern.type].some(existing => 
-                existing.toUpperCase() === upperExtracted
-              )
-              if (!exists) {
-                entities[pattern.type].push(extracted.toUpperCase())
+              // Handle both string and object extractions
+              if (typeof extracted === 'string') {
+                // Case-insensitive deduplication for strings
+                const upperExtracted = extracted.toUpperCase()
+                const exists = entities[pattern.type].some(existing => 
+                  typeof existing === 'string' && existing.toUpperCase() === upperExtracted
+                )
+                if (!exists) {
+                  entities[pattern.type].push(extracted.toUpperCase())
+                }
+              } else {
+                // For objects, check for duplicates by comparing the entire object
+                const exists = entities[pattern.type].some(existing => 
+                  typeof existing === 'object' && JSON.stringify(existing) === JSON.stringify(extracted)
+                )
+                if (!exists) {
+                  entities[pattern.type].push(extracted)
+                }
               }
             }
           }
@@ -1157,7 +1168,7 @@ export class EnhancedAIService {
       }
 
       // Transform database data to expected format
-      let upcomingMaintenance = scheduleData.map(schedule => ({
+      const upcomingMaintenance = scheduleData.map(schedule => ({
         equipment_id: schedule.equipment_id,
         equipment_name: schedule.equipment?.equipment_name || 'Unknown Equipment',
         equipment_type: this.getEquipmentTypeName(schedule.equipment?.equipment_type_id) || 'Unknown Type',
@@ -1454,7 +1465,7 @@ export class EnhancedAIService {
       }
 
       // Transform database data to match expected format
-      let transformedRisks = riskData.map(risk => {
+      const transformedRisks = riskData.map(risk => {
         // Find matching scenario from master data
         const masterScenario = scenarioMasterData.find(master => master.id === risk.scenario_id)
         

@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Use historical data if available, otherwise return empty data
-        let dataPoints = historicalData || []
+        const dataPoints = historicalData || []
         
         // Log when no data is available instead of generating fake data
         if (dataPoints.length === 0) {

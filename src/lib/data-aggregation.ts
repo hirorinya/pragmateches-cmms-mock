@@ -61,17 +61,17 @@ export async function getDataSchema(categoryTypeId: number): Promise<DataSchema>
         description: '設備の基本情報（名前、場所、製造者、重要度など）'
       },
       maintenance_history: {
-        fields: ['履歴ID', '設備ID', '実施日', '作業内容', '作業結果', '使用部品', '作業時間', 'コスト', '次回推奨日'],
+        fields: ['history_id', 'equipment_id', 'maintenance_date', 'work_content', 'work_result', 'parts_used', 'work_hours', 'cost', 'next_recommended_date'],
         sample_values: ['MH001', 'EQ001', '2024-01-15', '月次定期点検', '良好', 'なし', 7.25, 15000, '2024-02-15'],
         description: '設備のメンテナンス履歴（日付、作業内容、コスト、作業時間など）'
       },
       anomaly_report: {
-        fields: ['報告ID', '設備ID', '発生日時', '異常種別', '重大度', '症状', '原因', '対処方法', '状態'],
+        fields: ['report_id', 'equipment_id', 'occurrence_datetime', 'anomaly_type', 'severity', 'symptoms', 'cause', 'countermeasure', 'status'],
         sample_values: ['AR001', 'EQ001', '2024-01-17 09:30:00', '異音', '中', '研削時に異音発生', 'ベアリング摩耗', 'ベアリング交換', '解決済'],
         description: '設備の異常・故障報告（異常種別、重大度、症状、解決状況など）'
       },
       inspection_plan: {
-        fields: ['計画ID', '設備ID', '点検項目', '最終点検日', '次回点検日', '状態'],
+        fields: ['plan_id', 'equipment_id', 'inspection_item', 'last_inspection_date', 'next_inspection_date', 'status'],
         sample_values: ['IP001', 'EQ001', '月次点検', '2024-01-15', '2024-02-15', '完了'],
         description: '設備の点検計画（点検項目、点検日程、完了状況など）'
       }
@@ -123,7 +123,7 @@ export async function askForDataRequirements(schema: DataSchema, userRequest: st
     if (userRequest.toLowerCase().includes('thickness')) {
       return {
         tables: ['thickness_measurement', 'equipment'],
-        fields: ['測定値(mm)', '検査日', '設備名'],
+        fields: ['thickness_measurement_mm', 'inspection_date', 'equipment_name'],
         aggregations: ['thickness_time_series'],
         time_grouping: 'daily',
         chart_type: 'line'
@@ -131,7 +131,7 @@ export async function askForDataRequirements(schema: DataSchema, userRequest: st
     } else if (userRequest.toLowerCase().includes('risk') || userRequest.includes('リスク')) {
       return {
         tables: ['equipment_risk_assessment', 'equipment'],
-        fields: ['影響度ランク (5段階)', '信頼性ランク (5段階)', '設備名'],
+        fields: ['impact_rank', 'reliability_rank', 'equipment_name'],
         aggregations: ['risk_matrix'],
         chart_type: 'heatmap'
       }
@@ -140,7 +140,7 @@ export async function askForDataRequirements(schema: DataSchema, userRequest: st
     // Default fallback
     return {
       tables: ['equipment', 'maintenance_history'],
-      fields: ['設備名', '実施日', 'コスト'],
+      fields: ['equipment_name', 'maintenance_date', 'cost'],
       aggregations: ['monthly_costs', 'equipment_totals'],
       time_grouping: 'monthly',
       chart_type: 'bar'
@@ -179,7 +179,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
     }
   }
 
-  const equipmentIds = equipmentData.map(eq => eq.設備ID)
+  const equipmentIds = equipmentData.map(eq => eq.equipment_id)
 
   // Fetch requested tables with smart sampling
   const requestedTables = requirements.tables || []
@@ -194,7 +194,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
       const { data, error } = await supabase
         .from(table)
         .select('*')
-        .in('設備ID', equipmentIds)
+        .in('equipment_id', equipmentIds)
         .limit(200) // Smart sampling - limit records per table
 
       if (error) {
@@ -237,27 +237,27 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
     const { data: anomalyData } = await supabase
       .from('anomaly_report')
       .select('severity, equipment_id')
-      .in('設備ID', equipmentData.map(eq => eq.設備ID))
+      .in('equipment_id', equipmentData.map(eq => eq.equipment_id))
     
     rawData.anomaly_severity = aggregateAnomalySeverity(anomalyData || [])
   }
 
   // Thickness time series
   if (requirements.aggregations.includes('thickness_time_series')) {
-    console.log('Fetching thickness data for equipment IDs:', equipmentData.map(eq => eq.設備ID))
+    console.log('Fetching thickness data for equipment IDs:', equipmentData.map(eq => eq.equipment_id))
     
     // First, check what equipment IDs exist in thickness_measurement table
     const { data: allThicknessData } = await supabase
       .from('thickness_measurement')
       .select('equipment_id')
       .limit(10)
-    console.log('Sample thickness measurement equipment IDs:', allThicknessData?.map(d => d.設備ID))
+    console.log('Sample thickness measurement equipment IDs:', allThicknessData?.map(d => d.equipment_id))
     
     const { data: thicknessData, error } = await supabase
       .from('thickness_measurement')
       .select('*')
-      .in('設備ID', equipmentData.map(eq => eq.設備ID))
-      .order('検査日', { ascending: true })
+      .in('equipment_id', equipmentData.map(eq => eq.equipment_id))
+      .order('inspection_date', { ascending: true })
     
     if (error) {
       console.error('Error fetching thickness data:', error)
@@ -278,7 +278,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
     const { data: riskData, error } = await supabase
       .from('equipment_risk_assessment')
       .select('*')
-      .in('設備ID', equipmentData.map(eq => eq.設備ID))
+      .in('equipment_id', equipmentData.map(eq => eq.equipment_id))
     
     if (error) {
       console.error('Error fetching risk data:', error)
@@ -305,7 +305,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
 function getTableDescription(tableName: string): string {
   const descriptions: { [key: string]: string } = {
     'maintenance_history': '設備のメンテナンス履歴（実施日、コスト、作業内容）',
-    'thickness_measurement': '肉厚測定データ（測定値、検査日、測定点）',
+    'thickness_measurement': 'Thickness measurement data (values, inspection dates, measurement points)',
     'equipment_risk_assessment': 'リスク評価データ（影響度、信頼性、リスクスコア）',
     'inspection_plan': '点検計画データ（点検日、状態、点検項目）',
     'anomaly_report': '異常報告データ（発生日時、重大度、症状）'
@@ -318,9 +318,9 @@ function aggregateMonthlyMaintenanceCosts(equipmentData: any[], maintenanceData:
   const monthlyData: { [key: string]: number } = {}
   
   maintenanceData.forEach(maintenance => {
-    const date = new Date(maintenance.実施日)
+    const date = new Date(maintenance.maintenance_date)
     const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
-    monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (maintenance.コスト || 0)
+    monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (maintenance.cost || 0)
   })
 
   return Object.entries(monthlyData).map(([month, cost]) => ({
@@ -332,13 +332,13 @@ function aggregateMonthlyMaintenanceCosts(equipmentData: any[], maintenanceData:
 
 function aggregateEquipmentTotals(equipmentData: any[]): any[] {
   return equipmentData.map(equipment => ({
-    設備ID: equipment.設備ID,
-    設備名: equipment.設備名,
-    重要度: equipment.重要度,
+    equipment_id: equipment.equipment_id,
+    equipment_name: equipment.equipment_name,
+    importance: equipment.importance,
     maintenance_count: equipment.maintenance_history?.length || 0,
-    total_maintenance_cost: equipment.maintenance_history?.reduce((sum: number, m: any) => sum + (m.コスト || 0), 0) || 0,
+    total_maintenance_cost: equipment.maintenance_history?.reduce((sum: number, m: any) => sum + (m.cost || 0), 0) || 0,
     avg_maintenance_cost: equipment.maintenance_history?.length > 0 
-      ? equipment.maintenance_history.reduce((sum: number, m: any) => sum + (m.コスト || 0), 0) / equipment.maintenance_history.length
+      ? equipment.maintenance_history.reduce((sum: number, m: any) => sum + (m.cost || 0), 0) / equipment.maintenance_history.length
       : 0
   }))
 }
@@ -396,13 +396,13 @@ async function aggregateTimeSeriesData(equipmentData: any[], timeGrouping: strin
 function aggregateThicknessTimeSeries(thicknessData: any[]): any[] {
   // Group thickness measurements by date, equipment, and measurement point
   const timeSeriesData = thicknessData.map(measurement => ({
-    date: measurement.検査日,
-    equipment_id: measurement.設備ID,
-    measurement_point: measurement.測定点ID,
-    series_name: `${measurement.設備ID}-${measurement.測定点ID}`,
-    thickness_value: measurement["測定値(mm)"],
-    min_thickness: measurement["最小許容肉厚(mm)"],
-    is_below_threshold: measurement["測定値(mm)"] < measurement["最小許容肉厚(mm)"]
+    date: measurement.inspection_date,
+    equipment_id: measurement.equipment_id,
+    measurement_point: measurement.measurement_point_id,
+    series_name: `${measurement.equipment_id}-${measurement.measurement_point_id}`,
+    thickness_value: measurement["thickness_measurement_mm"],
+    min_thickness: measurement["min_allowable_thickness_mm"],
+    is_below_threshold: measurement["thickness_measurement_mm"] < measurement["min_allowable_thickness_mm"]
   }))
 
   return timeSeriesData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
