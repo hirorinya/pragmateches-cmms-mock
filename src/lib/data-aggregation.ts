@@ -31,7 +31,7 @@ export async function getDataSchema(categoryTypeId: number): Promise<DataSchema>
   const { count } = await supabase
     .from('equipment')
     .select('*', { count: 'exact', head: true })
-    .eq('設備種別ID', categoryTypeId)
+    .eq('equipment_type_id', categoryTypeId)
 
   // Get date range from maintenance history
   const { data: dateRange } = await supabase
@@ -158,7 +158,7 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
   const { data: equipmentData } = await supabase
     .from('equipment')
     .select('equipment_id, equipment_name, importance_level, operational_status, equipment_type_id')
-    .eq('設備種別ID', categoryTypeId)
+    .eq('equipment_type_id', categoryTypeId)
 
   if (!equipmentData || equipmentData.length === 0) {
     console.log('No equipment found for category:', categoryTypeId)
@@ -172,8 +172,8 @@ export async function aggregateRequestedData(categoryTypeId: number, requirement
     equipment: equipmentData.slice(0, 50), // Limit equipment records
     schema: {
       equipment: {
-        columns: ['設備ID', '設備名', '重要度', '稼働状態', '設備種別ID'],
-        primary_key: '設備ID',
+        columns: ['equipment_id', 'equipment_name', 'criticality', 'operational_status', 'equipment_type_id'],
+        primary_key: 'equipment_id',
         description: 'Equipment master data'
       }
     }

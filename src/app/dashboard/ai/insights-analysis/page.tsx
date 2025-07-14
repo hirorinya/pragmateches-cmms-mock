@@ -45,7 +45,7 @@ export default function InsightsAnalysisPage() {
           anomaly_report(*),
           inspection_plan(*)
         `)
-        .eq('設備種別ID', selectedCategory_info?.typeId)
+        .eq('equipment_type_id', selectedCategory_info?.typeId)
       
       if (error) throw error
       const filteredData = equipmentData || []
