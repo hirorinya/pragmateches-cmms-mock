@@ -1633,23 +1633,23 @@ export class EnhancedAIService {
         const { data: altEquipment, error: altError } = await supabase
           .from('equipment')
           .select(`
-            equipment_id,
-            equipment_name,
-            location,
-            operational_status,
-            equipment_type_id
+            設備ID,
+            設備名,
+            設置場所,
+            稼働状態,
+            設備種別ID
           `)
-          .like('equipment_id', `${systemId.replace('SYS-', '')}%`)
-          .order('equipment_id')
+          .like('設備ID', `${systemId.replace('SYS-', '')}%`)
+          .order('設備ID')
           .limit(50)
 
         if (!altError && altEquipment && altEquipment.length > 0) {
           const formattedEquipment = altEquipment.map(eq => ({
-            equipment_id: eq.equipment_id,
-            name: eq.equipment_name,
-            type: this.getEquipmentTypeName(eq.equipment_type_id) || 'Unknown',
-            status: eq.operational_status,
-            location: eq.location
+            equipment_id: eq.設備ID,
+            name: eq.設備名,
+            type: this.getEquipmentTypeName(eq.設備種別ID) || 'Unknown',
+            status: eq.稼働状態,
+            location: eq.設置場所
           }))
           
           return {

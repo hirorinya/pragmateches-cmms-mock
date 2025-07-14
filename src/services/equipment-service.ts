@@ -301,9 +301,9 @@ export class EquipmentService {
         .select(`
           equipment_id,
           equipment(
-            equipment_name,
-            operational_status,
-            equipment_type_id
+            設備名,
+            稼働状態,
+            設備種別ID
           )
         `)
         .eq('system_id', systemId)
@@ -315,9 +315,9 @@ export class EquipmentService {
 
       return equipmentMappings.map(mapping => ({
         equipment_id: mapping.equipment_id,
-        name: mapping.equipment.equipment_name,
-        type: this.getEquipmentTypeName(mapping.equipment.equipment_type_id) || 'Unknown',
-        status: mapping.equipment.operational_status
+        name: mapping.equipment.設備名,
+        type: this.getEquipmentTypeName(mapping.equipment.設備種別ID) || 'Unknown',
+        status: mapping.equipment.稼働状態
       }))
 
     } catch (error) {
