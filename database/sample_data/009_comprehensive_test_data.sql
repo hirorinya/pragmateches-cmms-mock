@@ -6,26 +6,26 @@
 -- =============================================================================
 
 -- Add more equipment to different systems for better testing
-INSERT INTO equipment (equipment_id, equipment_name, equipment_type_id, location, operational_status, importance) VALUES
+INSERT INTO equipment (equipment_id, equipment_name, equipment_type_id, equipment_tag, location, operational_status, importance_level) VALUES
 -- SYS-002 Equipment (Pump System)
-('PU-200', 'Centrifugal Pump 200', 2, 'Pump House A', 'OPERATIONAL', 'HIGH'),
-('PU-201', 'Centrifugal Pump 201', 2, 'Pump House A', 'OPERATIONAL', 'MEDIUM'),
-('MO-200', 'Motor for PU-200', 3, 'Pump House A', 'OPERATIONAL', 'HIGH'),
-('MO-201', 'Motor for PU-201', 3, 'Pump House A', 'MAINTENANCE', 'MEDIUM'),
+('PU-200', 'Centrifugal Pump 200', 2, 'PU-200', 'Pump House A', 'OPERATIONAL', 'HIGH'),
+('PU-201', 'Centrifugal Pump 201', 2, 'PU-201', 'Pump House A', 'OPERATIONAL', 'MEDIUM'),
+('MO-200', 'Motor for PU-200', 3, 'MO-200', 'Pump House A', 'OPERATIONAL', 'HIGH'),
+('MO-201', 'Motor for PU-201', 3, 'MO-201', 'Pump House A', 'MAINTENANCE', 'MEDIUM'),
 
 -- SYS-003 Equipment (Storage System)  
-('TK-200', 'Storage Tank 200', 4, 'Tank Farm B', 'OPERATIONAL', 'CRITICAL'),
-('TK-201', 'Storage Tank 201', 4, 'Tank Farm B', 'OPERATIONAL', 'HIGH'),
-('VL-200', 'Control Valve 200', 5, 'Tank Farm B', 'OPERATIONAL', 'MEDIUM'),
-('VL-201', 'Control Valve 201', 5, 'Tank Farm B', 'STOPPED', 'MEDIUM'),
+('TK-200', 'Storage Tank 200', 4, 'TK-200', 'Tank Farm B', 'OPERATIONAL', 'CRITICAL'),
+('TK-201', 'Storage Tank 201', 4, 'TK-201', 'Tank Farm B', 'OPERATIONAL', 'HIGH'),
+('VL-200', 'Control Valve 200', 5, 'VL-200', 'Tank Farm B', 'OPERATIONAL', 'MEDIUM'),
+('VL-201', 'Control Valve 201', 5, 'VL-201', 'Tank Farm B', 'STOPPED', 'MEDIUM'),
 
 -- SYS-004 Equipment (Heat Exchange System)
-('HX-200', 'Shell & Tube HX 200', 1, 'Process Area C', 'OPERATIONAL', 'HIGH'),
-('HX-201', 'Plate Heat Exchanger 201', 1, 'Process Area C', 'OPERATIONAL', 'MEDIUM'),
+('HX-200', 'Shell & Tube HX 200', 1, 'HX-200', 'Process Area C', 'OPERATIONAL', 'HIGH'),
+('HX-201', 'Plate Heat Exchanger 201', 1, 'HX-201', 'Process Area C', 'OPERATIONAL', 'MEDIUM'),
 
 -- SYS-005 Equipment (Utility System)
-('CP-100', 'Air Compressor 100', 6, 'Utility Building', 'OPERATIONAL', 'HIGH'),
-('CO-100', 'Cooling Tower 100', 7, 'Outside Area', 'OPERATIONAL', 'MEDIUM')
+('CP-100', 'Air Compressor 100', 6, 'CP-100', 'Utility Building', 'OPERATIONAL', 'HIGH'),
+('CO-100', 'Cooling Tower 100', 7, 'CO-100', 'Outside Area', 'OPERATIONAL', 'MEDIUM')
 ON CONFLICT (equipment_id) DO NOTHING;
 
 -- =============================================================================

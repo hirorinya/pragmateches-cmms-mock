@@ -6,6 +6,7 @@
 -- =============================================================================
 
 -- Add remaining equipment with correct column structure
+-- Note: PU-200, PU-201, TK-200, TK-201, HX-200, CP-100 already exist from previous SQL runs
 INSERT INTO equipment (equipment_id, equipment_name, equipment_type_id, equipment_tag, location, operational_status, importance_level) VALUES
 ('MO-200', 'Motor for PU-200', 3, 'MO-200', 'Pump House A', 'OPERATIONAL', 'HIGH'),
 ('MO-201', 'Motor for PU-201', 3, 'MO-201', 'Pump House A', 'MAINTENANCE', 'MEDIUM'),
