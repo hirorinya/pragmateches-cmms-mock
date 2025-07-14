@@ -106,37 +106,6 @@ export default function AIAssistantPage() {
 
     let formatted = `## ${parsedResponse.summary}\n\n`
 
-    // Add enhanced metadata section for transparency
-    if (parsedResponse.intent || parsedResponse.confidence) {
-      formatted += `### 📋 Query Analysis\n`
-      formatted += `- **Intent:** ${parsedResponse.intent || 'Unknown'}\n`
-      formatted += `- **Confidence:** ${Math.round((parsedResponse.confidence || 0) * 100)}%\n`
-      if (parsedResponse.source) {
-        const sourceEmoji = parsedResponse.source === 'openai' ? '🤖' : 
-                           parsedResponse.source === 'enhanced_ai' ? '🧠' : '💾'
-        formatted += `- **Source:** ${sourceEmoji} ${parsedResponse.source.replace('_', ' ').toUpperCase()}\n`
-      }
-      if (parsedResponse.execution_time) {
-        formatted += `- **Processing Time:** ${parsedResponse.execution_time}ms\n`
-      }
-      
-      // Add context information if available
-      if (parsedResponse.context) {
-        const ctx = parsedResponse.context
-        if (ctx.urgency && ctx.urgency !== 'low') {
-          formatted += `- **Urgency:** ${ctx.urgency.toUpperCase()}\n`
-        }
-        if (ctx.hasEquipment) {
-          formatted += `- **Equipment Query:** Yes\n`
-        }
-        if (ctx.hasTimeframe) {
-          formatted += `- **Time-based Query:** Yes\n`
-        }
-      }
-      
-      formatted += '\n'
-    }
-
     if (parsedResponse.results && (Array.isArray(parsedResponse.results) ? parsedResponse.results.length > 0 : Object.keys(parsedResponse.results).length > 0)) {
       formatted += `### 📊 Analysis Results\n\n`
       
@@ -436,19 +405,6 @@ export default function AIAssistantPage() {
                               <span>{message.timestamp.toLocaleTimeString()}</span>
                             </div>
                             
-                            {message.type === 'assistant' && message.confidence && (
-                              <div className="flex items-center space-x-2">
-                                <span>Confidence: {Math.round(message.confidence * 100)}%</span>
-                                {message.executionTime && (
-                                  <span>({message.executionTime}ms)</span>
-                                )}
-                                {message.source && (
-                                  <Badge variant={message.source === 'openai' ? 'default' : 'secondary'} className="text-xs">
-                                    {message.source === 'openai' ? '🤖 OpenAI' : '🗄️ Database'}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
