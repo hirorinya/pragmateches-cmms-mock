@@ -1574,28 +1574,44 @@ export class EnhancedAIService {
         }
       })
 
-      // Filter by system if specified (would need proper system mapping in database)
+      // Filter by system if specified - get actual system equipment mapping
       let filteredStrategies = equipmentStrategies
       const systemMatch = query.match(/SYS-\d{3}/i)
       if (systemMatch) {
         const systemId = systemMatch[0].toUpperCase()
-        // Filter by equipment ID patterns that typically belong to systems
-        if (systemId === 'SYS-001') {
+        console.log(`🔍 Filtering by system: ${systemId}`)
+        
+        // Get actual system equipment mapping from database
+        const { data: systemEquipment } = await supabase
+          .from('equipment_system_mapping')
+          .select('equipment_id')
+          .eq('system_id', systemId)
+        
+        if (systemEquipment && systemEquipment.length > 0) {
+          const systemEquipmentIds = systemEquipment.map(se => se.equipment_id)
+          console.log(`🔍 ${systemId} equipment IDs:`, systemEquipmentIds)
           filteredStrategies = equipmentStrategies.filter(s => 
-            s.equipment_id.startsWith('HX-') || s.equipment_id.startsWith('PU-'))
+            systemEquipmentIds.includes(s.equipment_id))
+          console.log(`🔍 Filtered strategies: ${filteredStrategies.length}`)
+        } else {
+          console.log(`⚠️ No equipment found for ${systemId}, showing all strategies`)
         }
       }
 
       // Filter by high risk if mentioned
       if (query.toLowerCase().includes('high risk')) {
-        filteredStrategies = filteredStrategies.filter(s => s.risk_level === 'HIGH')
+        const highRiskStrategies = filteredStrategies.filter(s => s.risk_level === 'HIGH')
+        console.log(`🔍 High risk filter: ${highRiskStrategies.length} of ${filteredStrategies.length} strategies`)
+        filteredStrategies = highRiskStrategies
       }
 
       // Filter by fouling if mentioned
       if (query.toLowerCase().includes('fouling')) {
-        filteredStrategies = filteredStrategies.filter(s => 
+        const foulingStrategies = filteredStrategies.filter(s => 
           s.risk_factors?.toLowerCase().includes('fouling') || 
           s.risk_factors?.toLowerCase().includes('ファウリング'))
+        console.log(`🔍 Fouling filter: ${foulingStrategies.length} of ${filteredStrategies.length} strategies`)
+        filteredStrategies = foulingStrategies
       }
 
       // Filter by frequency if mentioned
