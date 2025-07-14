@@ -258,6 +258,27 @@ export class EnhancedAIService {
         ]
       },
       
+      // Equipment Strategy & Coverage Analysis (High Priority - Before Risk Assessment)
+      {
+        intent: 'EQUIPMENT_STRATEGY',
+        patterns: [
+          'equipment strategy', 'reflected in the equipment strategy', 'all of them fully reflected',
+          'are all of them reflected', 'fully reflected in the equipment strategy',
+          'reflected in equipment strategy', 'strategy coverage', 'strategy alignment',
+          'coverage gap', 'gap analysis', 'strategy gap', 'missing strategies',
+          'maintenance strategy coverage', 'strategy review', 'strategy completeness',
+          '設備戦略', '戦略', 'メンテナンス戦略', '反映', 'カバレッジ'
+        ],
+        confidence: 0.98,
+        handler: 'handleEquipmentStrategy',
+        examples: [
+          'Are all of them fully reflected in the Equipment Strategy?',
+          'The equipment carries a very high risk - are all reflected in Equipment Strategy?',
+          'Show equipment strategy coverage',
+          'Review maintenance strategies for critical equipment'
+        ]
+      },
+
       // Risk Assessment
       {
         intent: 'RISK_ASSESSMENT',
@@ -274,27 +295,6 @@ export class EnhancedAIService {
           'Show me safety concerns',
           'Critical equipment assessment',
           'Which equipment have high risk of fouling?'
-        ]
-      },
-
-      // Equipment Strategy & Coverage Analysis
-      {
-        intent: 'EQUIPMENT_STRATEGY',
-        patterns: [
-          'equipment strategy', 'strategy', 'maintenance strategy', 'reflected',
-          'fully reflected', 'accurately reflected', 'are all of them reflected',
-          'strategy coverage', 'strategy alignment', 'strategy review',
-          'coverage gap', 'gap analysis', 'strategy gap', 'missing strategies',
-          'carries a very high risk', 'all of them fully reflected', 'equipment strategy',
-          '設備戦略', '戦略', 'メンテナンス戦略', '反映', 'カバレッジ'
-        ],
-        confidence: 0.95,
-        handler: 'handleEquipmentStrategy',
-        examples: [
-          'Are high-risk equipment reflected in Equipment Strategy?',
-          'Show equipment strategy coverage',
-          'The equipment carries a very high risk - are all reflected in Equipment Strategy?',
-          'Review maintenance strategies for critical equipment'
         ]
       },
       
