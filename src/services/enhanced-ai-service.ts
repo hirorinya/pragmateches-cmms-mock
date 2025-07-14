@@ -2192,7 +2192,7 @@ Found ${taskStatus?.length || 0} task categories for ${department} Department${e
         .eq('equipment_id', equipmentId)
 
       const instrument = instrumentData?.[0]
-      const triggerScenarios = instrumentData?.filter(item => item.triggered_risk_scenario) || []
+      const triggerScenarios = riskTriggers || []
 
       return {
         query,
@@ -2218,7 +2218,7 @@ Found ${taskStatus?.length || 0} task categories for ${department} Department${e
 🚨 **Alert Details:**
 - Instrument: ${instrumentTag} (${instrument?.measurement_type || 'Unknown type'})
 - Location: ${instrument?.measurement_location || 'Unknown location'}
-- Equipment: ${affectedEquipment[0]?.設備名 || 'Unknown'} (${equipmentId || 'N/A'})
+- Equipment: ${affectedEquipment[0]?.equipment_name || 'Unknown'} (${equipmentId || 'N/A'})
 
 ⚠️ **Triggered Risk Scenarios:** ${triggerScenarios.length}
 ${triggerScenarios.map(t => `- ${t.triggered_risk_scenario} (${t.severity_level} severity, ${t.response_time_minutes}min response time)`).join('\n')}
