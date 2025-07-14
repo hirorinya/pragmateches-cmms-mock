@@ -1643,8 +1643,27 @@ export class EnhancedAIService {
           s.frequency_type.toLowerCase() === 'yearly')
       }
 
+      let systemEquipmentInfo = ''
+      const systemMatch = query.match(/SYS-\d{3}/i)
+      if (filteredStrategies.length === 0 && systemMatch) {
+        const systemId = systemMatch[0].toUpperCase()
+        try {
+          const { data: systemEquipment } = await supabase
+            .from('equipment_system_mapping')
+            .select('equipment_id, equipment!inner(equipment_name)')
+            .eq('system_id', systemId)
+          
+          if (systemEquipment && systemEquipment.length > 0) {
+            const equipmentList = systemEquipment.map(se => `${se.equipment_id} (${se.equipment?.equipment_name || 'Unknown'})`).join(', ')
+            systemEquipmentInfo = `\n\n**⚠️ COVERAGE GAP IDENTIFIED:**\n${systemId} contains ${systemEquipment.length} equipment: ${equipmentList}\n\n**❌ NONE of these equipment have maintenance strategies!**`
+          }
+        } catch (error) {
+          console.error('Error checking system equipment:', error)
+        }
+      }
+
       const summary = `Equipment Strategy Analysis (Real Database Data):\n\n` +
-        `Found ${filteredStrategies.length} equipment strategies:\n\n` +
+        `Found ${filteredStrategies.length} equipment strategies:${systemEquipmentInfo}\n\n` +
         filteredStrategies.map((strategy, index) => 
           `${index + 1}. ${strategy.equipment_name} (${strategy.equipment_id})\n` +
           `   Equipment Type: ${strategy.equipment_type}\n` +
@@ -1671,8 +1690,10 @@ export class EnhancedAIService {
         recommendations.push('Review strategy effectiveness regularly')
         recommendations.push('Consider predictive maintenance for critical equipment')
       } else {
-        recommendations.push('No equipment strategies found matching your criteria')
-        recommendations.push('Consider creating maintenance strategies for high-risk equipment')
+        recommendations.push('**CRITICAL:** No equipment strategies found - this indicates a maintenance coverage gap')
+        recommendations.push('All equipment should have preventive maintenance strategies')
+        recommendations.push('High-risk equipment requires immediate strategy development')
+        recommendations.push('Consider conducting maintenance strategy review for the entire system')
       }
 
       return {
