@@ -212,7 +212,7 @@ export class EquipmentService {
       // Get all systems
       const { data: systems, error: systemsError } = await supabase
         .from('equipment_systems')
-        .select('system_id, system_name, criticality')
+        .select('system_id, system_name')
         .order('system_id')
 
       if (systemsError) {
@@ -249,7 +249,7 @@ export class EquipmentService {
           return {
             system_id: system.system_id,
             name: system.system_name,
-            criticality: system.criticality,
+            criticality: 'MEDIUM', // Default value since column doesn't exist
             equipment_count: count || 0
           }
         })
