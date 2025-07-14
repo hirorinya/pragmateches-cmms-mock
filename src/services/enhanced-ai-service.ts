@@ -1203,9 +1203,9 @@ export class EnhancedAIService {
           risk_level,
           risk_score,
           risk_factor,
-          impact_level,
-          probability,
-          mitigation_strategy,
+          impact_rank,
+          reliability_rank,
+          mitigation_measures,
           equipment!inner(equipment_name, equipment_type_id)
         `)
         .order('risk_score', { ascending: false })
@@ -1351,8 +1351,8 @@ export class EnhancedAIService {
       // Also get risk assessment data to correlate strategies with risks
       const { data: riskData } = await supabase
         .from('equipment_risk_assessment')
-        .select('設備ID, リスクレベル, リスク要因')
-        .in('設備ID', equipmentStrategies.map(s => s.equipment_id))
+        .select('equipment_id, risk_level, risk_factor')
+        .in('equipment_id', equipmentStrategies.map(s => s.equipment_id))
 
       // Enhance strategy data with risk information
       equipmentStrategies = equipmentStrategies.map(strategy => {

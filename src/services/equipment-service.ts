@@ -96,9 +96,9 @@ export class EquipmentService {
       // Get risk assessment
       const { data: riskAssessment } = await supabase
         .from('equipment_risk_assessment')
-        .select('リスクレベル, リスクスコア')
-        .eq('設備ID', equipmentId)
-        .order('リスクスコア', { ascending: false })
+        .select('risk_level, risk_score')
+        .eq('equipment_id', equipmentId)
+        .order('risk_score', { ascending: false })
         .limit(1)
         .single()
 

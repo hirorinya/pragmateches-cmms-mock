@@ -210,8 +210,8 @@ export class AIDatabaseService {
     // Get equipment from legacy risk assessment table as fallback
     const { data: legacyEquipment, error: legacyError } = await this.supabase
       .from('equipment_risk_assessment')
-      .select('機器ID, リスクシナリオ')
-      .not('機器ID', 'is', null)
+      .select('equipment_id, risk_scenario')
+      .not('equipment_id', 'is', null)
     
     if (legacyError) {
       console.warn(`[Coverage Analysis] Legacy equipment fetch warning:`, legacyError.message);
@@ -244,15 +244,15 @@ export class AIDatabaseService {
       ...(equipmentData || []),
       // Add legacy equipment if not already included
       ...(legacyEquipment || []).filter(legacy => 
-        !(equipmentData || []).some(eq => DatabaseBridge.getEquipmentId(eq) === legacy.機器ID)
+        !(equipmentData || []).some(eq => DatabaseBridge.getEquipmentId(eq) === legacy.equipment_id)
       ).map(legacy => ({
-        equipment_id: legacy.機器ID,
+        equipment_id: legacy.equipment_id,
         role_in_system: 'PRIMARY',
         equipment: {
-          設備名: legacy.機器ID,
-          設備タグ: legacy.機器ID,
+          設備名: legacy.equipment_id,
+          設備タグ: legacy.equipment_id,
           equipment_type_master: {
-            設備種別名: legacy.機器ID.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
+            設備種別名: legacy.equipment_id.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
           }
         }
       }))
@@ -278,8 +278,8 @@ export class AIDatabaseService {
       
       // Check legacy risk assessment
       const hasLegacyRisk = (legacyEquipment || []).some(legacy => 
-        legacy.機器ID === DatabaseBridge.getEquipmentId(eq) &&
-        legacy.リスクシナリオ?.toLowerCase().includes(riskType.toLowerCase())
+        legacy.equipment_id === DatabaseBridge.getEquipmentId(eq) &&
+        legacy.risk_scenario?.toLowerCase().includes(riskType.toLowerCase())
       )
       
       return hasFailureMode || hasLegacyRisk
@@ -292,8 +292,8 @@ export class AIDatabaseService {
       )
       
       const hasLegacyRisk = (legacyEquipment || []).some(legacy => 
-        legacy.機器ID === DatabaseBridge.getEquipmentId(eq) &&
-        legacy.リスクシナリオ?.toLowerCase().includes(riskType.toLowerCase())
+        legacy.equipment_id === DatabaseBridge.getEquipmentId(eq) &&
+        legacy.risk_scenario?.toLowerCase().includes(riskType.toLowerCase())
       )
       
       return !hasFailureMode && !hasLegacyRisk
@@ -377,20 +377,20 @@ export class AIDatabaseService {
     if (equipmentError && !equipmentFound) {
       const { data: legacyEquipment, error: legacyError } = await this.supabase
         .from('equipment_risk_assessment')
-        .select('機器ID, リスクシナリオ, 緩和策')
-        .eq('機器ID', equipmentId)
+        .select('equipment_id, risk_scenario, mitigation_measures')
+        .eq('equipment_id', equipmentId)
         .single()
 
       if (legacyEquipment) {
         equipmentFound = true
         equipmentData = {
-          設備ID: legacyEquipment.機器ID,
-          設備名: legacyEquipment.機器ID,
+          設備ID: legacyEquipment.equipment_id,
+          設備名: legacyEquipment.equipment_id,
           設備種別ID: null,
           設置場所: 'Unknown',
           稼働状態: 'Unknown',
           equipment_type_master: {
-            設備種別名: legacyEquipment.機器ID.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
+            設備種別名: legacyEquipment.equipment_id.includes('HX-') ? 'Heat Exchanger' : 'Unknown'
           }
         }
       }
@@ -469,8 +469,8 @@ export class AIDatabaseService {
     // Get legacy mitigation data
     const { data: legacyMitigation, error: legacyMitigationError } = await this.supabase
       .from('equipment_risk_assessment')
-      .select('緩和策, リスクレベル（5段階）')
-      .eq('機器ID', equipmentId)
+      .select('mitigation_measures, risk_level')
+      .eq('equipment_id', equipmentId)
     
     if (legacyMitigationError) {
       console.warn(`[Mitigation Status] Legacy mitigation fetch warning:`, legacyMitigationError?.message);

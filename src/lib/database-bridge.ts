@@ -18,7 +18,7 @@ export interface Equipment {
   manufacturer?: string
   model?: string
   installation_date?: string
-  operating_status?: string
+  operational_status?: string
   importance?: string
   created_at?: string
   updated_at?: string
@@ -178,7 +178,7 @@ export function bridgeEquipment(raw: EquipmentRaw): Equipment {
     manufacturer: raw.製造者,
     model: raw.型式,
     installation_date: raw.設置年月日,
-    operating_status: raw.稼働状態,
+    operational_status: raw.稼働状態,
     importance: raw.重要度,
     created_at: raw.created_at,
     updated_at: raw.updated_at
@@ -291,7 +291,7 @@ export function createEquipmentSummary(equipmentData: any): Equipment {
     manufacturer: equipmentData.manufacturer || equipmentData.製造者,
     model: equipmentData.model || equipmentData.型式,
     installation_date: equipmentData.installation_date || equipmentData.設置年月日,
-    operating_status: equipmentData.operating_status || equipmentData.稼働状態,
+    operational_status: equipmentData.operational_status || equipmentData.稼働状態,
     importance: equipmentData.importance || equipmentData.重要度,
     created_at: equipmentData.created_at,
     updated_at: equipmentData.updated_at

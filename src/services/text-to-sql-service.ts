@@ -328,14 +328,14 @@ Please respond with:
     
     if (equipmentEntity) {
       // Equipment-specific query
-      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, etm.equipment_type_name
+      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status, etm.equipment_type_name
 FROM equipment e
 LEFT JOIN equipment_type_master etm ON e.equipment_type_id = etm.equipment_type_id
 WHERE e.equipment_id = '${equipmentEntity.resolved}'`
       reasoning = `Generated template query for specific equipment: ${equipmentEntity.resolved}`
     } else if (typeEntity) {
       // Equipment type query
-      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, etm.equipment_type_name
+      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status, etm.equipment_type_name
 FROM equipment e
 JOIN equipment_type_master etm ON e.equipment_type_id = etm.equipment_type_id
 WHERE etm.equipment_type_name LIKE '%${typeEntity.resolved}%'
@@ -344,7 +344,7 @@ LIMIT 50`
       reasoning = `Generated template query for equipment type: ${typeEntity.resolved}`
     } else {
       // Generic equipment list
-      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, etm.equipment_type_name
+      sql = `SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status, etm.equipment_type_name
 FROM equipment e
 LEFT JOIN equipment_type_master etm ON e.equipment_type_id = etm.equipment_type_id
 ORDER BY e.equipment_id
@@ -592,9 +592,9 @@ LIMIT 20`
           risk_level,
           risk_score,
           risk_factor,
-          impact_level,
-          probability,
-          mitigation_strategy,
+          impact_rank,
+          reliability_rank,
+          mitigation_measures,
           equipment!inner(equipment_name, equipment_type_id)
         `)
         .order('risk_score', { ascending: false })
@@ -602,12 +602,12 @@ LIMIT 20`
 
       // Filter by equipment
       if (equipmentEntity) {
-        query = query.eq('設備ID', equipmentEntity.resolved)
+        query = query.eq('equipment_id', equipmentEntity.resolved)
       }
       
       // Filter by system
       if (systemEntity && !equipmentEntity) {
-        query = query.like('設備ID', `${systemEntity.resolved}%`)
+        query = query.like('equipment_id', `${systemEntity.resolved}%`)
       }
 
       const { data, error } = await query

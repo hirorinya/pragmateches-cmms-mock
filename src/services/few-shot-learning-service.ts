@@ -113,11 +113,11 @@ ORDER BY 最新メンテナンス日 DESC`,
       // Risk Analysis Queries
       {
         natural_language: "Show me high-risk equipment",
-        sql: `SELECT era.設備ID, e.設備名, era.故障モード, era.リスクスコア, era.影響度ランク
+        sql: `SELECT era.equipment_id, e.equipment_name, era.risk_scenario, era.risk_score, era.impact_rank
 FROM equipment_risk_assessment era
-JOIN equipment e ON era.設備ID = e.設備ID
-WHERE era.リスクスコア > 100
-ORDER BY era.リスクスコア DESC`,
+JOIN equipment e ON era.equipment_id = e.equipment_id
+WHERE era.risk_score > 100
+ORDER BY era.risk_score DESC`,
         explanation: "Risk-based filtering with threshold and ranking",
         tables_used: ['equipment_risk_assessment', 'equipment'],
         complexity_level: 'intermediate',
@@ -126,11 +126,11 @@ ORDER BY era.リスクスコア DESC`,
       },
       {
         natural_language: "What are the risk factors for equipment HX-101?",
-        sql: `SELECT era.故障モード, era.リスクスコア, era.影響度ランク, era.信頼性ランク, 
-       era.検出性ランク, era.対策内容
+        sql: `SELECT era.risk_scenario, era.risk_score, era.impact_rank, era.reliability_rank, 
+       era.detection_rank, era.countermeasure_details
 FROM equipment_risk_assessment era
-WHERE era.設備ID = 'HX-101'
-ORDER BY era.リスクスコア DESC`,
+WHERE era.equipment_id = 'HX-101'
+ORDER BY era.risk_score DESC`,
         explanation: "Comprehensive risk assessment for specific equipment",
         tables_used: ['equipment_risk_assessment'],
         complexity_level: 'basic',
@@ -139,11 +139,11 @@ ORDER BY era.リスクスコア DESC`,
       },
       {
         natural_language: "Which equipment has corrosion risk?",
-        sql: `SELECT era.設備ID, e.設備名, era.リスクスコア, era.影響度ランク
+        sql: `SELECT era.equipment_id, e.equipment_name, era.risk_score, era.impact_rank
 FROM equipment_risk_assessment era
-JOIN equipment e ON era.設備ID = e.設備ID
-WHERE era.故障モード LIKE '%腐食%' OR era.故障モード LIKE '%Corrosion%'
-ORDER BY era.リスクスコア DESC`,
+JOIN equipment e ON era.equipment_id = e.equipment_id
+WHERE era.risk_scenario LIKE '%腐食%' OR era.risk_scenario LIKE '%Corrosion%'
+ORDER BY era.risk_score DESC`,
         explanation: "Failure mode specific risk analysis using pattern matching",
         tables_used: ['equipment_risk_assessment', 'equipment'],
         complexity_level: 'intermediate',
@@ -183,20 +183,20 @@ ORDER BY 余裕率 ASC`,
       // Complex Multi-Table Queries
       {
         natural_language: "Show me equipment with both high risk and recent maintenance",
-        sql: `SELECT e.設備ID, e.設備名, 
-       era.リスクスコア, era.故障モード,
-       mh.実施日 as 最新メンテナンス日, mh.作業内容
+        sql: `SELECT e.equipment_id, e.equipment_name, 
+       era.risk_score, era.risk_scenario,
+       mh.implementation_date as 最新メンテナンス日, mh.work_content
 FROM equipment e
-JOIN equipment_risk_assessment era ON e.設備ID = era.設備ID
-JOIN maintenance_history mh ON e.設備ID = mh.設備ID
-WHERE era.リスクスコア > 100 
-  AND mh.実施日 >= CURRENT_DATE - INTERVAL '90 days'
-  AND mh.実施日 = (
-    SELECT MAX(mh2.実施日) 
+JOIN equipment_risk_assessment era ON e.equipment_id = era.equipment_id
+JOIN maintenance_history mh ON e.equipment_id = mh.equipment_id
+WHERE era.risk_score > 100 
+  AND mh.implementation_date >= CURRENT_DATE - INTERVAL '90 days'
+  AND mh.implementation_date = (
+    SELECT MAX(mh2.implementation_date) 
     FROM maintenance_history mh2 
-    WHERE mh2.設備ID = e.設備ID
+    WHERE mh2.equipment_id = e.equipment_id
   )
-ORDER BY era.リスクスコア DESC`,
+ORDER BY era.risk_score DESC`,
         explanation: "Multi-table query with risk and maintenance correlation using subquery",
         tables_used: ['equipment', 'equipment_risk_assessment', 'maintenance_history'],
         complexity_level: 'advanced',
@@ -227,7 +227,7 @@ ORDER BY 月 DESC`,
       // System-based Queries
       {
         natural_language: "Show me all equipment in the cooling system",
-        sql: `SELECT e.equipment_id, e.equipment_name, e.location, e.operating_status, e.equipment_type_id
+        sql: `SELECT e.equipment_id, e.equipment_name, e.location, e.operational_status, e.equipment_type_id
 FROM equipment e
 -- Equipment type info included in equipment table
 WHERE e.equipment_id LIKE 'HX-%' OR e.equipment_id LIKE 'PU-%'
