@@ -610,6 +610,20 @@ export class EnhancedAIService {
   private shouldUseTextToSQL(query: string): boolean {
     const queryLower = query.toLowerCase()
     
+    // Prioritize enhanced AI for department-specific queries
+    const departmentPatterns = [
+      /\b(implementation status|department responsibility|refining department)\b/i,
+      /\b(maintenance department|task status|department tasks)\b/i,
+      /\b(pump operations department|tank operations department|utilities department)\b/i,
+      /\b(department has the highest|completion rate|department performance)\b/i,
+      /\b部署の責任|実装状況|精製部門|保全部門|タスク状況\b/i
+    ]
+    
+    if (departmentPatterns.some(pattern => pattern.test(query))) {
+      console.log('🏢 Enhanced AI: Department-specific query detected');
+      return false
+    }
+    
     // Force text-to-SQL for certain queries to ensure OpenAI is used
     const forceTextToSQLPatterns = [
       /\b(list|show|display|find)\s+(equipment|machines?|assets?)\s+(belongs?|in|for|of)\s+(sys|system)/i,
