@@ -1598,20 +1598,21 @@ export class EnhancedAIService {
         }
       }
 
-      // Filter by high risk if mentioned
-      if (query.toLowerCase().includes('high risk')) {
-        const highRiskStrategies = filteredStrategies.filter(s => s.risk_level === 'HIGH')
-        console.log(`🔍 High risk filter: ${highRiskStrategies.length} of ${filteredStrategies.length} strategies`)
-        filteredStrategies = highRiskStrategies
-      }
-
-      // Filter by fouling if mentioned
-      if (query.toLowerCase().includes('fouling')) {
-        const foulingStrategies = filteredStrategies.filter(s => 
-          s.risk_factors?.toLowerCase().includes('fouling') || 
-          s.risk_factors?.toLowerCase().includes('ファウリング'))
-        console.log(`🔍 Fouling filter: ${foulingStrategies.length} of ${filteredStrategies.length} strategies`)
-        filteredStrategies = foulingStrategies
+      // For coverage analysis queries, show all strategies but highlight risk-specific ones
+      const isHighRiskQuery = query.toLowerCase().includes('high risk')
+      const isFoulingQuery = query.toLowerCase().includes('fouling')
+      
+      if (isHighRiskQuery || isFoulingQuery) {
+        console.log(`🔍 Risk-specific query detected (high risk: ${isHighRiskQuery}, fouling: ${isFoulingQuery})`)
+        console.log(`🔍 Showing all ${filteredStrategies.length} strategies with risk highlighting`)
+        
+        // Mark strategies that match the risk criteria instead of filtering them out
+        filteredStrategies = filteredStrategies.map(strategy => ({
+          ...strategy,
+          risk_match: (isHighRiskQuery && strategy.risk_level === 'HIGH') ||
+                     (isFoulingQuery && (strategy.risk_factors?.toLowerCase().includes('fouling') || 
+                                       strategy.risk_factors?.toLowerCase().includes('ファウリング')))
+        }))
       }
 
       // Filter by frequency if mentioned
