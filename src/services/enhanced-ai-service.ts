@@ -1202,6 +1202,7 @@ export class EnhancedAIService {
           equipment_id,
           risk_level,
           risk_score,
+          risk_scenario,
           risk_factor,
           impact_rank,
           reliability_rank,
@@ -1223,10 +1224,14 @@ export class EnhancedAIService {
         equipment_type: this.getEquipmentTypeName(risk.equipment?.equipment_type_id) || 'Unknown Type',
         risk_level: risk.risk_level,
         risk_score: risk.risk_score,
+        risk_scenario: risk.risk_scenario,
+        risk_factor: risk.risk_factor,
         risk_factors: risk.risk_factor,
-        impact: risk.impact_level,
-        likelihood: risk.probability,
-        mitigation: risk.mitigation_strategy
+        impact_rank: risk.impact_rank,
+        reliability_rank: risk.reliability_rank,
+        mitigation_measures: risk.mitigation_measures,
+        impact: risk.impact_rank,
+        mitigation: risk.mitigation_measures
       }))
 
       // Filter based on query
@@ -1253,15 +1258,22 @@ export class EnhancedAIService {
         }
       }
 
+      // Count unique risk scenarios
+      const uniqueScenarios = [...new Set(filteredRisks.map(r => r.risk_scenario).filter(Boolean))]
+      const scenarioCount = uniqueScenarios.length > 0 
+        ? `\n\nUnique Risk Scenarios (${uniqueScenarios.length}): ${uniqueScenarios.join(', ')}`
+        : ''
+
       const summary = `Risk Assessment Analysis (Real Database Data):\n\n` +
-        `Found ${filteredRisks.length} risk assessment${filteredRisks.length === 1 ? '' : 's'}:\n\n` +
+        `Found ${filteredRisks.length} risk assessment${filteredRisks.length === 1 ? '' : 's'}${scenarioCount}:\n\n` +
         filteredRisks.slice(0, 10).map((risk, index) => 
           `${index + 1}. ${risk.equipment_name} (${risk.equipment_id})\n` +
           `   Equipment Type: ${risk.equipment_type}\n` +
-          `   Risk Level: ${risk.risk_level} (Score: ${risk.risk_score}/10)\n` +
-          `   Risk Factors: ${risk.risk_factors}\n` +
-          `   Impact: ${risk.impact}\n` +
-          `   Mitigation: ${risk.mitigation}\n`
+          `   Risk Level: ${risk.risk_level} (Score: ${risk.risk_score})\n` +
+          `   Risk Scenario: ${risk.risk_scenario || 'Not specified'}\n` +
+          `   Risk Factors: ${risk.risk_factors || 'Not specified'}\n` +
+          `   Impact Rank: ${risk.impact_rank || 'Not assessed'}\n` +
+          `   Mitigation: ${risk.mitigation_measures || 'No measures defined'}\n`
         ).join('\n')
 
       const recommendations = []
