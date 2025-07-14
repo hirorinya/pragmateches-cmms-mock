@@ -123,9 +123,7 @@ INSERT INTO instrument_risk_triggers (instrument_tag, deviation_type, triggered_
 ('TI-202', 'HIGH_TEMPERATURE', 'Pump bearing overheat', 75.0, 'HIGH', 20),
 ('TI-200', 'HIGH_TEMPERATURE', 'Motor overheat', 90.0, 'CRITICAL', 5),
 ('FI-200', 'LOW_FLOW', 'Flow blockage', 400.0, 'MEDIUM', 30),
--- Tank system triggers
-('LI-200', 'HIGH_LEVEL', 'Tank overflow', 85.0, 'CRITICAL', 5),
-('LI-200', 'LOW_LEVEL', 'Pump dry run', 15.0, 'HIGH', 10),
+-- Tank system triggers (level triggers removed due to constraint)
 ('PI-300', 'HIGH_PRESSURE', 'Tank rupture risk', 2.5, 'CRITICAL', 2),
 ('TI-300', 'HIGH_TEMPERATURE', 'Excessive evaporation', 70.0, 'MEDIUM', 60),
 -- Heat exchanger triggers
@@ -215,6 +213,10 @@ FROM department_task_status
 WHERE department_id IN ('PUMP-OPS', 'TANK-OPS', 'UTILS', 'PLANNING')
 ORDER BY metric;
 
+-- Note: Level-based triggers (HIGH_LEVEL, LOW_LEVEL) are not supported by the current 
+-- deviation_type constraint. Only temperature, pressure, and flow deviations are allowed.
+-- Level instruments (LI-200, LI-201) are still mapped but without automated risk triggers.
+
 -- Test queries to verify cascade analysis works
 SELECT 'Test: What happens if PI-200 shows high pressure?' as test_query;
 SELECT 
@@ -230,3 +232,19 @@ JOIN instrumentation_equipment_mapping iem ON irt.instrument_tag = iem.instrumen
 LEFT JOIN equipment_dependencies ed ON iem.equipment_id = ed.upstream_equipment_id
 WHERE irt.instrument_tag = 'PI-200' 
 AND irt.deviation_type = 'HIGH_PRESSURE';
+
+-- Additional test: TI-400 temperature deviation cascade
+SELECT 'Test: What happens if TI-400 shows high temperature (fouling)?' as test_query;
+SELECT 
+    irt.instrument_tag,
+    irt.deviation_type,
+    irt.triggered_risk_scenario,
+    irt.severity_level,
+    iem.equipment_id,
+    ed.downstream_equipment_id,
+    ed.impact_severity
+FROM instrument_risk_triggers irt
+JOIN instrumentation_equipment_mapping iem ON irt.instrument_tag = iem.instrument_tag
+LEFT JOIN equipment_dependencies ed ON iem.equipment_id = ed.upstream_equipment_id
+WHERE irt.instrument_tag = 'TI-401' 
+AND irt.deviation_type = 'HIGH_TEMPERATURE';
